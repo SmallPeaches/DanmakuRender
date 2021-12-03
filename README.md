@@ -41,6 +41,7 @@
 #### 渲染选项
 运行`render.py`时可以附带以下参数：
 - `-f` 指定弹幕文件路径
+- `-o` 指定保存脚本的位置，如果为空则表示直接运行脚本而不保存，默认为空
 - `-a` 指定AE的主程序AfterFX.exe所在路径，默认为auto，由程序自己搜索
 - `--nosave` 指示AE不主动保存项目，也就是只渲染到AE的窗口，**如果AE此时存在项目，则会在当前项目新建一个合成并渲染，并不会创建新项目**     
 
@@ -52,6 +53,7 @@
 - `python main.py -u https://www.huya.com/712416 -m` 录制虎牙712416直播间，如果主播下播则一直等待直到开播然后录制
 - `python main.py -u https://www.huya.com/712416 -s 0` 录制虎牙712416直播间，录播不分块
 - `python render.py -f danmu.json` 渲染此文件夹下的danmu.json文件
+- `python render.py -f danmu.json -o script.jsx` 渲染弹幕文件为AE脚本script.jsx文件，之后再运行
 
 ## 更多
 如果有bug很正常，因为程序没有经过严格测试，只是一个简单的demo  
