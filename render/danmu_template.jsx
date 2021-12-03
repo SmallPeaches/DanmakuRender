@@ -122,7 +122,7 @@ function render(dmcomp){
                               config.framerate
                             )
     
-    //render
+    //render    
     var id_list = new Array();
     for(var i=0;i<dmcomp.tracknum;i++){
         id_list.push(0);
@@ -172,6 +172,5 @@ function render(dmcomp){
         danmulayer.property("Opacity").setValue(config.opacity)
 
     }
-
 }
 
