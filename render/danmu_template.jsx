@@ -13,6 +13,7 @@ var config = {
     fontsize : 30,
     margin : 6,
     dmDuration : 10,
+    dmDistance: 0.33,
 }
 
 function DanmuItem(text,color,start_time){
@@ -70,7 +71,7 @@ function DanmuCompound(){
 
         for(var i=0;i<this.tracknum;i++){
             var bias = this.tracks[i].latest_bias(danmu.start_time);
-            if(bias>this.config.width*0.5){
+            if(bias>this.config.width*config.dmDistance){
                 pos = i;
                 maxbias = bias;
                 overflow = false;
@@ -96,7 +97,10 @@ function DanmuCompound(){
 }
 
 function render(dmcomp){
-    proj = app.newProject();
+    proj = app.project
+    if(proj == null){
+        proj = app.newProject();
+    }
     if(config.videoDuration == 'auto'){
         duration = config.dmDuration;
         for(var t=0;t<dmcomp.tracknum;t++){
