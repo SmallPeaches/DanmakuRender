@@ -53,7 +53,7 @@
 - `python main.py -u https://www.huya.com/712416` 录制虎牙712416直播间，如果主播未开播则抛出错误
 - `python main.py -u https://www.huya.com/712416 -m` 录制虎牙712416直播间，如果主播下播则一直等待直到开播然后录制
 - `python main.py -u https://www.huya.com/712416 -s 0` 录制虎牙712416直播间，录播不分块
-- `python main.py -u https://www.huya.com/712416 -s 0` 录制虎牙712416直播间，只录制弹幕，不分块
+- `python main.py -u https://www.huya.com/712416 -s 0 --record danmu` 录制虎牙712416直播间，只录制弹幕，不分块
 - `python render.py -f danmu.json` 渲染此文件夹下的danmu.json文件
 - `python render.py -f danmu.json -o script.jsx` 渲染弹幕文件为AE脚本script.jsx文件，之后再手动运行
 
