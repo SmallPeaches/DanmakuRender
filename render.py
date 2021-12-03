@@ -10,13 +10,21 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Render')
     parser.add_argument('-f','--file',type=str,default=config['dmfile'])
+    parser.add_argument('-o','--output',type=str,default=config['scriptout'])
     parser.add_argument('-a','--ae',type=str,default=config['aepath'])
     parser.add_argument('--nosave',action='store_true')
 
     args = parser.parse_args()
 
     while not os.path.isfile(args.file):
-        args.file = input('DanmuFile:')
+        args.file = input('请输入弹幕文件路径:')
+    
+    if args.output:
+        dmr = DanmuRender(config)
+        dmr.readfile(args.file)
+        dmr._gen_script(args.output)
+        print("脚本文件已保存到："+args.output)
+        exit(0)
     
     if args.ae == 'auto':
         try:
