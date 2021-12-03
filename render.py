@@ -32,6 +32,6 @@ if __name__ == '__main__':
 
     dmr = DanmuRender(config)
     dmr.readfile(args.file)
-    dmr.render(args.ae,saveto=~args.nosave)
+    dmr.render(args.ae,saveto=not args.nosave)
 
 
