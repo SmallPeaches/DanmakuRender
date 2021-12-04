@@ -8,7 +8,7 @@ from tools.utils import *
 replay = None
 def replay_once(args):
     global replay
-    replay = downloader(args.url,args.name,args.output,args.ffmpeg)
+    replay = downloader(args.url,args.name,args.output,args.ffmpeg,args.timeout)
     replay.download(args.split,rectype=args.record)
 
 if __name__ == '__main__':
@@ -21,11 +21,12 @@ if __name__ == '__main__':
     parser.add_argument('-o','--output',type=str,default=config['output'],help='output directory')
     parser.add_argument('-s','--split',type=int,default=config['split'],help='split time (seconds)')
     parser.add_argument('--ffmpeg',type=str,default=config['ffmpeg'],help='ffmpeg.exe path')
+    parser.add_argument('--timeout',type=int,default=config['replay_timeout'])
     parser.add_argument('--record',type=str,default=config['recordtype'],choices=['all','danmu','video'])
     parser.add_argument('-m','--monitor',action='store_true')
 
     args = parser.parse_args()
-    if args.ffmpeg != 'ffmpeg' and not os.path.exists(args.ffmpeg):
+    if args.record != 'danmu' and args.ffmpeg != 'ffmpeg' and not os.path.exists(args.ffmpeg):
         print("FFmpeg路径设置错误.")
         exit(0)
 
@@ -44,7 +45,7 @@ if __name__ == '__main__':
     else:
         while True:
             if onair(args.url):
-                print('\rStart.')
+                print('\nStart.')
                 rval = replay_once(args)
                 if rval:
                     print('录制异常终止.')
