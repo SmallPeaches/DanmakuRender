@@ -17,7 +17,7 @@ class downloader():
             'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
                             '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
         }
-    def __init__(self,url:str,name:str,save:str='./save',ffmpeg:str='ffmpeg.exe'):
+    def __init__(self,url:str,name:str,save:str='./save',ffmpeg:str='ffmpeg.exe',replay_timeout:int=20):
         self.danmu = []
         self.duration = 0
         self.dmcnt = 0
@@ -28,13 +28,12 @@ class downloader():
         self._ffmpeg = ffmpeg
         self._stop = False
         self._ffmpeg_base_args = [self._ffmpeg,'-y','-headers',''.join('%s: %s\r\n' % x for x in self.header.items()),
-                                  '-rw_timeout', '10000000']
+                                  '-rw_timeout', str(replay_timeout*1e6)]
     
     def _dl_video(self,splitSec:int=0,fname:str=None):
         self._ffmpegoutfile = tempfile.NamedTemporaryFile()
         stream_url = GetStreamURL.get_url(self._url)
-        if not fname:
-            fname = f'{self._name}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-part%03d.mp4'
+        fname = fname + '-part%03d.mp4'
         save = os.path.join(self._save,fname)
         if not splitSec:
             ffmpeg_args = [*self._ffmpeg_base_args,'-i', stream_url,'-c','copy','-movflags','frag_keyframe',save.replace(f'-part%03d','')]
@@ -48,6 +47,7 @@ class downloader():
     
     def _dl_damuku(self,splitSec:int=0,fname=None):
         starttime = datetime.now().timestamp()
+        fname = fname
         async def danmu_monitor():
             q = asyncio.Queue()
             dmc = DanmakuClient(self._url, q)
@@ -63,15 +63,16 @@ class downloader():
                         self.dmcnt+=1
 
             await dmc.stop()
-        
-        def dm_writer(splitSec:int=0,fname=None,savetime=5):
+
+        def dm_writer(splitSec:int=0,fname:str=''):
             monitor = threading.Thread(target=asyncio.run,args=(danmu_monitor(),),daemon=True)
             monitor.start()
             part = 0
+            savetime = 5
             if splitSec:
-                fname = f'{self._name}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-part{part:03d}.json'
+                fname = fname + f'-part{part:03d}.json'
             else:
-                fname = f'{self._name}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}.json'
+                fname = fname + '.json'
 
             while not self._stop:
                 time.sleep(0.5)
@@ -98,6 +99,8 @@ class downloader():
     def download(self,splitSec:int=0,fname=None,rectype='all'):
         if not os.path.exists(self._save):
             os.makedirs(self._save)
+        if not fname:
+            fname = f'{self._name}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}'
 
         if rectype == 'video':
             self.video_proc = self._dl_video(splitSec,fname)
@@ -106,20 +109,26 @@ class downloader():
         else:
             self.video_proc = self._dl_video(splitSec,fname)
             self.danmu_thread = self._dl_damuku(splitSec,fname)
+        
         starttime = datetime.now().timestamp()
+        ffmpegout = ''
 
         while not self._stop:
             if rectype in ['video','all']:
                 try:
                     self._ffmpegoutfile.seek(0)
                     out = self._ffmpegoutfile.readlines()
-                    if 'video:' in out[-1].decode('utf-8'):
+                    if out:
+                        ffmpegout = out
+                    if 'video:' in ffmpegout[-1].decode('utf-8'):
                         self.stop()
-                        return out[-1]
+                        return ffmpegout[-1]
+                    elif 'frame=' in ffmpegout[-1].decode('utf-8'):
+                        print(f'\r正在录制:{self._name}, 录制时间:{int(self.duration)}秒, 弹幕数量:{self.dmcnt}.',end='',file=sys.stdout)
                 except:
                     pass
-            
-            print(f'\r正在录制:{self._name}, 录制时间:{int(self.duration)}秒, 弹幕数量:{self.dmcnt}.',end='',file=sys.stdout)
+            else:
+                print(f'\r正在录制:{self._name}, 录制时间:{int(self.duration)}秒, 弹幕数量:{self.dmcnt}.',end='',file=sys.stdout)
             time.sleep(0.5)
             self.duration = datetime.now().timestamp()-starttime
 
