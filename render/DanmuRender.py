@@ -8,7 +8,7 @@ from os.path import join
 from tools.utils import *
 
 class DanmuRender():
-    def __init__(self,config=None,tmpdir='./render/.tmp') -> None:
+    def __init__(self,config=None) -> None:
         self.template = join(os.path.dirname(__file__),'danmu_template.jsx')
         self.config = config
         self.dmlist = []
@@ -81,11 +81,11 @@ class DanmuRender():
         if not AE_PATH:
             start_menu = 'C:\ProgramData\Microsoft\Windows\Start Menu\Programs'
             for ink in os.listdir(start_menu):
-                if re.match('.*After Effect.*.lnk',ink):
+                if re.match('.*After Effects.*.lnk',ink):
                     ink = os.path.join(start_menu,ink)
                     AE_PATH = get_lnk_file(ink)
                     break
-        os.system(f'"{AE_PATH}" -r {fn}')
+        os.system(f'"{AE_PATH}" -r "{fn}"')
         os.remove(fn)
 
 if __name__ == "__main__":

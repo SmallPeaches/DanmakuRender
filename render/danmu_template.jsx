@@ -67,14 +67,12 @@ function DanmuCompound(){
     this.add = function(danmu){
         var pos = -1;
         var maxbias = -1;
-        var overflow = true;
 
         for(var i=0;i<this.tracknum;i++){
             var bias = this.tracks[i].latest_bias(danmu.start_time);
             if(bias>this.config.width*config.dmDistance){
                 pos = i;
                 maxbias = bias;
-                overflow = false;
                 break;
             }
             if(bias>maxbias){
@@ -83,7 +81,7 @@ function DanmuCompound(){
             }
         }
 
-        if(overflow && this.config.overflow_operate == 'ignore'){
+        if(maxbias < 0 && this.config.overflow_operate == 'ignore'){
             return;
         }
         
