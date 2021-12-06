@@ -9,13 +9,14 @@ replay = None
 def replay_once(args):
     global replay
     replay = downloader(args.url,args.name,args.output,args.ffmpeg,args.timeout)
-    replay.download(args.split,rectype=args.record)
+    replay.download(args.split,rectype=args.record,dmFileType=args.dftype)
 
 if __name__ == '__main__':
     config_path = 'config.json'
     config = read_json(config_path)
     
     parser = argparse.ArgumentParser(description='Replay')
+    parser.add_argument('-V','--version',action='store_true')
     parser.add_argument('-u','--url',type=str,default=config['url'],help='live url')
     parser.add_argument('-n','--name',type=str,default=config['taskname'],help='task name')
     parser.add_argument('-o','--output',type=str,default=config['output'],help='output directory')
@@ -23,9 +24,14 @@ if __name__ == '__main__':
     parser.add_argument('--ffmpeg',type=str,default=config['ffmpeg'],help='ffmpeg.exe path')
     parser.add_argument('--timeout',type=int,default=config['replay_timeout'])
     parser.add_argument('--record',type=str,default=config['recordtype'],choices=['all','danmu','video'])
+    parser.add_argument('--dftype',type=str,default=config['dmFileType'],choices=['json','csv','excel'])
     parser.add_argument('-m','--monitor',action='store_true')
 
     args = parser.parse_args()
+    if args.version:
+        print("DanmakuRender-Downloader 2021.12.06")
+        exit(0)
+
     if args.record != 'danmu' and args.ffmpeg != 'ffmpeg' and not os.path.exists(args.ffmpeg):
         print("FFmpeg路径设置错误.")
         exit(0)
