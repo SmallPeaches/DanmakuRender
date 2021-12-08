@@ -99,6 +99,8 @@ class downloader():
             fname = self._basename + f'-part{part:03d}.csv' if self._split else self._basename + '.csv'
 
             with open(os.path.join(self._save,fname),'a+',encoding=encoding) as f:
+                #if mode:
+                    #f.write("\xef\xbb\xbf")
                 f.write('time,name,content,color\n')
 
             while not self._stop:
@@ -130,7 +132,7 @@ class downloader():
         elif self._dmFileType == 'csv':
             writer = threading.Thread(target=dm_writer_csv,args=('utf-8',),daemon=True)
         elif self._dmFileType == 'excel':
-            writer = threading.Thread(target=dm_writer_csv,args=('ansi',),daemon=True)
+            writer = threading.Thread(target=dm_writer_csv,args=('utf-8-sig',),daemon=True)
         writer.start()
         
         return writer
