@@ -46,20 +46,20 @@ def read_json(filename):
         str_res += i
     return json.loads(str_res.encode('gbk'))
 
-from downloader.GetStreamURL import GetStreamURL
+from downloader.getrealurl import get_stream_url
 def onair(url):
     try:
-        GetStreamURL.get_url(url)
+        get_stream_url(url)
         return True
-    except:
+    except Exception as e:
         return False
 
 def url_available(url):
     try:
-        GetStreamURL.get_url(url)
+        get_stream_url(url)
         return True
     except Exception as e:
-        if '未开播' == str(e):
+        if '未开播' in str(e):
             return True
         else:
             return False
