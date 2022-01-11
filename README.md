@@ -32,7 +32,9 @@
 - `--ffmpeg` 指定`ffmpeg.exe`可执行文件所在路径 
 - `--timeout` 指定网络中断超时等待时间，默认20秒 
 - `--gpu` 指定显卡类型，可以为AMD或者NVIDIA，设置为none表示不使用显卡辅助编码，**默认使用NVIDIA显卡**    
-特别地，如果希望单独指定编码器参数，可以使用以下参数，参数将会覆盖GPU默认选择
+
+特别地，如果希望单独指定编码器参数，可以使用以下参数，参数将会覆盖GPU默认选择    
+
 - `--hwaccel` 指定硬件解码器，NVIDIA显卡默认为NVDEC，AMD显卡默认为dxva2
 - `--vencoder` 指定视频编码器，NVIDIA显卡默认为H264_NVENC，AMD显卡默认为H264_AMF，不使用硬件加速的话默认为libx264
 - `--vbitrate` 指定视频码率，默认为15Mbps
