@@ -17,7 +17,8 @@ from .BaseRender import *
 class PythonRender():
     header = {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_0) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.56 Safari/535.11'
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
+                            '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
         }
     def __init__(self, url: str, name: str, save: str = './save', ffmpeg: str = 'tools/ffmpeg.exe', timeout: int = 30):
         self.danmu = []
@@ -161,9 +162,10 @@ class PythonRender():
                         self._ffmpeg, '-y',
                         '-headers', ''.join('%s: %s\r\n' % x for x in self.header.items()),
                         '-fflags', '+discardcorrupt',
-                        '-analyzeduration', '5',
+                        '-analyzeduration', '15',
                         *args.hwaccel_args,
-                        '-reconnect_streamed', '1', 
+                        '-reconnect', '1',
+                        '-reconnect_streamed', '1',
                         '-reconnect_delay_max', '20', 
                         '-rw_timeout', '%d000000'%self._timeout,
                         '-thread_queue_size', '16',
