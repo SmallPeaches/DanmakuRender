@@ -25,12 +25,12 @@ if __name__ == '__main__':
     parser.add_argument('--nproc',type=int,default=2)
     parser.add_argument('--dmrate',type=float,default=0.5)
     parser.add_argument('--startpixel',type=int,default=20)
-    parser.add_argument('--margin',type=int,default=16)
-    parser.add_argument('--font',type=str,default=r'C:\Windows\Fonts\msyhbd.ttc')
-    parser.add_argument('--fontsize',type=int,default=24)
+    parser.add_argument('--margin',type=int,default=12)
+    parser.add_argument('--font',type=str,default='msyhbd.ttc')
+    parser.add_argument('--fontsize',type=int,default=30)
     parser.add_argument('--overflow_op',type=str,default='ignore',choices=['ignore','override'])
     parser.add_argument('--dmduration',type=str,default='+15')
-    parser.add_argument('--opacity',type=float,default=0.9)
+    parser.add_argument('--opacity',type=float,default=0.8)
 
     parser.add_argument('--debug',action='store_true')
 
@@ -51,7 +51,7 @@ if __name__ == '__main__':
         args.hwaccel_args = []
 
     if args.version:
-        print("DanmakuRender-2 2022.1.10")
+        print("DanmakuRender-2 2022.1.13")
         exit(0)
 
     while not url_available(args.url):
