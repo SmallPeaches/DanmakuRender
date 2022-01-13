@@ -17,8 +17,7 @@ from .BaseRender import *
 class PythonRender():
     header = {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
-                            '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
+            'User-Agent': 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_0) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.56 Safari/535.11'
         }
     def __init__(self, url: str, name: str, save: str = './save', ffmpeg: str = 'tools/ffmpeg.exe', timeout: int = 30):
         self.danmu = []
@@ -206,7 +205,7 @@ class PythonRender():
         stream_url = get_stream_url(self._url)
         info = self._get_stream_info(stream_url)
 
-        if not info.get('fps'):
+        if not info.get('fps') or info.get('fps')<30:
             warnings.warn('无法获取流帧率，使用默认值60.')
             info['fps'] = 60
         if not (info.get('width') or info.get('height')):

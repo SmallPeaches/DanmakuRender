@@ -1,5 +1,8 @@
 import os
+import re
 from PIL import Image,ImageDraw,ImageFont
+
+match_emoji = re.compile(r'([\U00010000-\U0010ffff]+)')
 
 class DmItem():
     def __init__(self,time,content,color,fontsize,font,opacity) -> None:
@@ -7,10 +10,17 @@ class DmItem():
         self.content = content
         self.color = color
         self.fontsize = fontsize
-        self.font = font
+        self.word_font, self.emoji_font = font[0], font[1]
         self.opacity = opacity
-        self.length, self.height = font.getsize(content)
+
+        self.have_emoji = bool(match_emoji.search(content))
+        self.length, self.height = self.word_font.getsize(content)
         self.height += 2
+        if self.have_emoji:
+            self.word_split = [x for x in match_emoji.split(content) if len(x)>0]
+            self.length *= 2
+        else:
+            self.word_split = [content]
 
     def render(self,track):
         self.track = track
@@ -18,16 +28,30 @@ class DmItem():
         draw = ImageDraw.Draw(self.bitmap)
 
         if self.color[0:2] == '0x':
-                color = self.color[2:8]
+            color = self.color[2:8]
         else:
             color = self.color
         r = int(color[0:2],16)
         g = int(color[2:4],16)
         b = int(color[4:6],16)
-        a = int(self.opacity*256)
+        a = int(self.opacity*255)
 
-        draw.text(xy=(0,0),text=self.content,font=self.font,fill=(r,g,b,a),stroke_width=1,stroke_fill=(10,10,10,a))
+        x = 0
+        for word in self.word_split:
+            if match_emoji.search(word):
+                y = int(self.height*0.2)
+                draw.text(xy=(x,y),text=word,font=self.emoji_font,embedded_color=True)
+                x += self.emoji_font.getsize(word)[0]
+            else:
+                draw.text(xy=(x,0),text=word,font=self.word_font,fill=(r,g,b,a),stroke_width=1,stroke_fill=(10,10,10,a))
+                x += self.word_font.getsize(word)[0]
+        
+        if self.have_emoji:
+            self.length = x
+            self.bitmap = self.bitmap.crop((0,0,self.length,self.height))
+        
         self.bitmask = self.bitmap.split()[-1]
+        self.bitmask.point(lambda x:x>a and a)
         self.bitmap = self.bitmap.convert('RGB')
     
 class DmScreen():
@@ -38,7 +62,11 @@ class DmScreen():
         self.dmstartpixel = dmstartpixel
         self.dmrate = dmrate
         self.fontsize = fontsize
-        self.font = ImageFont.truetype(font,fontsize)
+
+        word_font = ImageFont.truetype(font,fontsize)
+        emoji_font = ImageFont.truetype('seguiemj.ttf',fontsize)
+        self.font = [word_font,emoji_font]
+
         self.margin = margin
         self.overflow_op = overflow_op
         self.duration = dmduration
@@ -61,8 +89,8 @@ class DmScreen():
             bias = (tic - dm.time)*(dm.length+self.width)/self.duration - dm.length 
             return bias
         
-        for i,tinfo in enumerate(self.trackinfo):
-            bias = calc_bias(tinfo,dm.time)
+        for i,latest_dm in enumerate(self.trackinfo):
+            bias = calc_bias(latest_dm,dm.time)
             if bias > 0.4*self.width:
                 tid = i
                 maxbias = bias
@@ -71,7 +99,7 @@ class DmScreen():
                 maxbias = bias
                 tid = i
 
-        if maxbias<0.1*self.width and self.overflow_op == 'ignore':
+        if maxbias<0.05*self.width and self.overflow_op == 'ignore':
             return False
         
         dm.render(tid)
