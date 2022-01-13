@@ -1,8 +1,10 @@
 import argparse
 import os
 import time
-from tools.utils import *
+
 from downloader.Render import PythonRender
+from downloader.getrealurl import split_url
+from tools.utils import onair, url_available
 
 if __name__ == '__main__':    
     parser = argparse.ArgumentParser(description='Render')
@@ -10,7 +12,7 @@ if __name__ == '__main__':
     parser.add_argument('-u','--url',type=str,default='')
     parser.add_argument('-o','--output',type=str,default='./save')
     parser.add_argument('-s','--split',type=int,default=0)
-    parser.add_argument('-n','--name',type=str,default='replay')
+    parser.add_argument('-n','--name',type=str)
     parser.add_argument('--ffmpeg',type=str,default='tools/ffmpeg.exe')
     parser.add_argument('--timeout',type=int,default=20)
 
@@ -67,6 +69,10 @@ if __name__ == '__main__':
         time.sleep(60)
         while not onair(args.url):
             time.sleep(60)
+
+    if not args.name:
+        p,r = split_url(args.url)
+        args.name = p+r
     
     while True:
         rec = PythonRender(url=args.url,
