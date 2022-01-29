@@ -37,7 +37,7 @@
 
 - `--hwaccel` 指定硬件解码器，NVIDIA显卡默认为NVDEC，AMD显卡默认为dxva2
 - `--vencoder` 指定视频编码器，NVIDIA显卡默认为H264_NVENC，AMD显卡默认为H264_AMF，不使用硬件加速的话默认为libx264
-- `--vbitrate` 指定视频码率，默认为15Mbps
+- `--vbitrate` 指定视频码率，默认为15Mbps，注意码率应该设置为数值+单位，例如10M，10000K等
 - `--aencoder` 指定音频编码器，默认为AAC
 - `--abitrate` 指定音频码率，默认为320Kbps
 #### 弹幕参数
@@ -52,6 +52,8 @@
 - `--opacity` 指定弹幕不透明度，默认为0.8
 #### 其他参数
 - `--debug` 使用debug模式，将录制信息输出到控制台
+- `--use_wallclock_as_timestamps` 强制使用系统时钟作为视频时钟，默认false
+- `--discardcorrupt` 忽略错误的包，网络环境不好可以用，默认false
 - `-v` 查看版本号
 
 ## 更多
