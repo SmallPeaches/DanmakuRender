@@ -35,6 +35,8 @@ if __name__ == '__main__':
     parser.add_argument('--opacity',type=float,default=0.8)
 
     parser.add_argument('--debug',action='store_true')
+    parser.add_argument('--use_wallclock_as_timestamps',action='store_true')
+    parser.add_argument('--discardcorrupt',action='store_true')
 
     args = parser.parse_args()
 
