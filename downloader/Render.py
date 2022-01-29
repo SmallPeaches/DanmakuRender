@@ -158,10 +158,15 @@ class PythonRender():
         return procs
 
     def _set_ffmpeg(self,stream_url,args):
+        ffmpeg_stream_args = []
+        if args.use_wallclock_as_timestamps:
+            ffmpeg_stream_args += ['-use_wallclock_as_timestamps','1']
+        if args.discardcorrupt:
+            ffmpeg_stream_args += ['-fflags', '+discardcorrupt']
         ffmpeg_args =   [
                         self._ffmpeg, '-y',
                         '-headers', ''.join('%s: %s\r\n' % x for x in self.header.items()),
-                        '-fflags', '+discardcorrupt',
+                        *ffmpeg_stream_args,
                         '-analyzeduration', '15',
                         *args.hwaccel_args,
                         '-reconnect', '1',
@@ -193,6 +198,8 @@ class PythonRender():
             ffmpeg_args += ['-movflags','frag_keyframe',join(self._save,fname)]
 
         if args.debug:
+            print('FFmpeg args:')
+            print(ffmpeg_args)
             proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT, bufsize=10**8)
         else:
             proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
@@ -261,7 +268,8 @@ class PythonRender():
     
     def start(self,args):
         try:
-            return self.start_helper(args)
+            rval = self.start_helper(args)
+            return rval
         except KeyboardInterrupt:
             self.stop()
             print('录制结束.')
