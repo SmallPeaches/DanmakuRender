@@ -4,6 +4,8 @@
 
 使用AE渲染的旧版本可以在old分支找到。   
 
+**2022.2.9版本已经上线，主要修复了直播流错误时无法正常重启的情况**
+
 ## 使用说明
 ### 前置要求
 - Python 3.7+
@@ -20,7 +22,6 @@
 - `python pyrender.py -u https://www.huya.com/712416 -s 3600` 录制虎牙712416直播间，并将文件分成一个小时一块
 - `python pyrender.py -u https://www.huya.com/712416 --gpu amd` 录制虎牙712416直播间，使用AMD硬件编码器
 - `python pyrender.py -u https://www.huya.com/712416 --fontsize 36` 录制虎牙712416直播间，指定弹幕大小为36
-- `python pyrender.py -u https://www.huya.com/712416 --debug` 录制虎牙712416直播间，将录制的具体信息输出（用于debug）
 
 ### 详细说明
 程序运行时可以附带以下参数
@@ -39,22 +40,35 @@
 - `--vencoder` 指定视频编码器，NVIDIA显卡默认为H264_NVENC，AMD显卡默认为H264_AMF，不使用硬件加速的话默认为libx264
 - `--vbitrate` 指定视频码率，默认为15Mbps，注意码率应该设置为数值+单位，例如10M，10000K等
 - `--aencoder` 指定音频编码器，默认为AAC
-- `--abitrate` 指定音频码率，默认为320Kbps
+- `--abitrate` 指定音频码率，默认为320Kbps   
+
+如果程序无法正常判断流的分辨率和帧率（例如部分主播使用了4K120Hz的超高清流）导致录制错误，可以使用以下参数强行指定     
+
+- `--fps` 指定输出帧率
+- `--resolution` 指定分辨率，分辨率应该使用x分割，例如1920x1080
+
 #### 弹幕参数
-- `--nproc` 指定弹幕渲染进程数，默认为2
+- `--nproc` 指定弹幕渲染进程数，默认为2，如果录制超高清流应该调高
 - `--dmrate` 指定弹幕占屏幕的最大比例（即屏幕上半部分有多少可以用来显示弹幕），默认为0.5
 - `--startpixel` 指定第一行弹幕开始的高度，默认为20
 - `--margin` 指定弹幕行距，默认12
 - `--font` 指定弹幕字体，这里要求输入为字体文件的位置或者名称，默认为Windows系统里微软雅黑字体文件(C:\Windows\Fonts\msyhbd.ttc)
 - `--fontsize` 指定弹幕字体大小，默认为30
 - `--overflow_op` 指定过量弹幕的处理方法，可选ignore（忽略过量弹幕）或者override（强行叠加弹幕），默认ignore
-- `--dmduration` 指定单条弹幕持续时间，注意如果在数字前面加一个+号（例如+15）表示弹幕持续时间将会被规范化为1080P分辨率下的持续时间（也就是说使得弹幕移动速度在不同分辨率下保持一致），默认为+15
+- `--dmduration` 指定单条弹幕持续时间（秒），默认为15
 - `--opacity` 指定弹幕不透明度，默认为0.8
+- `--resolution_fixed` 使用自适应分辨率模式，也就是说弹幕大小会随分辨率变化而变化，前面设置的是1080P下的大小，默认true
+
 #### 其他参数
-- `--debug` 使用debug模式，将录制信息输出到控制台
+- `--debug` 使用debug模式，将录制信息输出到控制台。**新版本不建议使用，错误信息会自动保存为日志文件**
 - `--use_wallclock_as_timestamps` 强制使用系统时钟作为视频时钟，默认false
-- `--discardcorrupt` 忽略错误的包，网络环境不好可以用，默认false
+- `--discardcorrupt` 忽略错误的包，默认true
+- `--reconnect` ffmpeg级的自动重连，默认false
+- `--disable_lowbitrate_interrupt` 关闭低比特率自动重启功能，程序现在会在低比特率时自动重连（低比特率说明录制故障了）
+- `--disable_lowspeed_interrupt` 关闭编码过慢自动重启功能（编码速度低说明录制故障或者是资源不足了）
+- `--flowtype` 选择流类型，可选flv或者是m3u8，默认flv，此选项仅对B站流生效，在flv流故障或者录制超高清直播时应该设置为m3u8
 - `-v` 查看版本号
 
 ## 更多
 感谢 THMonster/danmaku, wbt5/real-url, ForgQi/biliup
+出现问题了可以把日志文件发给我，我会尽量帮忙修复
