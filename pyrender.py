@@ -1,6 +1,9 @@
 import argparse
+from cgitb import handler
 import os
+import sys
 import time
+import logging
 
 from downloader.Render import PythonRender
 from downloader.getrealurl import split_url
@@ -23,6 +26,8 @@ if __name__ == '__main__':
     parser.add_argument('--vbitrate',type=str,default='15M')
     parser.add_argument('--aencoder',type=str,default='aac')
     parser.add_argument('--abitrate',type=str,default='320K')
+    parser.add_argument('--fps',type=float,default=60)
+    parser.add_argument('--resolution',type=str,default='1920x1080')
 
     parser.add_argument('--nproc',type=int,default=2)
     parser.add_argument('--dmrate',type=float,default=0.5)
@@ -31,12 +36,17 @@ if __name__ == '__main__':
     parser.add_argument('--font',type=str,default='msyhbd.ttc')
     parser.add_argument('--fontsize',type=int,default=30)
     parser.add_argument('--overflow_op',type=str,default='ignore',choices=['ignore','override'])
-    parser.add_argument('--dmduration',type=str,default='+15')
+    parser.add_argument('--dmduration',type=float,default=15)
     parser.add_argument('--opacity',type=float,default=0.8)
+    parser.add_argument('--resolution_fixed',type=bool,default=True)
 
     parser.add_argument('--debug',action='store_true')
+    parser.add_argument('--discardcorrupt',type=bool,default=True)
     parser.add_argument('--use_wallclock_as_timestamps',action='store_true')
-    parser.add_argument('--discardcorrupt',action='store_true')
+    parser.add_argument('--reconnect',action='store_true')
+    parser.add_argument('--disable_lowbitrate_interrupt',action='store_true')
+    parser.add_argument('--disable_lowspeed_interrupt',action='store_true')
+    parser.add_argument('--flowtype',type=str,default='flv',choices=['flv','m3u8'])
 
     args = parser.parse_args()
 
@@ -54,27 +64,46 @@ if __name__ == '__main__':
     else:
         args.hwaccel_args = []
 
-    if args.version:
-        print("DanmakuRender-2 2022.1.13")
-        exit(0)
-
-    while not url_available(args.url):
-        print("URL不可用")
-        args.url = input("请输入合法的URL: ")
-
-    if args.ffmpeg != 'ffmpeg' and not os.path.exists(args.ffmpeg):
-        print("FFmpeg路径设置错误.")
-        exit(0)
-
-    if not onair(args.url):
-        print('直播结束,正在等待...')
-        time.sleep(60)
-        while not onair(args.url):
-            time.sleep(60)
-
     if not args.name:
         p,r = split_url(args.url)
         args.name = p+r
+    
+    logger = logging.getLogger('main')
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('[%(asctime)s][%(levelname)s]: %(message)s',datefmt='%H:%M:%S')
+
+    os.makedirs('./logs',exist_ok=True)
+    filehandler = logging.FileHandler(f'./logs/{args.name}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}.log',encoding='utf-8')
+    filehandler.setLevel(logging.DEBUG)
+    filehandler.setFormatter(formatter)
+    
+    console = logging.StreamHandler(sys.stdout)
+    if args.debug:
+        console.setLevel(logging.DEBUG)
+    else:
+        console.setLevel(logging.INFO)
+    console.setFormatter(formatter)
+
+    logger.addHandler(filehandler)
+    logger.addHandler(console)
+    
+    if args.version:
+        logger.info("DanmakuRender-2 2022.2.1")
+        exit(0)
+
+    while not url_available(args.url):
+        logger.error("URL不可用")
+        args.url = input("请输入合法的URL: ")
+
+    if args.ffmpeg != 'ffmpeg' and not os.path.exists(args.ffmpeg):
+        logger.error("FFmpeg路径设置错误.")
+        exit(0)
+
+    if not onair(args.url):
+        logger.info('直播结束,正在等待...')
+        time.sleep(60)
+        while not onair(args.url):
+            time.sleep(60)
     
     while True:
         rec = PythonRender(url=args.url,
@@ -83,20 +112,26 @@ if __name__ == '__main__':
                            ffmpeg=args.ffmpeg,
                            timeout=args.timeout)
 
-        rval = rec.start(args)
+        logger.info('正在启动录制.')
+        logger.debug('DanmakuRender args:')
+        logger.debug(args)
+
+        try:
+            rval = rec.start(args)
+        except KeyboardInterrupt:
+            rec.stop()
+            logger.info('录制终止')
+            exit(0)
 
         if onair(args.url):
-            print('\n录制异常终止:')
-            if isinstance(rval,list):
-                for l in rval:
-                    print(l,end='')
-            else:
-                print(rval)
-            print('正在重试...')
+            logger.error('录制异常终止, 请查询日志文件了解更多信息.')
+            logger.info('正在重试...')
             time.sleep(5)
         else:
-            print('直播结束,正在等待...')
+            logger.info('直播结束,正在等待...')
             time.sleep(60)
+            while not onair(args.url):
+                time.sleep(60)
 
 
     
