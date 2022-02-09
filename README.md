@@ -70,5 +70,5 @@
 - `-v` 查看版本号
 
 ## 更多
-感谢 THMonster/danmaku, wbt5/real-url, ForgQi/biliup
+感谢 THMonster/danmaku, wbt5/real-url, ForgQi/biliup     
 出现问题了可以把日志文件发给我，我会尽量帮忙修复
