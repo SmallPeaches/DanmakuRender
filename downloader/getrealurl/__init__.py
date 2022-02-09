@@ -14,7 +14,7 @@ def split_url(url:str):
     
     return (platform, rid)
 
-def get_stream_url(live_url):
+def get_stream_url(live_url,type='flv'):
     stream_url = None
     platform,rid = split_url(live_url)
     
@@ -30,10 +30,12 @@ def get_stream_url(live_url):
     
     elif platform in ['bili','bilibili']:
         from . import bilibili
-        # url_dict = bilibili.get_real_url(rid)['flv']
-        # key = list(url_dict)[0]
-        # stream_url = url_dict[key]
-        stream_url = bilibili.get_real_url(rid)['flv']
+        if type == 'm3u8':
+            url_dict = bilibili.get_real_url(rid)['m3u8']
+            key = list(url_dict)[0]
+            stream_url = url_dict[key]
+        else: 
+            stream_url = bilibili.get_real_url(rid)['flv']
 
     elif platform in ['dy','douyu']:
         from . import douyu
