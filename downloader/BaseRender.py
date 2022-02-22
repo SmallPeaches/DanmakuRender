@@ -43,7 +43,7 @@ class DmItem():
                 draw.text(xy=(x,y),text=word,font=self.emoji_font,embedded_color=True)
                 x += self.emoji_font.getsize(word)[0]
             else:
-                draw.text(xy=(x,0),text=word,font=self.word_font,fill=(r,g,b,a),stroke_width=1,stroke_fill=(10,10,10,a))
+                draw.text(xy=(x,0),text=word,font=self.word_font,fill=(r,g,b,a),stroke_width=1,stroke_fill=(100,100,100,a))
                 x += self.word_font.getsize(word)[0]
         
         if self.have_emoji:

@@ -98,7 +98,7 @@ class PythonRender():
                     framebytes = newframebytes
                 except queue.Empty:
                     self._sender[pid].put({'msg_type':'fid','fid':fid+nproc})
-                    if thisfid - fid < self.fps:
+                    if fid - thisfid > self.fps*self.args.dmduration:
                         fout.write(empty_frame)
                     else:
                         fout.write(framebytes)
