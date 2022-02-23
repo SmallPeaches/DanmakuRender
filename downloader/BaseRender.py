@@ -114,6 +114,8 @@ class DmScreen():
     def render(self,fid):        
         sec = fid/self.fps
         frame = Image.new(mode='RGBA', size=(self.width,self.height))
+        if fid == 0:
+            return frame
 
         for dm in self.dmlist:
             if dm.time < sec-self.duration:

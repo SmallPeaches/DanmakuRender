@@ -2,6 +2,7 @@ from datetime import datetime
 import logging
 import queue
 import subprocess
+import sys
 import threading
 import multiprocessing
 import asyncio
@@ -122,14 +123,14 @@ class PythonRender():
                         self.logger.warn(f'视频编码队列阻塞达到{ffmpeg_delay_cnt}次, 请保证有足够的资源用于实时编码!')
                     fid += int(MAX_DELAY*self.fps)
 
-        monitor = threading.Thread(target=frame_monitor,daemon=True)
-        monitor.start()
-
         procs = []
         for i in range(nproc):
             proc = multiprocessing.Process(target=_render_subproc,args=(i,nproc,self.args,self._sender[i],self._recver[i]))
             proc.start()
             procs.append(proc)
+
+        monitor = threading.Thread(target=frame_monitor,daemon=True)
+        monitor.start()
         
         return procs
 
@@ -150,7 +151,7 @@ class PythonRender():
                         self._ffmpeg, '-y',
                         '-headers', ''.join('%s: %s\r\n' % x for x in self.header.items()),
                         *ffmpeg_stream_args,
-                        '-analyzeduration', '15',
+                        '-analyzeduration', '60',
                         *args.hwaccel_args,
                         # '-rw_timeout', '%d000000'%self._timeout,
                         '-thread_queue_size', '32',
@@ -164,12 +165,15 @@ class PythonRender():
                         '-i', '-',
                         
                         '-filter_complex','overlay=0:0',
+                        '-filter_complex','[0:v][1:v]overlay=0:0[v]',
+                        '-map','[v]','-map','0:a',
                         '-c:v',args.vencoder,
                         '-c:a',args.aencoder,
                         '-b:v',args.vbitrate,
                         '-b:a',args.abitrate,
                         '-r', str(self.fps)
                         ]
+        
         if args.split > 0:
             fname = f'{self._name}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d.mp4'
             ffmpeg_args += ['-f','segment','-segment_time',str(args.split),'-movflags','frag_keyframe',join(self._save,fname)]
@@ -182,6 +186,7 @@ class PythonRender():
         self.logger.debug(ffmpeg_args)
 
         proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
+        # proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
         
         return proc
 
@@ -222,6 +227,9 @@ class PythonRender():
         self._render_procs = self._set_render(self._ffmpeg_proc.stdin,args.nproc)
         self._danmu_proc = self._get_danmaku()
 
+        self.logger.debug('DanmakuRender args:')
+        self.logger.debug(self.args)
+
         log = ''
         try:
             if self.args.vbitrate[-1].lower() == 'm':
@@ -241,11 +249,15 @@ class PythonRender():
         
         while not self._stop:
             try:
-                msg = self.interrupt.get_nowait()
-                if msg['msg_type'] == 'stop':
-                    self.stop()
-                    self.logger.debug('Subprocess Stop.')
-                    self.logger.debug(msg['stop'])
+                for _ in range(self.interrupt.qsize()):
+                    msg = self.interrupt.get_nowait()
+                    if msg['msg_type'] == 'stop':
+                        self.stop()
+                        self.logger.debug('Subprocess Stop.')
+                        self.logger.debug(msg['stop'])
+                        break
+                    elif msg['msg_type'] == 'danmaku':
+                        self.logger.debug(f"Danmaku:{msg['danmaku']}.")
             except queue.Empty:
                 pass
 
@@ -370,7 +382,7 @@ def _dmfilter(dm):
         return
     return dm
 
-def _danmu_subproc(args,dmfilter,dm_boardcaster,interrupt:multiprocessing.Queue=None):
+def _danmu_subproc(args,dmfilter,render_procs,interrupt:multiprocessing.Queue=None):
     async def danmu_monitor():
         q = asyncio.Queue()
         dmc = DanmakuClient(args.url, q)
@@ -389,7 +401,8 @@ def _danmu_subproc(args,dmfilter,dm_boardcaster,interrupt:multiprocessing.Queue=
                 dm['time'] = datetime.now().timestamp()-args.starttime + 1.0
                 dm = dmfilter(dm)
                 if dm:
-                    for render_proc in dm_boardcaster:
+                    interrupt.put({'msg_type':'danmaku','danmaku':dm})
+                    for render_proc in render_procs:
                         render_proc.put(dm)
     
     monitor = threading.Thread(target=asyncio.run,args=(danmu_monitor(),),daemon=True)
