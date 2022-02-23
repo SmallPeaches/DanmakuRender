@@ -73,7 +73,8 @@ if __name__ == '__main__':
     formatter = logging.Formatter('[%(asctime)s][%(levelname)s]: %(message)s',datefmt='%H:%M:%S')
 
     os.makedirs('./logs',exist_ok=True)
-    filehandler = logging.FileHandler(f'./logs/{args.name}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}.log',encoding='utf-8')
+    args.logname = f'./logs/{args.name}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}.log'
+    filehandler = logging.FileHandler(args.logname,encoding='utf-8',mode='a')
     filehandler.setLevel(logging.DEBUG)
     filehandler.setFormatter(formatter)
     
