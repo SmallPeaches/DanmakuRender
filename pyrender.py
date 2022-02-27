@@ -5,6 +5,7 @@ import sys
 import time
 import logging
 
+from downloader.Downloader import Downloader
 from downloader.Render import PythonRender
 from downloader.getrealurl import split_url
 from tools.utils import onair, url_available
@@ -20,7 +21,8 @@ if __name__ == '__main__':
     parser.add_argument('--timeout',type=int,default=20)
 
     parser.add_argument('--gpu',type=str,default='nvidia')
-    parser.add_argument('--hwaccel',type=str)
+    parser.add_argument('--hwaccel',type=int,default=True)
+    parser.add_argument('--vdecoder',type=str,default='dxva2')
 
     parser.add_argument('--vencoder',type=str)
     parser.add_argument('--vbitrate',type=str,default='15M')
@@ -29,6 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('--fps',type=float,default=60)
     parser.add_argument('--resolution',type=str,default='1920x1080')
 
+    parser.add_argument('--copy',action='store_true')
     parser.add_argument('--nproc',type=int,default=2)
     parser.add_argument('--dmrate',type=float,default=0.5)
     parser.add_argument('--startpixel',type=int,default=20)
@@ -38,10 +41,10 @@ if __name__ == '__main__':
     parser.add_argument('--overflow_op',type=str,default='ignore',choices=['ignore','override'])
     parser.add_argument('--dmduration',type=float,default=15)
     parser.add_argument('--opacity',type=float,default=0.8)
-    parser.add_argument('--resolution_fixed',type=bool,default=True)
+    parser.add_argument('--resolution_fixed',type=int,default=True)
 
     parser.add_argument('--debug',action='store_true')
-    parser.add_argument('--discardcorrupt',type=bool,default=True)
+    parser.add_argument('--discardcorrupt',type=int,default=True)
     parser.add_argument('--use_wallclock_as_timestamps',action='store_true')
     parser.add_argument('--reconnect',action='store_true')
     parser.add_argument('--disable_lowbitrate_interrupt',action='store_true')
@@ -51,16 +54,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.gpu.lower() == 'nvidia':
-        args.hwaccel = 'nvdec' if not args.hwaccel else args.hwaccel
+        args.vdecoder = 'nvdec' 
         args.vencoder = 'h264_nvenc' if not args.vencoder else args.vencoder
     elif args.gpu.lower() == 'amd':
-        args.hwaccel = 'dxva2' if not args.hwaccel else args.hwaccel
+        args.vdecoder = 'dxva2' 
         args.vencoder = 'h264_amf' if not args.vencoder else args.vencoder
-    else:
+    elif args.gpu.lower() == 'none':
         args.vencoder = 'libx264' if not args.vencoder else args.vencoder
 
     if args.hwaccel:
-        args.hwaccel_args = ['-hwaccel',args.hwaccel]
+        args.hwaccel_args = ['-hwaccel',args.vdecoder]
     else:
         args.hwaccel_args = []
 
@@ -89,7 +92,7 @@ if __name__ == '__main__':
     logger.addHandler(console)
     
     if args.version:
-        logger.info("DanmakuRender-2 2022.2.1")
+        logger.info("DanmakuRender-2 2022.2.26")
         exit(0)
 
     while not url_available(args.url):
@@ -107,13 +110,22 @@ if __name__ == '__main__':
             time.sleep(60)
     
     while True:
-        rec = PythonRender(url=args.url,
-                           name=args.name,
-                           save=args.output,
-                           ffmpeg=args.ffmpeg,
-                           timeout=args.timeout)
+        if args.copy or args.dmrate == 0:
+            rec = Downloader(url=args.url,
+                            name=args.name,
+                            save=args.output,
+                            ffmpeg=args.ffmpeg,
+                            timeout=args.timeout)
+            logger.info('正在启动录制（不包括弹幕）.')
+        else:
+            rec = PythonRender(url=args.url,
+                            name=args.name,
+                            save=args.output,
+                            ffmpeg=args.ffmpeg,
+                            timeout=args.timeout)            
+            logger.info('正在启动录制.')
 
-        logger.info('正在启动录制.')
+
         logger.debug('DanmakuRender args:')
         logger.debug(args)
 
