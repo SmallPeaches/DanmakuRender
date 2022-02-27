@@ -24,6 +24,7 @@
 - `python pyrender.py -u https://www.huya.com/712416 -s 3600` 录制虎牙712416直播间，并将文件分成一个小时一块
 - `python pyrender.py -u https://www.huya.com/712416 --gpu amd` 录制虎牙712416直播间，使用AMD硬件编码器
 - `python pyrender.py -u https://www.huya.com/712416 --fontsize 36` 录制虎牙712416直播间，指定弹幕大小为36
+- `python pyrender.py -u https://www.huya.com/712416 --copy`  录制虎牙712416直播间，不录制弹幕
 
 ### 详细说明
 程序运行时可以附带以下参数
