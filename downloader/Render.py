@@ -99,10 +99,14 @@ class PythonRender():
                     framebytes = newframebytes
                 except queue.Empty:
                     self._sender[pid].put({'msg_type':'fid','fid':fid+nproc})
-                    if fid - thisfid > self.fps*self.args.dmduration:
-                        fout.write(empty_frame)
-                    else:
-                        fout.write(framebytes)
+                    try:
+                        if fid - thisfid > self.fps*self.args.dmduration:
+                            fout.write(empty_frame)
+                        else:
+                            fout.write(framebytes)
+                    except BrokenPipeError as e:
+                        self.logger.error(e)
+                        self.stop()
 
                     ndrop += 1
                     if ndrop and ndrop % 1000 == 0:
@@ -185,8 +189,10 @@ class PythonRender():
         self.logger.debug('FFmpeg args:')
         self.logger.debug(ffmpeg_args)
 
-        proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
-        # proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
+        if args.debug:
+            proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
+        else:
+            proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
         
         return proc
 
@@ -278,7 +284,7 @@ class PythonRender():
                         self.stop()
                         return log
 
-            if self.duration > timer_cnt*60:   
+            if self.duration > timer_cnt*60 and not self.args.debug:   
                 self.logger.debug(f'FFmpeg output:{log}')
 
                 if not args.disable_lowbitrate_interrupt:
@@ -355,7 +361,9 @@ class PythonRender():
         except Exception as e:
             self.logger.debug(e)
         try:
-            self._ffmpeg_proc.communicate(b'q')
+            out,_ = self._ffmpeg_proc.communicate(b'q')
+            out = out.decode('utf-8')
+            self.logger.debug(out)
         except Exception as e:
             self.logger.debug(e)
         try:
