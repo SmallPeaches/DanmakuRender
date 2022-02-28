@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--resolution',type=str,default='1920x1080')
 
     parser.add_argument('--copy',action='store_true')
-    parser.add_argument('--nproc',type=int,default=2)
+    parser.add_argument('--nproc',type=int,default=4)
     parser.add_argument('--dmrate',type=float,default=0.5)
     parser.add_argument('--startpixel',type=int,default=20)
     parser.add_argument('--margin',type=int,default=12)
@@ -49,6 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--reconnect',action='store_true')
     parser.add_argument('--disable_lowbitrate_interrupt',action='store_true')
     parser.add_argument('--disable_lowspeed_interrupt',action='store_true')
+    parser.add_argument('--max_duration',type=int,default=28800)
     parser.add_argument('--flowtype',type=str,default='flv',choices=['flv','m3u8'])
 
     args = parser.parse_args()
