@@ -106,9 +106,9 @@ class DmScreen():
         self.trackinfo[tid] = dm
         self.dmlist.append(dm)
 
-        while dm.time-self.dmlist[0].time > self.dmlist[0].time*2:
+        while dm.time-self.dmlist[0].time > self.duration*2:
             self.dmlist.pop(0)
-
+        
         return True
 
     def render(self,fid):        

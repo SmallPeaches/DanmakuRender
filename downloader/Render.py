@@ -168,7 +168,6 @@ class PythonRender():
                         '-r', str(self.fps),
                         '-i', '-',
                         
-                        '-filter_complex','overlay=0:0',
                         '-filter_complex','[0:v][1:v]overlay=0:0[v]',
                         '-map','[v]','-map','0:a',
                         '-c:v',args.vencoder,
@@ -284,8 +283,11 @@ class PythonRender():
                         self.stop()
                         return log
 
-            if self.duration > timer_cnt*60 and not self.args.debug:   
+            if self.duration > timer_cnt*60:   
                 self.logger.debug(f'FFmpeg output:{log}')
+
+                if self.args.debug:
+                    info = ''
 
                 if not args.disable_lowbitrate_interrupt:
                     l = info.find('bitrate=')
@@ -335,6 +337,11 @@ class PythonRender():
                     if 'dropping it' in log:
                         self.logger.error('直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
                         self.stop()
+                
+                if self.args.max_duration and self.duration > self.args.max_duration:
+                    self.logger.info(f'超过单次最长录制时间{self.args.max_duration}秒, 即将重启录制.')
+                    self.stop()
+                    return
 
                 if not onair(self._url):
                     self.logger.debug('Live end.')
@@ -391,6 +398,8 @@ def _dmfilter(dm):
     return dm
 
 def _danmu_subproc(args,dmfilter,render_procs,interrupt:multiprocessing.Queue=None):
+    starttime = datetime.now().timestamp()
+
     async def danmu_monitor():
         q = asyncio.Queue()
         dmc = DanmakuClient(args.url, q)
@@ -406,7 +415,7 @@ def _danmu_subproc(args,dmfilter,render_procs,interrupt:multiprocessing.Queue=No
         while 1:
             dm = await q.get()
             if dm.get('name',0):
-                dm['time'] = datetime.now().timestamp()-args.starttime + 1.0
+                dm['time'] = datetime.now().timestamp()-starttime + 1.0
                 dm = dmfilter(dm)
                 if dm:
                     interrupt.put({'msg_type':'danmaku','danmaku':dm})
