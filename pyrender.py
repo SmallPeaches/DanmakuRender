@@ -134,7 +134,7 @@ if __name__ == '__main__':
             rval = rec.start(args)
         except KeyboardInterrupt:
             rec.stop()
-            logger.info('录制终止')
+            logger.info('录制终止.')
             exit(0)
 
         if onair(args.url):
