@@ -95,7 +95,11 @@ class PythonRender():
                     thisfid,newframebytes = self._recver[pid].get_nowait()
                     while thisfid < fid: 
                         thisfid,newframebytes = self._recver[pid].get_nowait()
-                    fout.write(newframebytes)
+                    try:
+                        fout.write(newframebytes)
+                    except Exception as e:
+                        self.logger.error(e)
+                        self.stop()
                     framebytes = newframebytes
                 except queue.Empty:
                     self._sender[pid].put({'msg_type':'fid','fid':fid+nproc})
@@ -104,7 +108,7 @@ class PythonRender():
                             fout.write(empty_frame)
                         else:
                             fout.write(framebytes)
-                    except BrokenPipeError as e:
+                    except Exception as e:
                         self.logger.error(e)
                         self.stop()
 
@@ -115,6 +119,7 @@ class PythonRender():
                         self.logger.debug(f'检测到弹幕渲染丢帧达到{ndrop}帧.')
                 except Exception as e:
                     self.logger.error(e)
+                    self.stop()
                     
                 fid += 1
                 MAX_DELAY = 0.25
@@ -278,10 +283,10 @@ class PythonRender():
                     if 'frame=' in info:
                         print(f'\r正在录制{self._name}: {info}',end='')
                     
-                    if self._ffmpeg_proc.poll() is not None:
-                        self.logger.debug('FFmpeg exit.')
-                        self.stop()
-                        return log
+                if self._ffmpeg_proc.poll() is not None:
+                    self.logger.debug('FFmpeg exit.')
+                    self.stop()
+                    return log
 
             if self.duration > timer_cnt*60:   
                 self.logger.debug(f'FFmpeg output:{log}')
@@ -368,10 +373,11 @@ class PythonRender():
         except Exception as e:
             self.logger.debug(e)
         try:
-            out,_ = self._ffmpeg_proc.communicate(b'q')
+            out,_ = self._ffmpeg_proc.communicate(b'q',2.0)
             out = out.decode('utf-8')
             self.logger.debug(out)
         except Exception as e:
+            self._ffmpeg_proc.kill()
             self.logger.debug(e)
         try:
             self._danmu_proc.kill()

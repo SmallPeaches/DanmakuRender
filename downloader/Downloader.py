@@ -93,6 +93,7 @@ class Downloader():
         self.logger.debug('DanmakuRender args:')
         self.logger.debug(self.args)
 
+        log = ''
         ffmpeg_low_speed = 0
         m3u8_drop_cnt = 0
         timer_cnt = 1
@@ -110,10 +111,10 @@ class Downloader():
                     if 'frame=' in info:
                         print(f'\r正在录制{self._name}: {info}',end='')
                     
-                    if self._ffmpeg_proc.poll() is not None:
-                        self.logger.debug('FFmpeg exit.')
-                        self.stop()
-                        return log
+                if self._ffmpeg_proc.poll() is not None:
+                    self.logger.debug('FFmpeg exit.')
+                    self.stop()
+                    return log
 
             if self.duration > timer_cnt*60 and not self.args.debug:   
                 self.logger.debug(f'FFmpeg output:{log}')
@@ -173,9 +174,10 @@ class Downloader():
         except Exception as e:
             self.logger.debug(e)
         try:
-            out,_ = self._ffmpeg_proc.communicate(b'q')
+            out,_ = self._ffmpeg_proc.communicate(b'q',2.0)
             out = out.decode('utf-8')
             self.logger.debug(out)
         except Exception as e:
+            self._ffmpeg_proc.kill()
             self.logger.debug(e)
 
