@@ -39,7 +39,7 @@ def get_stream_url(live_url,type='flv'):
 
     elif platform in ['dy','douyu']:
         from . import douyu
-        url = douyu.get_real_url(rid)['flv']
+        url = douyu.get_real_url(rid)['x-p2p']
         stream_url = url
     
     if not stream_url:
