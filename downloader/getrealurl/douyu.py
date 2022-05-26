@@ -126,9 +126,21 @@ class DouYu:
             raise Exception('未开播')
         else:
             key = self.get_js()
+        """
         real_url = {}
         real_url["flv"] = "http://dyscdnali1.douyucdn.cn/live/{}.flv?uuid=".format(key)
         real_url["x-p2p"] = "http://tx2play1.douyucdn.cn/live/{}.xs?uuid=".format(key)
+        """
+
+        host_list = ['hls3-akm.douyucdn.cn','hlsa-akm.douyucdn.cn','hls1a-akm.douyucdn.cn']
+        for host in host_list:
+            real_url = f"http://{host}/live/{key}.flv?uuid="
+            try:
+                if requests.get(real_url,stream=True).status_code == 200:
+                    break
+            except:
+                pass
+        
         return real_url
 
 def get_real_url(rid:str):
