@@ -73,35 +73,35 @@ class BiliBili:
         return stream_urls
 
 def _get_bilibili_url_flv(rid) -> str:
-        real_url = ''
-        r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(rid)
-        with requests.Session() as s:
-            res = s.get(r_url).json()
-        code = res['code']
-        if code == 0:
-            live_status = res['data']['live_status']
-            if live_status == 1:
-                room_id = res['data']['room_id']
-                f_url = 'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl'
-                params = {
-                    'cid': room_id,
-                    'platform': 'flash',
-                    'otype': 'json',
-                    'qn': 10000
-                }
-                resp = s.get(f_url, params=params).json()
-                try:
-                    durl = resp['data']['durl']
-                    real_url = durl[0]['url']
-                    real_url = re.sub(r'live_(\d+)_(\d+)_\d+.m3u8', r'live_\1_\2.m3u8', real_url)
-                except KeyError or IndexError:
-                    raise RuntimeError('未知错误')
-            else:
-                raise RuntimeError('未开播')
+    real_url = ''
+    r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(rid)
+    with requests.Session() as s:
+        res = s.get(r_url).json()
+    code = res['code']
+    if code == 0:
+        live_status = res['data']['live_status']
+        if live_status == 1:
+            room_id = res['data']['room_id']
+            f_url = 'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl'
+            params = {
+                'cid': room_id,
+                'platform': 'mb',
+                'otype': 'json',
+                'qn': 10000
+            }
+            resp = s.get(f_url, params=params).json()
+            try:
+                durl = resp['data']['durl']
+                real_url = durl[0]['url']
+                # real_url = re.sub(r'live_(\d+)_(\d+)_\d+.m3u8', r'live_\1_\2.m3u8', real_url)
+            except KeyError or IndexError:
+                raise RuntimeError('未知错误')
         else:
-            raise ValueError(f'房间不存在')
-        
-        return real_url
+            raise RuntimeError('未开播')
+    else:
+        raise ValueError(f'房间不存在')
+    
+    return real_url
 
 def get_real_url(rid):
     bilibili = BiliBili(rid)
@@ -111,5 +111,5 @@ def get_real_url(rid):
 
 
 if __name__ == '__main__':
-    r = input('请输入bilibili直播房间号：\n')
-    print(get_real_url(r))
+    # r = input('请输入bilibili直播房间号：\n')
+    print(get_real_url('5184384'))
