@@ -18,6 +18,7 @@ class Render():
         self.args = args
         self.logger = logging.getLogger('main')
         self.stoped = False
+        self.rendering = False
 
     def render(self,video,danmaku,output):
         hwaccel_args = self.args.hwaccel_args.split(',')
@@ -94,7 +95,9 @@ class Render():
                         continue
 
                     self.logger.info(f'正在渲染 {vname}.')
+                    self.rendering = True
                     self.render_proc = self.render(vpath,dpath,output)
+                    self.rendering = False
 
                     if not self.args.debug:
                         info = None
@@ -119,6 +122,9 @@ class Render():
 
     def stop(self):
         self.stoped = True
+        if self.rendering:
+            self.logger.warn(f"渲染被提前终止，可能生成的带弹幕视频并不完整，如果需要重新渲染请先删除不完整的带弹幕视频再输入 python main.py --render_only 重新渲染.")
+            self.rendering = False
         try:
             out,_ = self.render_proc.communicate(b'q',2.0)
             out = out.decode('utf-8')

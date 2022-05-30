@@ -87,7 +87,7 @@ class Downloader():
         
         self.format_videoname = f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d.mp4'
         if args.split > 0:
-            ffmpeg_args += ['-f','segment','-segment_time',str(args.split),'-movflags','frag_keyframe',join(self.video_dir,self.format_videoname)]
+            ffmpeg_args += ['-f','segment','-segment_time',str(args.split),'-reset_timestamps','1','-movflags','frag_keyframe',join(self.video_dir,self.format_videoname)]
         else:
             fname = self.format_videoname.replace(f'%03d','000')
             ffmpeg_args += ['-movflags','frag_keyframe',join(self.video_dir,fname)]
@@ -121,21 +121,25 @@ class Downloader():
             latest = self.duration
 
             while not self.stoped:
-                for _ in range(q.qsize()):
-                    dm = await q.get()
+                try:
+                    dm = q.get_nowait()
                     dm['time'] = self.duration
                     latest = self.duration
                     dm = self._dm_filter(dm)
                     if dm:
+                        # print(dm)
                         self.dmw.add(dm)
+                    continue
+                except asyncio.QueueEmpty:
+                    pass
                         
-                if args.disable_danmaku_reconnect and self.duration-latest > 300:
+                if not args.disable_danmaku_reconnect and self.duration-latest > 300:
                     self.logger.error('弹幕流中断,正在重连.')
                     task.cancel()
                     self.dmc = DanmakuClient(self.url, q)
                     task = asyncio.create_task(self.dmc.start())
                 
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
 
             self.dmw.stop()
     
@@ -204,7 +208,7 @@ class Downloader():
                     else:
                         out += char
                 line = out.decode('utf-8')
-                log += line
+                log += line+'\n'
                 if onprint and 'frame=' in line:
                     print(f'\r正在录制{self.taskname}: {line}',end='')
                     
