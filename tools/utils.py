@@ -1,6 +1,7 @@
 import struct
 import json
 import re
+from downloader.getrealurl import get_stream_url
 
 def get_lnk_file(path):
     target = ''
@@ -46,7 +47,6 @@ def read_json(filename):
         str_res += i
     return json.loads(str_res.encode('gbk'))
 
-from downloader.getrealurl import get_stream_url
 def onair(url):
     try:
         get_stream_url(url)
@@ -63,3 +63,5 @@ def url_available(url):
             return True
         else:
             return False
+
+
