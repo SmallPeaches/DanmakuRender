@@ -110,7 +110,7 @@ def set_auto_render(args,autoexit=False):
 
     monitor = threading.Thread(target=start,daemon=True)
     monitor.start()
-    return render
+    return render,monitor
 
 if __name__ == '__main__':    
     parser = argparse.ArgumentParser(description='Render')
@@ -172,12 +172,14 @@ if __name__ == '__main__':
             args.vencoder = 'libx264'
             args.vencoder_args = '-cq,28'
     
-    if args.render_only:
-        set_auto_render(args,autoexit=True)
-        exit(0)
-
     if args.dm_dir is None:
         args.dm_dir = args.video_dir
+    
+    if args.render_only:
+        _,monitor = set_auto_render(args,autoexit=True)
+        monitor.join()
+        exit(0)
+
     os.makedirs(args.video_dir,exist_ok=True)
     os.makedirs(args.dm_dir,exist_ok=True)
     os.makedirs(args.render_dir,exist_ok=True)
@@ -186,7 +188,7 @@ if __name__ == '__main__':
     procs = []
     render = None
     if not args.disable_auto_render:
-        render = set_auto_render(args)
+        render,_ = set_auto_render(args)
     
     for url in urls:
         args_copy = deepcopy(args)
