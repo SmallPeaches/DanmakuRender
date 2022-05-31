@@ -184,29 +184,28 @@ if __name__ == '__main__':
 
     urls = args.url.split(',')
     procs = []
-    if len(urls) == 1:
-        replay_one(args,onprint=True)
-    else:
-        render = None
-        if not args.disable_auto_render:
-            render = set_auto_render(args)
-        
-        for url in urls:
-            args_copy = deepcopy(args)
-            args_copy.url = url
-            args_copy.disable_auto_render = True
+    render = None
+    if not args.disable_auto_render:
+        render = set_auto_render(args)
+    
+    for url in urls:
+        args_copy = deepcopy(args)
+        args_copy.url = url
+        if len(urls) == 1:
+            proc = multiprocessing.Process(target=replay_one,args=(args_copy,True))
+        else:
             proc = multiprocessing.Process(target=replay_one,args=(args_copy,False))
-            proc.start()
-            procs.append(proc)
-        
-        try:
-            for proc in procs:
-                proc.join()
-        except KeyboardInterrupt:
-            for proc in procs:
-                proc.kill()
-            if render:
-                render.stop()
+        proc.start()
+        procs.append(proc)
+    
+    try:
+        for proc in procs:
+            proc.join()
+    except KeyboardInterrupt:
+        for proc in procs:
+            proc.kill()
+        if render:
+            render.stop()
             
     
 
