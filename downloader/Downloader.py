@@ -182,9 +182,6 @@ class Downloader():
         
         self._ffmpeg_proc = self._set_ffmpeg(stream_url,args)
         self._dm_proc = self._set_danmaku(args)
-        if not args.disable_auto_render:
-            os.makedirs(self.render_dir,exist_ok=True)
-            self._render_proc = self._set_render(args)
 
         self.logger.debug('DanmakuRender args:')
         self.logger.debug(self.args)
@@ -277,10 +274,6 @@ class Downloader():
         print('')
         try:
             self.dmw.stop()
-        except Exception as e:
-            self.logger.debug(e)
-        try:
-            self.render.stop()
         except Exception as e:
             self.logger.debug(e)
         try:
