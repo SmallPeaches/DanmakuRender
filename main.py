@@ -82,6 +82,8 @@ def replay_one(args,onprint=False):
                 time.sleep(60)
 
 def set_auto_render(args,autoexit=False):
+    os.makedirs(args.render_dir,exist_ok=True)
+
     logger = logging.getLogger('main')
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('[%(asctime)s][%(levelname)s]: %(message)s',datefmt='%H:%M:%S')
@@ -162,15 +164,13 @@ if __name__ == '__main__':
         if args.gpu.lower() == 'nvidia':
             args.hwaccel_args = '-hwaccel,cuda,-noautorotate'
             args.vencoder = 'h264_nvenc'
-            args.vencoder_args = '-cq,28'
+            args.vencoder_args = '-cq,27'
         elif args.gpu.lower() == 'amd':
-            args.hwaccel_args = ''
             args.vencoder = 'h264_amf'
-            args.vencoder_args = '-cq,28'
+            args.vencoder_args = '-cq,27'
         elif args.gpu.lower() == 'none':
-            args.hwaccel_args = ''
             args.vencoder = 'libx264'
-            args.vencoder_args = '-cq,28'
+            args.vencoder_args = '-crf,25'
     
     if args.dm_dir is None:
         args.dm_dir = args.video_dir
@@ -182,7 +182,6 @@ if __name__ == '__main__':
 
     os.makedirs(args.video_dir,exist_ok=True)
     os.makedirs(args.dm_dir,exist_ok=True)
-    os.makedirs(args.render_dir,exist_ok=True)
 
     urls = args.url.split(',')
     procs = []
