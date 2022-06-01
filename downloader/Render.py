@@ -21,14 +21,14 @@ class Render():
         self.rendering = False
 
     def render(self,video,danmaku,output):
-        hwaccel_args = self.args.hwaccel_args.split(',')
+        ffmpeg_args = [self.ffmpeg]
+        if hwaccel_args:
+            hwaccel_args = self.args.hwaccel_args.split(',')
+            ffmpeg_args += [*hwaccel_args]
         vencoder_args = self.args.vencoder_args.split(',')
         aencoder_args = self.args.aencoder_args.split(',')
 
-        ffmpeg_args =   [
-                        self.ffmpeg,
-                        *hwaccel_args,
-
+        ffmpeg_args +=  [
                         '-i', video,
                         '-vf', 'subtitles=filename=%s'%danmaku.replace('\\','/'),
 
@@ -101,19 +101,23 @@ class Render():
 
                     if not self.args.debug:
                         info = None
+                        log = ''
                         for line in self.render_proc.stdout.readlines():
                             try:
                                 line = line.decode('utf-8').strip()
                             except UnicodeError as e:
                                 self.logger.error(e)
                                 self.logger.error(line)
-                            self.logger.debug(f'render proc:{line}')
+                            log += line+'\n'
                             if line.startswith('video:'):
                                 info = line
+                        self.logger.debug(f'[Render Process]:{log}')
                         if info:
                             self.logger.info(f'{output} 渲染完成, {info}')
                         else:
-                            self.logger.info(f'{output} 渲染错误,请查询日志文件以了解更多信息.')
+                            self.logger.error(f'{output} 渲染错误:\n{log}')
+                    else:
+                        self.render_proc.wait()
                     processed_files.append(vname)
                 else:
                     fsize_table[vname] = os.path.getsize(vpath)
@@ -130,7 +134,9 @@ class Render():
             out = out.decode('utf-8')
             self.logger.debug(out)
         except Exception as e:
-            self.render_proc.kill()
-            self.logger.debug(e)
+            try:
+                self.render_proc.kill()
+            finally:
+                self.logger.debug(e)
 
 
