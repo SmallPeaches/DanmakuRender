@@ -136,6 +136,8 @@ class Render():
         except Exception as e:
             try:
                 self.render_proc.kill()
+            except:
+                pass
             finally:
                 self.logger.debug(e)
 
