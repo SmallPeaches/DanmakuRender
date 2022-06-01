@@ -18,15 +18,16 @@ def check_pypi():
         print('Python 包安装完成，请重启程序.')
         exit(0)
 
-def check_ffmpeg(path):
+def check_ffmpeg(args):
     try:
         proc = subprocess.Popen(['ffmpeg','-version'],stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         out = proc.stdout.readlines()[0].decode('utf-8')
     except:
         out = ''
     if 'ffmpeg version' in out:
+        args.ffmpeg = 'ffmpeg'
         return True
-    elif os.path.exists(path):
+    elif os.path.exists(args.ffmpeg):
         return True
     else:
         a = input('FFmpeg 未正确安装，回车自动安装:')
