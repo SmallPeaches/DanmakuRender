@@ -2,6 +2,7 @@ from os import system
 import os
 import shutil
 import zipfile
+import subprocess
 
 
 def check_pypi():
@@ -18,7 +19,16 @@ def check_pypi():
         exit(0)
 
 def check_ffmpeg(path):
-    if not os.path.exists(path):
+    try:
+        proc = subprocess.Popen(['ffmpeg','-version'],stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        out = proc.stdout.readlines()[0].decode('utf-8')
+    except:
+        out = ''
+    if 'ffmpeg version' in out:
+        return True
+    elif os.path.exists(path):
+        return True
+    else:
         a = input('FFmpeg 未正确安装，回车自动安装:')
         
         import requests
@@ -42,5 +52,3 @@ def check_ffmpeg(path):
         shutil.rmtree('./tools/ffmpeg-5.0.1-essentials_build')
         print('FFmpeg 安装完成，请重启程序.')
         exit(0)
-    else:
-        return True
