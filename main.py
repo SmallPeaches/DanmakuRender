@@ -157,8 +157,7 @@ if __name__ == '__main__':
         print('DanmakuRender-3 2022.5.29.')
         exit(0)
     
-    if args.ffmpeg != 'ffmpeg':
-        check_ffmpeg(args.ffmpeg)
+    check_ffmpeg(args)
 
     if (not args.vencoder) and (not args.hwaccel_args):
         if args.gpu.lower() == 'nvidia':
