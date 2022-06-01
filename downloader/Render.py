@@ -22,7 +22,7 @@ class Render():
 
     def render(self,video,danmaku,output):
         ffmpeg_args = [self.ffmpeg]
-        if hwaccel_args:
+        if self.args.hwaccel_args:
             hwaccel_args = self.args.hwaccel_args.split(',')
             ffmpeg_args += [*hwaccel_args]
         vencoder_args = self.args.vencoder_args.split(',')
