@@ -81,6 +81,10 @@ class Bilibili:
                         "WELCOME": "enter",
                         "NOTICE_MSG": "broadcast",
                     }.get(j.get("cmd"), "other")
+                    
+                    if 'DANMU_MSG' in j.get('cmd'):
+                        msg["msg_type"] = "danmaku"
+                    
                     if msg["msg_type"] == "danmaku":
                         msg["name"] = j.get("info", ["", "", ["", ""]])[2][1] or j.get(
                             "data", {}
