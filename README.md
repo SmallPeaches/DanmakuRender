@@ -44,7 +44,6 @@
 - `--video_dir` 指定视频保存文件夹，默认为此目录下的'直播回放'文件夹
 - `--dm_dir` 指定弹幕保存文件夹，默认和视频保存文件夹一样
 - `--render_dir` 指定渲染出的带弹幕视频保存文件夹，默认为此目录下的'直播回放（带弹幕）'文件夹
-- `--ffmpeg` 指定`ffmpeg.exe`可执行文件所在路径，设置为ffmpeg则表示使用系统默认值 
 - `--gpu` 指定显卡类型，可以为AMD或者NVIDIA，设置为none表示不使用显卡辅助编码，**默认使用NVIDIA显卡**，如果手动设置了编码器参数则此项无效   
 - `--disable_auto_render` 禁用自动渲染，默认false
 - `--render_only` 自动渲染录像文件夹里的视频 
@@ -53,7 +52,7 @@
 - `--ffmpeg_stream_args` 指定ffmpeg录制时的HTTP参数，默认`-fflags,+discardcorrupt,-reconnect,1,-reconnect_streamed,1` 
 - `--hwaccel_args` 指定硬件加速参数，多个参数之间用','分割。N卡默认`-hwaccel,cuda,-noautorotate`，A卡没有
 - `--vencoder` 指定视频编码器，NVIDIA显卡默认为H264_NVENC，AMD显卡默认为H264_AMF，不使用硬件加速的话默认为libx264
-- `--vencoder_args` 指定视频编码器参数，多个参数之间用','分割。默认为`-cq,28`
+- `--vencoder_args` 指定视频编码器参数，多个参数之间用','分割。默认为`-cq,27`
 - `--aencoder` 指定音频编码器，默认为AAC
 - `--vencoder_args` 指定音频编码器参数，多个参数之间用','分割。默认为`-b:a 320K`   
 
