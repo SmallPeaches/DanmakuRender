@@ -97,7 +97,6 @@ class Render():
                     self.logger.info(f'正在渲染 {vname}.')
                     self.rendering = True
                     self.render_proc = self.render(vpath,dpath,output)
-                    self.rendering = False
 
                     if not self.args.debug:
                         info = None
@@ -118,6 +117,8 @@ class Render():
                             self.logger.error(f'{output} 渲染错误:\n{log}')
                     else:
                         self.render_proc.wait()
+                        
+                    self.rendering = False
                     processed_files.append(vname)
                 else:
                     fsize_table[vname] = os.path.getsize(vpath)
@@ -129,16 +130,16 @@ class Render():
         if self.rendering:
             self.logger.warn(f"渲染被提前终止，可能生成的带弹幕视频并不完整，如果需要重新渲染请先删除不完整的带弹幕视频再输入 python main.py --render_only 重新渲染.")
             self.rendering = False
-        try:
-            out,_ = self.render_proc.communicate(b'q',2.0)
-            out = out.decode('utf-8')
-            self.logger.debug(out)
-        except Exception as e:
             try:
-                self.render_proc.kill()
-            except:
-                pass
-            finally:
-                self.logger.debug(e)
+                out,_ = self.render_proc.communicate(b'q',2.0)
+                out = out.decode('utf-8')
+                self.logger.debug(out)
+            except Exception as e:
+                try:
+                    self.render_proc.kill()
+                except:
+                    pass
+                finally:
+                    self.logger.debug(e)
 
 
