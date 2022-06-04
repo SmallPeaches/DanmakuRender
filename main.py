@@ -43,7 +43,7 @@ def replay_one(args,onprint=False):
 
     while not url_available(args.url):
         logger.error("URL不可用")
-        args.url = input("请输入合法的URL: ")
+        exit(0)
 
     if not onair(args.url):
         logger.info('直播结束,正在等待...')
@@ -84,7 +84,7 @@ def replay_one(args,onprint=False):
 def set_auto_render(args,autoexit=False):
     os.makedirs(args.render_dir,exist_ok=True)
 
-    logger = logging.getLogger('main')
+    logger = logging.getLogger('render')
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('[%(asctime)s][%(levelname)s]: %(message)s',datefmt='%H:%M:%S')
 
