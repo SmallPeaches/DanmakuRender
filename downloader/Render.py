@@ -16,7 +16,7 @@ class Render():
     def __init__(self,args,ffmpeg:str='tools/ffmpeg.exe'):
         self.ffmpeg = ffmpeg
         self.args = args
-        self.logger = logging.getLogger('main')
+        self.logger = logging.getLogger('render')
         self.stoped = False
         self.rendering = False
 
