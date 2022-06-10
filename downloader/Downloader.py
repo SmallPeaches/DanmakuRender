@@ -87,10 +87,10 @@ class Downloader():
         
         self.format_videoname = f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d.mp4'
         if args.split > 0:
-            ffmpeg_args += ['-f','segment','-segment_time',str(args.split),'-reset_timestamps','1','-movflags','frag_keyframe',join(self.video_dir,self.format_videoname)]
+            ffmpeg_args += ['-f','segment','-segment_time',str(args.split),'-reset_timestamps','1','-movflags','faststart+frag_keyframe+empty_moov',join(self.video_dir,self.format_videoname)]
         else:
             fname = self.format_videoname.replace(f'%03d','000')
-            ffmpeg_args += ['-movflags','frag_keyframe',join(self.video_dir,fname)]
+            ffmpeg_args += ['-movflags','faststart+frag_keyframe+empty_moov',join(self.video_dir,fname)]
 
         
         self.logger.debug('Downloader FFmpeg args:')
