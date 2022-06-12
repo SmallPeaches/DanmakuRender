@@ -3,6 +3,7 @@ import logging
 import os
 import queue
 import re
+import signal
 import subprocess
 import sys
 import multiprocessing
@@ -281,7 +282,8 @@ class Downloader():
         except Exception as e:
             self.logger.debug(e)
         try:
-            out,_ = self._ffmpeg_proc.communicate(b'q',2.0)
+            self._ffmpeg_proc.send_signal(signal.SIGINT)
+            out, _ = self._ffmpeg_proc.communicate(2.0)
             out = out.decode('utf-8')
             self.logger.debug(out)
         except Exception as e:
