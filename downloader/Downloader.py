@@ -139,6 +139,7 @@ class Downloader():
                     task.cancel()
                     self.dmc = DanmakuClient(self.url, q)
                     task = asyncio.create_task(self.dmc.start())
+                    latest = self.duration
                 
                 await asyncio.sleep(0.1)
 
@@ -197,11 +198,14 @@ class Downloader():
                 time.sleep(0.5)
             else:
                 out = b''
+                t0 = self.duration
                 while 1:
-                    char = self._ffmpeg_proc.stdout.read(1)
-                    if self._ffmpeg_proc.stdout.closed:
+                    if not self._ffmpeg_proc.stdout.readable():
                         break
-                    if char in [b'\n',b'\r']:
+                    char = self._ffmpeg_proc.stdout.read(1)
+                    if char in [b'\n',b'\r',b'\0']:
+                        break
+                    elif self.duration-t0 > 10:
                         break
                     else:
                         out += char
@@ -219,7 +223,7 @@ class Downloader():
                     self.stop()
                     return log
 
-            if self.duration > timer_cnt*60 and not self.args.debug:   
+            if self.duration > timer_cnt*30 and not self.args.debug:
                 self.logger.debug(f'FFmpeg output:{log}')
 
                 if not args.disable_lowspeed_interrupt:
@@ -252,7 +256,7 @@ class Downloader():
                         self.logger.error('直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
                         self.stop()
 
-                if not onair(self.url):
+                if timer_cnt%2 == 0 and not onair(self.url):
                     self.logger.debug('Live end.')
                     self.stop()
 
@@ -283,7 +287,7 @@ class Downloader():
             self.logger.debug(e)
         try:
             self._ffmpeg_proc.send_signal(signal.SIGINT)
-            out, _ = self._ffmpeg_proc.communicate(2.0)
+            out, _ = self._ffmpeg_proc.communicate(timeout=2.0)
             out = out.decode('utf-8')
             self.logger.debug(out)
         except Exception as e:
