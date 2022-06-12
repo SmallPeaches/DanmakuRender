@@ -2,10 +2,9 @@ from tools.check_env import check_pypi
 check_pypi()
 
 import argparse
-from copy import copy, deepcopy
+from copy import deepcopy
 import multiprocessing
 import os
-import re
 import sys
 import threading
 import time
@@ -146,7 +145,7 @@ if __name__ == '__main__':
     parser.add_argument('--resolution_fixed',type=int,default=True)
 
     parser.add_argument('--debug',action='store_true')
-    parser.add_argument('--ffmpeg_stream_args',type=str,default='-fflags,+discardcorrupt,-reconnect,1,-reconnect_streamed,1')
+    parser.add_argument('--ffmpeg_stream_args',type=str,default='-fflags,+discardcorrupt,-reconnect,1,-rw_timeout,10000')
     parser.add_argument('--disable_danmaku_reconnect',action='store_true')
     parser.add_argument('--disable_lowspeed_interrupt',action='store_true')
     parser.add_argument('--flowtype',type=str,default='flv',choices=['flv','m3u8'])
@@ -192,9 +191,9 @@ if __name__ == '__main__':
         args_copy = deepcopy(args)
         args_copy.url = url
         if len(urls) == 1:
-            proc = multiprocessing.Process(target=replay_one,args=(args_copy,True))
+            proc = multiprocessing.Process(target=replay_one,args=(args_copy,True),daemon=True)
         else:
-            proc = multiprocessing.Process(target=replay_one,args=(args_copy,False))
+            proc = multiprocessing.Process(target=replay_one,args=(args_copy,False),daemon=True)
         proc.start()
         procs.append(proc)
     
