@@ -81,6 +81,8 @@ class Downloader():
                         self.ffmpeg, '-y',
                         '-headers', ''.join('%s: %s\r\n' % x for x in self.header.items()),
                         *ffmpeg_stream_args,
+                        '-analyzeduration','15000000',
+                        '-probesize','50000000',
                         '-thread_queue_size', '16',
                         '-i', stream_url,
                         '-c','copy'
@@ -117,8 +119,8 @@ class Downloader():
                                 args.font,args.fontsize_fixed,args.overflow_op,args.dmduration_fixed,args.opacity)
         async def danmu_monitor():
             q = asyncio.Queue()
-            self.dmc = DanmakuClient(self.url, q)
-            task = asyncio.create_task(self.dmc.start())
+            dmc = DanmakuClient(self.url, q)
+            task = asyncio.create_task(dmc.start())
             latest = self.duration
 
             while not self.stoped:
@@ -137,13 +139,14 @@ class Downloader():
                 if not args.disable_danmaku_reconnect and self.duration-latest > 300:
                     self.logger.error('弹幕流中断,正在重连.')
                     task.cancel()
-                    self.dmc = DanmakuClient(self.url, q)
-                    task = asyncio.create_task(self.dmc.start())
+                    dmc = DanmakuClient(self.url, q)
+                    task = asyncio.create_task(dmc.start())
                     latest = self.duration
                 
                 await asyncio.sleep(0.1)
 
             self.dmw.stop()
+            await dmc.stop()
     
         monitor = threading.Thread(target=asyncio.run,args=(danmu_monitor(),),daemon=True)
         monitor.start()
@@ -216,12 +219,14 @@ class Downloader():
                     
                 segs = line.split('\'')
                 if len(segs) > 2 and '.mp4' in segs[1] and '%' not in segs[1]:
+                    if onprint:
+                        print('')
                     self.logger.info(f"正在录制分片{segs[1]}.")
                     
                 if self._ffmpeg_proc.poll() is not None:
                     self.logger.debug('FFmpeg exit.')
                     self.stop()
-                    return log
+                    self.logger.debug(log)
 
             if self.duration > timer_cnt*30 and not self.args.debug:
                 self.logger.debug(f'FFmpeg output:{log}')

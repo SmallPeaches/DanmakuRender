@@ -59,7 +59,7 @@ class Render():
             DELAY = 0
             t0 = 0
         else:
-            DELAY = 15
+            DELAY = 45
             t0 = datetime.now().timestamp()-30
         
         while not self.stoped:
