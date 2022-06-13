@@ -145,7 +145,7 @@ if __name__ == '__main__':
     parser.add_argument('--resolution_fixed',type=int,default=True)
 
     parser.add_argument('--debug',action='store_true')
-    parser.add_argument('--ffmpeg_stream_args',type=str,default='-fflags,+discardcorrupt,-reconnect,1,-rw_timeout,10000')
+    parser.add_argument('--ffmpeg_stream_args',type=str,default='-fflags,+discardcorrupt,-reconnect,1,-rw_timeout,10000000')
     parser.add_argument('--disable_danmaku_reconnect',action='store_true')
     parser.add_argument('--disable_lowspeed_interrupt',action='store_true')
     parser.add_argument('--flowtype',type=str,default='flv',choices=['flv','m3u8'])
