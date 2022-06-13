@@ -1,6 +1,7 @@
 # 获取斗鱼直播间的真实流媒体地址，默认最高画质
 # 使用 https://github.com/wbt5/real-url/issues/185 中两位大佬@wjxgzz @4bbu6j5885o3gpv6ss8找到的的CDN，在此感谢！
 import hashlib
+import warnings
 import re
 import time
 
@@ -9,16 +10,7 @@ import requests
 
 
 class DouYu:
-    """
-    可用来替换返回链接中的主机部分
-    两个阿里的CDN：
-    dyscdnali1.douyucdn.cn
-    dyscdnali3.douyucdn.cn
-    墙外不用带尾巴的akm cdn：
-    hls3-akm.douyucdn.cn
-    hlsa-akm.douyucdn.cn
-    hls1a-akm.douyucdn.cn
-    """
+    host_list = ['tx2play1.douyucdn.cn','hdltctwk.douyucdn2.cn','akm-tct.douyucdn.cn','tc-tct1.douyucdn.cn']
 
     def __init__(self, rid):
         """
@@ -125,21 +117,24 @@ class DouYu:
         elif error == 104:
             raise Exception('未开播')
         else:
-            key = self.get_js()
+            key = self.get_pc_js()
         """
         real_url = {}
         real_url["flv"] = "http://dyscdnali1.douyucdn.cn/live/{}.flv?uuid=".format(key)
         real_url["x-p2p"] = "http://tx2play1.douyucdn.cn/live/{}.xs?uuid=".format(key)
         """
-
-        host_list = ['hls3-akm.douyucdn.cn','hlsa-akm.douyucdn.cn','hls1a-akm.douyucdn.cn']
-        for host in host_list:
-            real_url = f"http://{host}/live/{key}.flv?uuid="
+        flag = False
+        for host in self.host_list:
+            real_url = f"http://{host}/live/{key}.xs?uuid="
             try:
                 if requests.get(real_url,stream=True).status_code == 200:
+                    flag = True
                     break
             except:
                 pass
+        
+        if not flag:
+            warnings.warn('直播CDN可能已经失效.')
         
         return real_url
 
