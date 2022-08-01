@@ -40,10 +40,6 @@ def replay_one(args,onprint=False):
     logger.addHandler(filehandler)
     logger.addHandler(console)
 
-    while not url_available(args.url):
-        logger.error("URL不可用")
-        exit(0)
-
     if not onair(args.url):
         logger.info('直播结束,正在等待...')
         time.sleep(60)
@@ -182,6 +178,11 @@ if __name__ == '__main__':
     os.makedirs(args.dm_dir,exist_ok=True)
 
     urls = args.url.split(',')
+    for url in urls:
+        if not url_available(url):
+            print(f"URL{url}不可用")
+            exit(0)
+    
     procs = []
     render = None
     if not args.disable_auto_render:

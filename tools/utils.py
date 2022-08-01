@@ -1,7 +1,10 @@
 import struct
 import json
 import re
+import subprocess
 from downloader.getrealurl import get_stream_url
+
+BANNED_WORDS = ['\{','赞']
 
 def get_lnk_file(path):
     target = ''
@@ -64,4 +67,49 @@ def url_available(url):
         else:
             return False
 
+def get_video_info(ffmpeg,video,header=None):
+    if 'http' in video:
+        ffmpeg_args = [ffmpeg, '-headers', ''.join('%s: %s\r\n' % x for x in header.items()),'-i', video]
+    else:
+        ffmpeg_args = [ffmpeg, '-i', video]
+    proc = subprocess.Popen(ffmpeg_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # proc = subprocess.Popen(ffmpeg_args, stdout=sys.stdout, stderr=subprocess.STDOUT)
+    info = {}
+    lines = [l.decode('utf-8') for l in proc.stdout.readlines()]
 
+    for line in lines:
+        if ' displayWidth ' in line:
+            info['width'] = int(line.split(':')[-1])
+        elif ' displayHeight ' in line:
+            info['height'] = int(line.split(':')[-1])
+        elif ' fps ' in line:
+            info['fps'] = float(line.split(':')[-1])
+        elif 'Duration:' in line:
+            tic = line.split(':')[1].split(',')[0]
+            hrs,mins,secs,fs = [int(x) for x in re.split('[:.]',tic)]
+            info['duration'] = hrs*3600+mins*60+secs+0.01*fs
+    
+    if len(info) < 4:
+        for line in lines:
+            if 'Video:' in line:
+                metadata = line.split(',')
+                for x in metadata:
+                    if 'fps' in x:
+                        info['fps'] = float([i for i in x.split(' ') if len(i)>0][0])
+                    elif 'x' in x:
+                        wh = [i for i in x.split(' ') if len(i)>0][0]
+                        if len(wh.split('x')) == 2:
+                            info['width'] = int(wh.split('x')[0])
+                            info['height'] = int(wh.split('x')[1])
+                    if len(info) == 3:
+                        break
+    return info
+
+
+def danmu_available(dm:dict) -> bool:
+    if not (dm.get('content') and dm.get('time') and dm.get('color') and dm.get('name')):
+        return False
+    for word in BANNED_WORDS:
+        if word in dm['content']:
+            return False
+    return True

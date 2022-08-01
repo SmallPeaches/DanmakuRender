@@ -1,6 +1,7 @@
 from os import system
 import os
 import shutil
+import sys
 import zipfile
 import subprocess
 
@@ -30,26 +31,31 @@ def check_ffmpeg(args):
     elif os.path.exists(args.ffmpeg):
         return True
     else:
-        a = input('FFmpeg 未正确安装，回车自动安装:')
-        
-        import requests
-        print('正在下载FFmpeg (约78MB).')
-        r = requests.get('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',stream=True)
-        content = b''
-        for i,chunk in enumerate(r.iter_content(1024)):
-            print(f'\r已下载{i/1024:.2f}MB.',end='')
-            content += chunk
-        print('')
-        with open('./tools/ffmpeg-release-essentials.zip','wb') as f:
-            f.write(content)
-        
-        f = zipfile.ZipFile('./tools/ffmpeg-release-essentials.zip','r')
-        for file in f.namelist():
-            f.extract(file,'./tools')
-        f.close()
-        shutil.move('./tools/ffmpeg-5.0.1-essentials_build/bin/ffmpeg.exe','./tools/ffmpeg.exe')
-        shutil.move('./tools/ffmpeg-5.0.1-essentials_build/bin/ffplay.exe','./tools/ffplay.exe')
-        shutil.move('./tools/ffmpeg-5.0.1-essentials_build/bin/ffprobe.exe','./tools/ffprobe.exe')
-        shutil.rmtree('./tools/ffmpeg-5.0.1-essentials_build')
-        print('FFmpeg 安装完成，请重启程序.')
-        exit(0)
+        if sys.platform == 'win32':
+            input('FFmpeg 未正确安装，回车自动安装:')
+            
+            import requests
+            print('正在下载FFmpeg (约78MB).')
+            r = requests.get('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',stream=True)
+            content = b''
+            for i,chunk in enumerate(r.iter_content(1024*4)):
+                print(f'\r已下载{i/256:.2f}MB.',end='')
+                content += chunk
+            print('')
+            with open('./tools/ffmpeg-release-essentials.zip','wb') as f:
+                f.write(content)
+            
+            f = zipfile.ZipFile('./tools/ffmpeg-release-essentials.zip','r')
+            for file in f.namelist():
+                f.extract(file,'./tools')
+            f.close()
+            ffmpeg_dir_list = [f for f in os.listdir('./tools') if 'essentials_build' in f]
+            ffmpeg_version = sorted(ffmpeg_dir_list)[-1]
+            shutil.move(f'./tools/{ffmpeg_version}/bin/ffmpeg.exe','./tools/ffmpeg.exe')
+            shutil.move(f'./tools/{ffmpeg_version}/bin/ffplay.exe','./tools/ffplay.exe')
+            shutil.move(f'./tools/{ffmpeg_version}/bin/ffprobe.exe','./tools/ffprobe.exe')
+            shutil.rmtree(f'./tools/{ffmpeg_version}')
+            print('FFmpeg 安装完成，请重启程序.')
+            exit(0)
+        else:
+            print("FFmpeg 未正确安装.")

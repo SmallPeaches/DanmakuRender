@@ -59,7 +59,6 @@ class DanmakuWriter():
         ]
 
         self.part = 0
-        self.dm_file = ''
         self.starttime = datetime.now().timestamp()
         self.dm_file = join(self.save_dir,self.save_name).replace(f'%03d','%03d'%self.part)
         with open(self.dm_file,'w',encoding='utf-8') as f:

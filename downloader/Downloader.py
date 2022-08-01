@@ -1,12 +1,8 @@
 from datetime import datetime
 import logging
-import os
-import queue
-import re
 import signal
 import subprocess
 import sys
-import multiprocessing
 import asyncio
 import threading
 import time
@@ -139,9 +135,12 @@ class Downloader():
                 if not args.disable_danmaku_reconnect and self.duration-latest > 300:
                     self.logger.error('弹幕流中断,正在重连.')
                     task.cancel()
-                    dmc = DanmakuClient(self.url, q)
-                    task = asyncio.create_task(dmc.start())
-                    latest = self.duration
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        dmc = DanmakuClient(self.url, q)
+                        task = asyncio.create_task(dmc.start())
+                        latest = self.duration
                 
                 await asyncio.sleep(0.1)
 
@@ -152,16 +151,7 @@ class Downloader():
         monitor.start()
         return monitor
 
-    def _set_render(self,args):
-        self.render = Render(args,self.ffmpeg)
-        def start():
-            self.render.auto_render(self.format_videoname[0:-13],self.video_dir,self.dm_dir,self.render_dir)
-
-        monitor = threading.Thread(target=start,daemon=True)
-        monitor.start()
-        return monitor
-
-    def start_helper(self,args,onprint=True):
+    def start_helper(self,args,print_rt=True):
         self.args = args 
 
         stream_url = get_stream_url(self.url,args.flowtype)
@@ -214,12 +204,12 @@ class Downloader():
                         out += char
                 line = out.decode('utf-8')
                 log += line+'\n'
-                if onprint and 'frame=' in line:
+                if print_rt and 'frame=' in line:
                     print(f'\r正在录制{self.taskname}: {line}',end='')
                     
                 segs = line.split('\'')
                 if len(segs) > 2 and '.mp4' in segs[1] and '%' not in segs[1]:
-                    if onprint:
+                    if print_rt:
                         print('')
                     self.logger.info(f"正在录制分片{segs[1]}.")
                     
@@ -272,7 +262,7 @@ class Downloader():
     
     def start(self,args,onprint=True):
         try:
-            rval = self.start_helper(args,onprint=onprint)
+            rval = self.start_helper(args,print_rt=onprint)
             return rval
         except KeyboardInterrupt:
             self.stop()

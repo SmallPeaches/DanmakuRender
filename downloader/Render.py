@@ -1,13 +1,8 @@
-import argparse
 from datetime import datetime
 import logging
 import os
-import queue
 import subprocess
 import sys
-import threading
-import multiprocessing
-import asyncio
 import time
 from os.path import join
 
@@ -20,7 +15,7 @@ class Render():
         self.stoped = False
         self.rendering = False
 
-    def render(self,video,danmaku,output):
+    def render(self,video,danmaku,output,to_stdout=False):
         ffmpeg_args = [self.ffmpeg]
         if self.args.hwaccel_args:
             hwaccel_args = self.args.hwaccel_args.split(',')
@@ -44,8 +39,8 @@ class Render():
         self.logger.debug('Danmaku Render args:')
         self.logger.debug(ffmpeg_args)
 
-        if self.args.debug:
-            proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
+        if to_stdout or self.args.debug:
+            proc = subprocess.Popen(ffmpeg_args, stdin=sys.stdin, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
         else:
             proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
 
@@ -89,14 +84,14 @@ class Render():
                         self.logger.info(f'视频{vpath}不存在匹配的弹幕{dpath}，跳过渲染.')
                         processed_files.append(vname)
                         continue
-                    elif os.path.exists(output):
+                    elif os.path.exists(output) and (os.path.getsize(output)>file_size/2 or os.path.getsize(output)>10**8):
                         self.logger.info(f'已经存在渲染好的带弹幕视频{output}，跳过渲染.')
                         processed_files.append(vname)
                         continue
 
                     self.logger.info(f'正在渲染 {vname}.')
                     self.rendering = True
-                    self.render_proc = self.render(vpath,dpath,output)
+                    self.render_proc = self.render(vpath,dpath,output,to_stdout=autoexit)
 
                     if not self.args.debug:
                         info = None
