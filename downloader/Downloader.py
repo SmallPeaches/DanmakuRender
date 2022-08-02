@@ -215,8 +215,8 @@ class Downloader():
                     
                 if self._ffmpeg_proc.poll() is not None:
                     self.logger.debug('FFmpeg exit.')
-                    self.stop()
                     self.logger.debug(log)
+                    self.stop()
 
             if self.duration > timer_cnt*30 and not self.args.debug:
                 self.logger.debug(f'FFmpeg output:{log}')

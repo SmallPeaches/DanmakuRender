@@ -38,8 +38,8 @@ def check_ffmpeg(args):
             print('正在下载FFmpeg (约78MB).')
             r = requests.get('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',stream=True)
             content = b''
-            for i,chunk in enumerate(r.iter_content(1024*4)):
-                print(f'\r已下载{i/256:.2f}MB.',end='')
+            for i,chunk in enumerate(r.iter_content(1024*64)):
+                print(f'\r已下载{i/16:.1f}MB.',end='')
                 content += chunk
             print('')
             with open('./tools/ffmpeg-release-essentials.zip','wb') as f:
