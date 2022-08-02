@@ -15,7 +15,7 @@ def check_pypi():
         return True
     except ImportError:
         a = input('Python 包未正确安装，回车自动安装:')
-        system("pip install -r requirements.txt")
+        system("pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple")
         print('Python 包安装完成，请重启程序.')
         exit(0)
 
