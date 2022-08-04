@@ -10,7 +10,6 @@ def check_pypi():
     try:
         import requests
         import aiohttp
-        import PIL
         import execjs
         return True
     except ImportError:
