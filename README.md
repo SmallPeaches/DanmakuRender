@@ -15,7 +15,7 @@
 ## 使用说明
 ### 前置要求
 - Python 3.7+
-- Python库 aiohttp,requests,pillow,execjs
+- Python库 aiohttp,requests,execjs
 - FFmpeg
 - 满足条件的NVIDIA或者AMD显卡（也可以不用，但是渲染弹幕会很卡）    
 
