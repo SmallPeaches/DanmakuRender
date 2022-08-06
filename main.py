@@ -12,8 +12,7 @@ import logging
 
 from downloader.Render import Render
 from downloader.Downloader import Downloader
-from downloader.getrealurl import split_url
-from tools.utils import onair, url_available
+from tools.utils import *
 from tools.check_env import check_ffmpeg
 
 def replay_one(args,onprint=False):

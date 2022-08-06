@@ -1,6 +1,6 @@
 import json, re, select, random
 from struct import pack, unpack
-import asyncio, aiohttp
+from tools.utils import *
 
 color_tab = {
     "2": "1e87f0",
@@ -17,7 +17,7 @@ class Douyu:
 
     async def get_ws_info(url):
         reg_datas = []
-        room_id = url.split("/")[-1]
+        _, room_id = split_url(url)
         data = f"type@=loginreq/roomid@={room_id}/"
         s = pack("i", 9 + len(data)) * 2
         s += b"\xb1\x02\x00\x00"  # 689

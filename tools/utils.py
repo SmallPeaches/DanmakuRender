@@ -2,7 +2,6 @@ import struct
 import json
 import re
 import subprocess
-from downloader.getrealurl import get_stream_url
 
 BANNED_WORDS = ['\{','赞']
 
@@ -52,6 +51,7 @@ def read_json(filename):
 
 def onair(url):
     try:
+        from downloader.getrealurl import get_stream_url
         get_stream_url(url)
         return True
     except Exception as e:
@@ -59,6 +59,7 @@ def onair(url):
 
 def url_available(url):
     try:
+        from downloader.getrealurl import get_stream_url
         get_stream_url(url)
         return True
     except Exception as e:
@@ -113,3 +114,17 @@ def danmu_available(dm:dict) -> bool:
         if word in dm['content']:
             return False
     return True
+
+
+def split_url(url:str):
+    platform = re.findall(r'\.(.*).com/',url)[0]
+    rid = re.findall(r'\.com/([\w]*)',url)[0]
+
+    if platform == 'douyu':
+        try:
+            int(rid)
+        except:
+            if 'rid=' in url:
+                rid = re.findall(r'rid=[0-9]*',url)[0][4:]
+    
+    return (platform, rid)
