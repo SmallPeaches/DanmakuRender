@@ -15,8 +15,8 @@ def check_pypi():
     except ImportError:
         a = input('Python 包未正确安装，回车自动安装:')
         system("pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple")
-        print('Python 包安装完成，请重启程序.')
-        exit(0)
+        print('Python 包安装完成.')
+        return 
 
 def check_ffmpeg(args):
     try:

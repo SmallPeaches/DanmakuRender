@@ -8,10 +8,8 @@ import threading
 import time
 from os.path import join
 from downloader.DanmakuWriter import DanmakuWriter
-from downloader.Render import Render
-from downloader.getrealurl import get_stream_url
 from downloader.danmaku import DanmakuClient
-from tools.utils import onair
+from tools.utils import *
 
 class Downloader():
     header = {
@@ -103,6 +101,8 @@ class Downloader():
         return proc
 
     def _dm_filter(self,dm):
+        if not dm.get('msg_type') == 'danmaku':
+            return 
         if not dm.get('name',0):
             return 
         if '\{' in dm.get('content',''):
@@ -154,7 +154,7 @@ class Downloader():
     def start_helper(self,args,print_rt=True):
         self.args = args 
 
-        stream_url = get_stream_url(self.url,args.flowtype)
+        stream_url = get_stream_url(self.url)
         stream_info = self._get_stream_info(stream_url)
 
         if not (stream_info.get('width') or stream_info.get('height')):

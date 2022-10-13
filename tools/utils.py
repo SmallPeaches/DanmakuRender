@@ -2,6 +2,7 @@ import struct
 import json
 import re
 import subprocess
+from LiveAPI import LiveAPI
 
 BANNED_WORDS = ['\{','赞']
 
@@ -49,24 +50,25 @@ def read_json(filename):
         str_res += i
     return json.loads(str_res.encode('gbk'))
 
+def get_stream_url(url):
+    platform, rid = split_url(url)
+    api = LiveAPI(platform, rid)
+    return api.get_stream_url()
+
+def get_streamer_info(url):
+    platform, rid = split_url(url)
+    api = LiveAPI(platform, rid)
+    return api.get_info()
+
 def onair(url):
-    try:
-        from downloader.getrealurl import get_stream_url
-        get_stream_url(url)
-        return True
-    except Exception as e:
-        return False
+    platform, rid = split_url(url)
+    api = LiveAPI(platform, rid)
+    return api.onair()
 
 def url_available(url):
-    try:
-        from downloader.getrealurl import get_stream_url
-        get_stream_url(url)
-        return True
-    except Exception as e:
-        if '未开播' in str(e):
-            return True
-        else:
-            return False
+    platform, rid = split_url(url)
+    api = LiveAPI(platform, rid)
+    return api.is_available()
 
 def get_video_info(ffmpeg,video,header=None):
     if 'http' in video:

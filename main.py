@@ -15,9 +15,10 @@ from downloader.Downloader import Downloader
 from tools.utils import *
 from tools.check_env import check_ffmpeg
 
-def replay_one(args,onprint=False):
-    p,r = split_url(args.url)
-    args.name = p+r
+def replay_one(args,print2std=False):
+    args.name = get_streamer_info(args.url)[1]
+    if not args.name:
+        args.name = ''.join(split_url(args.url))
     
     logger = logging.getLogger('main')
     logger.setLevel(logging.DEBUG)
@@ -59,7 +60,7 @@ def replay_one(args,onprint=False):
         logger.debug(args)
 
         try:
-            rval = rec.start(args,onprint=onprint)
+            rec.start(args,onprint=print2std)
         except KeyboardInterrupt:
             rec.stop()
             logger.info(f'{args.name}录制终止.')
@@ -148,7 +149,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.version:
-        print('DanmakuRender-3 2022.5.29.')
+        print('DanmakuRender-3 2022.10.13.')
         exit(0)
     
     check_ffmpeg(args)

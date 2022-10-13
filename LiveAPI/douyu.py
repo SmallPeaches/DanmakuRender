@@ -1,5 +1,6 @@
 # 获取斗鱼直播间的真实流媒体地址，默认最高画质
 # 使用 https://github.com/wbt5/real-url/issues/185 中两位大佬@wjxgzz @4bbu6j5885o3gpv6ss8找到的的CDN，在此感谢！
+from .BaseAPI import BaseAPI
 import hashlib
 import warnings
 import re
@@ -7,17 +8,23 @@ import time
 
 import execjs
 import requests
+from lxml import etree
 
-
-class DouYu:
+class douyu(BaseAPI):
+    header = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36 Edg/88.0.705.68",
+        }
+    header_mobile = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/75.0.3770.100 Mobile Safari/537.36 '
+        }
     host_list = ['tx2play1.douyucdn.cn','hdltctwk.douyucdn2.cn','akm-tct.douyucdn.cn','tc-tct1.douyucdn.cn']
 
-    def __init__(self, rid):
-        """
-        房间号通常为1~8位纯数字，浏览器地址栏中看到的房间号不一定是真实rid.
-        Args:
-            rid:
-        """
+    def __init__(self,rid:str) -> None:
+        self.rid = rid
+
         self.did = '10000000000000000000000000001501'
         self.t10 = str(int(time.time()))
         self.t13 = str(int((time.time() * 1000)))
@@ -30,7 +37,7 @@ class DouYu:
             self.rid = result.group(1)
         else:
             raise Exception('房间号错误')
-
+    
     @staticmethod
     def md5(data):
         return hashlib.md5(data.encode('utf-8')).hexdigest()
@@ -41,7 +48,7 @@ class DouYu:
             'rid': self.rid,
             'did': self.did
         }
-        auth = DouYu.md5(self.rid + self.t13)
+        auth = douyu.md5(self.rid + self.t13)
         headers = {
             'rid': self.rid,
             'time': self.t13,
@@ -55,29 +62,42 @@ class DouYu:
             rtmp_live = data['rtmp_live']
             key = re.search(r'(\d{1,8}[0-9a-zA-Z]+)_?\d{0,4}(/playlist|.m3u8)', rtmp_live).group(1)
         return error, key
+    
+    def is_available(self) -> bool:
+        error, key = self.get_pre()
+        if error == 102:
+            return False
+        else:
+            return True
 
-    def get_js(self):
-        result = re.search(r'(function ub98484234.*)\s(var.*)', self.res).group()
-        func_ub9 = re.sub(r'eval.*;}', 'strc;}', result)
-        js = execjs.compile(func_ub9)
-        res = js.call('ub98484234')
+    def onair(self) -> bool:
+        error, key = self.get_pre()
+        if error not in [104,102]:
+            return True
+        else:
+            return False
 
-        v = re.search(r'v=(\d+)', res).group(1)
-        rb = DouYu.md5(self.rid + self.did + self.t10 + v)
-
-        func_sign = re.sub(r'return rt;}\);?', 'return rt;}', res)
-        func_sign = func_sign.replace('(function (', 'function sign(')
-        func_sign = func_sign.replace('CryptoJS.MD5(cb).toString()', '"' + rb + '"')
-
-        js = execjs.compile(func_sign)
-        params = js.call('sign', self.rid, self.did, self.t10)
-        params += '&ver=219032101&rid={}&rate=-1'.format(self.rid)
-
-        url = 'https://m.douyu.com/api/room/ratestream'
-        res = self.s.post(url, params=params).text
-        key = re.search(r'(\d{1,8}[0-9a-zA-Z]+)_?\d{0,4}(.m3u8|/playlist)', res).group(1)
-
-        return key
+    def get_info(self):
+        """
+        return: title,uname,face_url,keyframe_url
+        """
+        room_url = 'https://www.douyu.com/' + self.rid
+        response = requests.get(url=room_url, headers=self.header).text
+        selector = etree.HTML(response)
+        try:
+            title = selector.xpath('//*[@id="js-player-title"]/div[1]/div[2]/div[1]/div[2]/div[1]/h3')[0].text
+        except:
+            title = 'huya'+self.rid
+        try:
+            uname = selector.xpath('//*[@id="js-player-title"]/div[1]/div[2]/div[2]/div[1]/div[2]/div/h2')[0].text
+        except:
+            uname = 'huya'+self.rid
+        try:
+            face_url = selector.xpath('//*[@id="js-player-title"]/div[1]/div[1]/div/a/div/img/@src')[0]
+        except:
+            face_url = None
+        keyframe_url = None
+        return title,uname,face_url,keyframe_url
 
     def get_pc_js(self, cdn='ws-h5', rate=0):
         """
@@ -93,7 +113,7 @@ class DouYu:
         res = js.call('ub98484234')
 
         v = re.search(r'v=(\d+)', res).group(1)
-        rb = DouYu.md5(self.rid + self.did + self.t10 + v)
+        rb = self.md5(self.rid + self.did + self.t10 + v)
 
         func_sign = re.sub(r'return rt;}\);?', 'return rt;}', res)
         func_sign = func_sign.replace('(function (', 'function sign(')
@@ -108,7 +128,7 @@ class DouYu:
 
         return res
 
-    def get_real_url(self):
+    def get_stream_url(self) -> str:
         error, key = self.get_pre()
         if error == 0:
             pass
@@ -138,11 +158,3 @@ class DouYu:
         
         return real_url
 
-def get_real_url(rid:str):
-    s = DouYu(rid)
-    return s.get_real_url()
-
-if __name__ == '__main__':
-    r = input('输入斗鱼直播间号：\n')
-    s = DouYu(r)
-    print(s.get_real_url())
