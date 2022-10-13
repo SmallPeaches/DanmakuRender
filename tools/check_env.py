@@ -11,6 +11,7 @@ def check_pypi():
         import requests
         import aiohttp
         import execjs
+        import lxml
         return True
     except ImportError:
         input('Python 包未正确安装，回车自动安装:')
