@@ -13,8 +13,8 @@ def check_pypi():
         import execjs
         return True
     except ImportError:
-        a = input('Python 包未正确安装，回车自动安装:')
-        system("pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple")
+        input('Python 包未正确安装，回车自动安装:')
+        system("python -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple")
         print('Python 包安装完成.')
         return 
 
