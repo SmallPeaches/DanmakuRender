@@ -127,13 +127,12 @@ class huya(BaseAPI):
         urls={}
         liveData=data['data']['liveData']
         
-        urls['name']=liveData['nick']+'-'+liveData['introduction'].replace('"','')
         for i in   range(len(multiLine)):
                 obj=multiLine[i]
                 if obj['url'] is not None:
                     liveline = live(obj['url'])
                     urls['url'+str(i+1)]=liveline
-        return urls
+        return urls[0]
 
 
         
