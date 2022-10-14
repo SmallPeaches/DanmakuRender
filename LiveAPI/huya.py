@@ -124,14 +124,14 @@ class huya(BaseAPI):
         data = requests.get(url=room_url, headers=self.header_mobile).json()
         
         multiLine=data['data']['stream']['flv']['multiLine']
-        urls={}
+        urls=[]
         liveData=data['data']['liveData']
         
-        for i in   range(len(multiLine)):
+        for i in range(len(multiLine)):
                 obj=multiLine[i]
                 if obj['url'] is not None:
                     liveline = live(obj['url'])
-                    urls['url'+str(i+1)]=liveline
+                    urls.append(liveline)
         return urls[0]
 
 
