@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import time
+import re
 from os.path import join
 
 
@@ -18,12 +19,13 @@ class Render():
     def render(self,video,danmaku,output,to_stdout=False):
         ffmpeg_args = [self.ffmpeg]
         if self.args.hwaccel_args:
-            hwaccel_args = self.args.hwaccel_args.split(',')
+            hwaccel_args = re.split(r'/|,',self.args.hwaccel_args)
             ffmpeg_args += [*hwaccel_args]
-        vencoder_args = [x for x in self.args.vencoder_args.split(',') if x]
-        aencoder_args = [x for x in self.args.aencoder_args.split(',') if x]
+        vencoder_args = [x for x in re.split(r'/|,',self.args.vencoder_args) if x]
+        aencoder_args = [x for x in re.split(r'/|,',self.args.aencoder_args) if x]
 
         ffmpeg_args +=  [
+                        '-fflags','+discardcorrupt',
                         '-i', video,
                         '-vf', 'subtitles=filename=%s'%danmaku.replace('\\','/'),
 
