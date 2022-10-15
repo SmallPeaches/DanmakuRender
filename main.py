@@ -161,7 +161,7 @@ if __name__ == '__main__':
             args.vencoder_args = '-cq,27'
         elif args.gpu.lower() == 'amd':
             args.vencoder = 'h264_amf'
-            args.vencoder_args = '-cq,27'
+            args.vencoder_args = '-cq,25'
         elif args.gpu.lower() == 'none':
             args.vencoder = 'libx264'
             args.vencoder_args = '-crf,25'

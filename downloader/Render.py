@@ -20,8 +20,8 @@ class Render():
         if self.args.hwaccel_args:
             hwaccel_args = self.args.hwaccel_args.split(',')
             ffmpeg_args += [*hwaccel_args]
-        vencoder_args = self.args.vencoder_args.split(',')
-        aencoder_args = self.args.aencoder_args.split(',')
+        vencoder_args = [x for x in self.args.vencoder_args.split(',') if x]
+        aencoder_args = [x for x in self.args.aencoder_args.split(',') if x]
 
         ffmpeg_args +=  [
                         '-i', video,
@@ -93,7 +93,9 @@ class Render():
                     self.rendering = True
                     self.render_proc = self.render(vpath,dpath,output,to_stdout=autoexit)
 
-                    if not self.args.debug:
+                    if self.args.debug or autoexit:
+                        self.render_proc.wait()
+                    else:
                         info = None
                         log = ''
                         for line in self.render_proc.stdout.readlines():
@@ -110,8 +112,6 @@ class Render():
                             self.logger.info(f'{output} 渲染完成, {info}')
                         else:
                             self.logger.error(f'{output} 渲染错误:\n{log}')
-                    else:
-                        self.render_proc.wait()
                         
                     self.rendering = False
                     processed_files.append(vname)

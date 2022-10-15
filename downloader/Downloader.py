@@ -101,11 +101,11 @@ class Downloader():
         return proc
 
     def _dm_filter(self,dm):
-        if not dm.get('msg_type') == 'danmaku':
+        if not (dm.get('msg_type') == 'danmaku'):
             return 
-        if not dm.get('name',0):
+        if not dm.get('name'):
             return 
-        if '\{' in dm.get('content',''):
+        if '\{' in dm.get('content'):
             return 
         return dm
 
