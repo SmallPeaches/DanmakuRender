@@ -125,8 +125,11 @@ class douyu(BaseAPI):
         params += '&cdn={}&rate={}'.format(cdn, rate)
         url = 'https://www.douyu.com/lapi/live/getH5Play/{}'.format(self.rid)
         res = self.s.post(url, params=params).json()
-
-        return res
+        data = res.get('data')
+        if data:
+            rtmp_live = data['rtmp_live']
+            key = re.search(r'(\d{1,8}[0-9a-zA-Z]+)_?\d{0,4}(/playlist|.flv)', rtmp_live).group(1)
+        return key
 
     def get_stream_url(self) -> str:
         error, key = self.get_pre()
@@ -138,11 +141,7 @@ class douyu(BaseAPI):
             raise Exception('未开播')
         else:
             key = self.get_pc_js()
-        """
-        real_url = {}
-        real_url["flv"] = "http://dyscdnali1.douyucdn.cn/live/{}.flv?uuid=".format(key)
-        real_url["x-p2p"] = "http://tx2play1.douyucdn.cn/live/{}.xs?uuid=".format(key)
-        """
+        
         flag = False
         for host in self.host_list:
             real_url = f"http://{host}/live/{key}.xs?uuid="

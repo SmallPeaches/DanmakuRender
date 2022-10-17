@@ -6,8 +6,8 @@
 
 旧版本可以在v1分支和v2分支找到。   
 
-**BUG:Python3.10及以上版本可能会导致部分平台录制弹幕出现问题，请使用Python3.7版本录制**              
-**2022.10.13更新：修改了API逻辑，而且现在可以支持录制不带弹幕的抖音直播**        
+**BUG：Python3.10及以上版本可能会导致部分平台录制弹幕出现问题，请使用Python3.7版本录制**               
+2022.10.13更新：修改了API逻辑，而且现在可以支持录制不带弹幕的抖音直播        
 2022.8.1更新：版本3.1和在线弹幕渲染的新功能（暂时只支持MDY的几个主播）        
 2022.5.30版本更新：更新了版本3    
 2022.2.9版本更新：主要修复了直播流错误时无法正常重启的情况    
@@ -17,7 +17,7 @@
 ## 使用说明
 ### 前置要求
 - Python 3.7+
-- Python库 aiohttp,requests,execjs
+- Python库 aiohttp,requests,execjs,lxml
 - FFmpeg
 - 满足条件的NVIDIA或者AMD显卡（也可以不用，但是渲染弹幕会很卡）    
 
@@ -62,9 +62,9 @@
 - `--ffmpeg_stream_args` 指定ffmpeg录制时的HTTP参数，默认`-fflags,+discardcorrupt,-reconnect,1,-reconnect_streamed,1` 
 - `--hwaccel_args` 指定硬件加速参数，多个参数之间用','分割。N卡默认`-hwaccel,cuda,-noautorotate`，A卡没有
 - `--vencoder` 指定视频编码器，NVIDIA显卡默认为H264_NVENC，AMD显卡默认为H264_AMF，不使用硬件加速的话默认为libx264
-- `--vencoder_args` 指定视频编码器参数，多个参数之间用','分割。默认为`-cq,27`，libx264默认`-crf,25`
+- `--vencoder_args` 指定视频编码器参数，多个参数之间用','分割，指定此参数必须先指定vencoder参数。h264_nvenc默认为`-cq,27`，libx264默认`-crf,25`，h264_amf默认`-b:v,15M`
 - `--aencoder` 指定音频编码器，默认为AAC
-- `--vencoder_args` 指定音频编码器参数，多个参数之间用','分割。默认为`-b:a,320K`   
+- `--aencoder_args` 指定音频编码器参数，多个参数之间用','分割。默认为`-b:a,320K`   
 
 如果程序无法正常判断流的分辨率和帧率（例如部分主播使用了4K120Hz的超高清流）导致录制错误，可以使用以下参数强行指定     
 - `--resolution` 指定分辨率，分辨率应该使用x分割，例如1920x1080
@@ -80,8 +80,8 @@
 - `--resolution_fixed` 使用自适应分辨率模式，也就是说弹幕大小会随分辨率变化而变化，前面设置的是1080P下的大小，默认true
 
 #### 其他参数
-- `--debug` 使用debug模式，将录制信息输出到控制台。**新版本不建议使用，错误信息会自动保存为日志文件**
-- `--disable_lowspeed_interrupt` 关闭编码过慢自动重启功能（编码速度低说明录制故障或者是资源不足了）
+- `--debug` 使用debug模式，将录制信息输出到控制台，新版本不建议使用，错误信息会自动保存为日志文件。
+- `--disable_lowspeed_interrupt` 关闭编码过慢自动重启功能（编码速度低说明录制故障或者是资源不足了，新版本估计没啥用）
 - `--disable_danmaku_reconnect` 禁用弹幕重连，默认false（如果录制的主播弹幕很少应该禁用） 
 - `--flowtype` 选择流类型，可选flv或者是m3u8，默认flv，此选项仅对B站流生效，在flv流故障或者录制超高清直播时应该设置为m3u8
 - `-V` 查看版本号
