@@ -61,15 +61,16 @@ def replay_one(args,print2std=False):
 
         try:
             rec.start(args,onprint=print2std)
-        except KeyboardInterrupt:
+        except Exception as e:
             rec.stop()
-            logger.info(f'{args.name}录制终止.')
-            exit(0)
+            logger.error('Uncatched exception:')
+            logger.exception(e)
+            time.sleep(30)
 
         if onair(args.url):
             logger.error(f'{args.name}录制异常终止, 请查询日志文件了解更多信息.')
             logger.info('正在重试...')
-            time.sleep(5)
+            time.sleep(10)
         else:
             logger.info(f'{args.name}直播结束,正在等待...')
             time.sleep(60)
@@ -158,13 +159,13 @@ if __name__ == '__main__':
         if args.gpu.lower() == 'nvidia':
             args.hwaccel_args = '-hwaccel,cuda,-noautorotate'
             args.vencoder = 'h264_nvenc'
-            args.vencoder_args = '-cq,27'
+            args.vencoder_args = '-b:v,15M'
         elif args.gpu.lower() == 'amd':
             args.vencoder = 'h264_amf'
             args.vencoder_args = '-b:v,15M'
         elif args.gpu.lower() == 'none':
             args.vencoder = 'libx264'
-            args.vencoder_args = '-crf,25'
+            args.vencoder_args = '-b:v,15M'
     
     if args.dm_dir is None:
         args.dm_dir = args.video_dir

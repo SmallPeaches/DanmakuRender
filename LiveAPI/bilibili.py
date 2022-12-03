@@ -51,7 +51,7 @@ class bilibili(BaseAPI):
                 try:
                     durl = resp['data']['durl']
                     real_url = durl[0]['url']
-                    real_url.replace('_blueray','')
+                    # real_url = real_url.replace('_bluray','')
                     # real_url = re.sub(r'live_(\d+)_(\d+)_\d+.m3u8', r'live_\1_\2.m3u8', real_url)
                 except KeyError or IndexError:
                     raise RuntimeError('未知错误')

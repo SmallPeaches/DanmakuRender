@@ -288,6 +288,6 @@ class Downloader():
         except Exception as e:
             self._ffmpeg_proc.kill()
             self.logger.debug(e)
-        time.sleep(0.5)
+        time.sleep(1)
 
 
