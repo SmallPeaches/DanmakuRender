@@ -286,7 +286,6 @@ class Downloader():
             out = out.decode('utf-8')
             self.logger.debug(out)
         except Exception as e:
-            self._ffmpeg_proc.kill()
             self.logger.debug(e)
         time.sleep(1)
 
