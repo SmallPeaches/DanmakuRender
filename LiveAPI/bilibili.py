@@ -38,23 +38,47 @@ class bilibili(BaseAPI):
         code = res['code']
         if code == 0:
             live_status = res['data']['live_status']
+            # if live_status == 1:
+            #     room_id = res['data']['room_id']
+            #     f_url = 'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl'
+            #     params = {
+            #         'cid': room_id,
+            #         'platform': 'mb',
+            #         'otype': 'json',
+            #         'qn': 10000
+            #     }
+            #     resp = s.get(f_url, params=params).json()
+            #     try:
+            #         durl = resp['data']['durl']
+            #         real_url = durl[0]['url']
+            #         # real_url = real_url.replace('_bluray','')
+            #         # real_url = re.sub(r'live_(\d+)_(\d+)_\d+.m3u8', r'live_\1_\2.m3u8', real_url)
+            #     except KeyError or IndexError:
+            #         raise RuntimeError('未知错误')
             if live_status == 1:
                 room_id = res['data']['room_id']
-                f_url = 'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl'
+                f_url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo'
                 params = {
-                    'cid': room_id,
-                    'platform': 'mb',
-                    'otype': 'json',
-                    'qn': 10000
+                    'room_id': room_id,
+                    'platform': 'web',
+                    'protocol': '0,1',
+                    'format': '0,1,2',
+                    'codec': '0',
+                    'qn': 30000,
+                    'ptype': 8,
+                    'dolby': 5,
+                    'panorama': 1
                 }
                 resp = s.get(f_url, params=params).json()
                 try:
-                    durl = resp['data']['durl']
-                    real_url = durl[0]['url']
-                    # real_url = real_url.replace('_bluray','')
-                    # real_url = re.sub(r'live_(\d+)_(\d+)_\d+.m3u8', r'live_\1_\2.m3u8', real_url)
+                    stream = resp['data']['playurl_info']['playurl']['stream']
+                    http_info = stream[1]['format'][1]['codec'][0]
+                    base_url = http_info['base_url']
+                    host = http_info['url_info'][0]['host']
+                    extra = http_info['url_info'][0]['extra']
+                    real_url = host + base_url  + extra
                 except KeyError or IndexError:
-                    raise RuntimeError('未知错误')
+                    raise RuntimeError('bilibili直播流获取错误.')
         return real_url
 
     def get_info(self) -> tuple:
