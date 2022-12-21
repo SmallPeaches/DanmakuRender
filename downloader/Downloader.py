@@ -185,6 +185,8 @@ class Downloader():
         ffmpeg_low_speed = 0
         m3u8_drop_cnt = 0
         timer_cnt = 1
+        replay_cnt = 0
+        last_replay_cnt = 0
         
         while not self.stoped:
             if self._ffmpeg_proc.stdout is None:
@@ -205,6 +207,7 @@ class Downloader():
                 line = out.decode('utf-8')
                 log += line+'\n'
                 if print_rt and 'frame=' in line:
+                    replay_cnt += 1
                     print(f'\r正在录制{self.taskname}: {line}',end='')
                     
                 segs = line.split('\'')
@@ -220,6 +223,12 @@ class Downloader():
 
             if self.duration > timer_cnt*30 and not self.args.debug:
                 self.logger.debug(f'FFmpeg output:{log}')
+
+                if replay_cnt and replay_cnt == last_replay_cnt:
+                    self.logger.error('直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
+                    self.stop()
+                else:
+                    last_replay_cnt = replay_cnt
 
                 if not args.disable_lowspeed_interrupt:
                     l = line.find('speed=')

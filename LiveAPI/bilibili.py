@@ -1,7 +1,10 @@
 import json
 import logging
 import requests
-from .BaseAPI import BaseAPI
+try:
+    from .BaseAPI import BaseAPI
+except ImportError:
+    from BaseAPI import BaseAPI
 
 class bilibili(BaseAPI):
     def __init__(self,rid) -> None:
@@ -38,29 +41,12 @@ class bilibili(BaseAPI):
         code = res['code']
         if code == 0:
             live_status = res['data']['live_status']
-            # if live_status == 1:
-            #     room_id = res['data']['room_id']
-            #     f_url = 'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl'
-            #     params = {
-            #         'cid': room_id,
-            #         'platform': 'mb',
-            #         'otype': 'json',
-            #         'qn': 10000
-            #     }
-            #     resp = s.get(f_url, params=params).json()
-            #     try:
-            #         durl = resp['data']['durl']
-            #         real_url = durl[0]['url']
-            #         # real_url = real_url.replace('_bluray','')
-            #         # real_url = re.sub(r'live_(\d+)_(\d+)_\d+.m3u8', r'live_\1_\2.m3u8', real_url)
-            #     except KeyError or IndexError:
-            #         raise RuntimeError('未知错误')
             if live_status == 1:
                 room_id = res['data']['room_id']
                 f_url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo'
                 params = {
                     'room_id': room_id,
-                    'platform': 'web',
+                    'platform': 'h5',
                     'protocol': '0,1',
                     'format': '0,1,2',
                     'codec': '0',
@@ -72,11 +58,22 @@ class bilibili(BaseAPI):
                 resp = s.get(f_url, params=params).json()
                 try:
                     stream = resp['data']['playurl_info']['playurl']['stream']
+                    http_info = stream[0]['format'][0]['codec'][0]
+                    base_url = http_info['base_url']
+                    host = http_info['url_info'][0]['host']
+                    extra = http_info['url_info'][0]['extra']
+                    flv_url = host + base_url + extra
+                    if requests.get(flv_url,stream=True).status_code == 200:
+                        return flv_url
+                except:
+                    pass
+                try:
+                    stream = resp['data']['playurl_info']['playurl']['stream']
                     http_info = stream[1]['format'][1]['codec'][0]
                     base_url = http_info['base_url']
                     host = http_info['url_info'][0]['host']
                     extra = http_info['url_info'][0]['extra']
-                    real_url = host + base_url  + extra
+                    real_url = host + base_url + extra
                 except KeyError or IndexError:
                     raise RuntimeError('bilibili直播流获取错误.')
         return real_url
@@ -123,4 +120,5 @@ class bilibili(BaseAPI):
                 logging.error(str(e))
         if liverInfo:
             return liverInfo[0]
-        
+        else:
+            return '','',None,None
