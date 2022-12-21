@@ -286,10 +286,6 @@ class Downloader():
         except Exception as e:
             self.logger.debug(e)
         try:
-            self._ffmpeg_proc.stdin.flush()
-        except Exception as e:
-            self.logger.debug(e)
-        try:
             self._ffmpeg_proc.send_signal(signal.SIGINT)
             out, _ = self._ffmpeg_proc.communicate(timeout=2.0)
             out = out.decode('utf-8')
