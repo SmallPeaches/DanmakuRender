@@ -12,5 +12,8 @@ class BaseAPI():
         """
         raise NotImplementedError
 
-    def get_stream_url(self) -> str:
+    def get_stream_url(self) -> dict:
+        """
+        return dict{url,(header,...)}
+        """
         raise NotImplementedError

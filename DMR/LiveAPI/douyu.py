@@ -87,11 +87,11 @@ class douyu(BaseAPI):
         try:
             title = selector.xpath('//*[@id="js-player-title"]/div[1]/div[2]/div[1]/div[2]/div[1]/h3')[0].text
         except:
-            title = 'huya'+self.rid
+            title = 'douyu'+self.rid
         try:
             uname = selector.xpath('//*[@id="js-player-title"]/div[1]/div[2]/div[2]/div[1]/div[2]/div/h2')[0].text
         except:
-            uname = 'huya'+self.rid
+            uname = 'douyu'+self.rid
         try:
             face_url = selector.xpath('//*[@id="js-player-title"]/div[1]/div[1]/div/a/div/img/@src')[0]
         except:
@@ -155,5 +155,7 @@ class douyu(BaseAPI):
         if not flag:
             warnings.warn('直播CDN可能已经失效.')
         
-        return real_url
+        return {
+            'url': real_url
+        }
 

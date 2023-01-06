@@ -1,11 +1,18 @@
 import json
 import logging
 import requests
-from .BaseAPI import BaseAPI
+try:
+    from .BaseAPI import BaseAPI
+except ImportError:
+    from BaseAPI import BaseAPI
 
 class bilibili(BaseAPI):
     def __init__(self,rid) -> None:
         self.rid = rid
+        self.header = {
+            'referer': 'https://live.bilibili.com',
+            'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.54',
+        }
 
     def _get_response(self):
         r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
@@ -30,7 +37,7 @@ class bilibili(BaseAPI):
             else:
                 return False
 
-    def get_stream_url(self) -> str:
+    def get_stream_url(self) -> dict:
         real_url = ''
         r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
         with requests.Session() as s:
@@ -40,22 +47,43 @@ class bilibili(BaseAPI):
             live_status = res['data']['live_status']
             if live_status == 1:
                 room_id = res['data']['room_id']
-                f_url = 'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl'
+                f_url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo'
                 params = {
-                    'cid': room_id,
-                    'platform': 'mb',
-                    'otype': 'json',
-                    'qn': 10000
+                    'room_id': room_id,
+                    'platform': 'web',
+                    'protocol': '0,1',
+                    'format': '0,1,2',
+                    'codec': '0',
+                    'qn': 30000,
+                    'ptype': 8,
+                    'dolby': 5,
+                    'panorama': 1
                 }
-                resp = s.get(f_url, params=params).json()
+                resp = requests.get(f_url, params=params, headers=self.header).json()
                 try:
-                    durl = resp['data']['durl']
-                    real_url = durl[0]['url']
-                    real_url.replace('_blueray','')
-                    # real_url = re.sub(r'live_(\d+)_(\d+)_\d+.m3u8', r'live_\1_\2.m3u8', real_url)
-                except KeyError or IndexError:
-                    raise RuntimeError('未知错误')
-        return real_url
+                    stream = resp['data']['playurl_info']['playurl']['stream']
+                    http_info = stream[0]['format'][0]['codec'][0]
+                    base_url = http_info['base_url']
+                    host = http_info['url_info'][0]['host']
+                    extra = http_info['url_info'][0]['extra']
+                    flv_url = host + base_url + extra
+                    if requests.get(flv_url,stream=True,headers=self.header).status_code == 200:
+                        real_url = flv_url
+                except:
+                    raise RuntimeError('bilibili直播流获取错误.')
+                # try:
+                #     stream = resp['data']['playurl_info']['playurl']['stream']
+                #     http_info = stream[1]['format'][1]['codec'][0]
+                #     base_url = http_info['base_url']
+                #     host = http_info['url_info'][0]['host']
+                #     extra = http_info['url_info'][0]['extra']
+                #     real_url = host + base_url + extra
+                # except KeyError or IndexError:
+                #     raise RuntimeError('bilibili直播流获取错误.')
+        return {
+            'url': real_url,
+            'header': self.header,
+        }
 
     def get_info(self) -> tuple:
         rid = int(self.rid)
@@ -99,4 +127,9 @@ class bilibili(BaseAPI):
                 logging.error(str(e))
         if liverInfo:
             return liverInfo[0]
-        
+        else:
+            return '','',None,None
+
+if __name__ == '__main__':
+    api = bilibili('21864441')    
+    print(api.get_stream_url()) 

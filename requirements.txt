@@ -2,3 +2,4 @@ requests
 aiohttp
 pyexecjs
 lxml
+pyyaml

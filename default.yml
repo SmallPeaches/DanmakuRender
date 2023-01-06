@@ -1,0 +1,57 @@
+ffprobe: ffprobe
+ffmpeg: ffmpeg
+
+downloader:
+  output_dir: ./直播回放
+  segment: 3600
+  danmaku: True
+
+  resolution: [1920,1080]
+  flowtype: mp4
+  engine: ffmpeg
+  ffmpeg_stream_args: [-fflags,+discardcorrupt,-reconnect,'1',-rw_timeout,'10000000',
+                        '-analyzeduration','15000000',
+                        '-probesize','50000000',
+                        '-thread_queue_size', '16']
+  disable_lowspeed_interrupt: False
+  
+  margin: 6
+  dmrate: 0.4
+  font: Microsoft YaHei
+  fontsize: 36 
+  overflow_op: override
+  dmduration: 16
+  opacity: 0.8
+
+render:
+  output_dir: ~
+
+  format: mp4
+  engine: ffmpeg
+  hwaccel_args: [-hwaccel,cuda,-noautorotate]
+  vencoder: h264_nvenc
+  vencoder_args: [-b:v,15M]
+  aencoder: aac
+  aencoder_args: [-b:a,320K]
+
+uploader:
+  bilibili:
+    engine: biliuprs
+    biliup: tools/biliup.exe
+    line: kodo
+    limit: 3
+    cookies: ~
+    copyright: 1
+    cover: ''
+    title: '[{STREAMER}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日 {HOUR}点'
+    desc_format_id: 0
+    desc: "{STREAMER}: {URL} \n直播回放 {TITLE} {YEAR}年{MONTH}月{DAY}日 {HOUR}点 \nPowered by DanmakuRender"
+    dynamic: ''
+    subtitle:
+      open: 0
+      lan: ''
+    tag: 'overwatch'
+    dtime: 0
+    open_subtitle: False
+
+

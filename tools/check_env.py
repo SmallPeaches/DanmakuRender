@@ -1,3 +1,8 @@
+from datetime import datetime
+import json
+import platform
+import warnings
+import requests
 from os import system
 import os
 import shutil
@@ -5,13 +10,33 @@ import sys
 import zipfile
 import subprocess
 
+def compare_version(ver1, ver2):
+    list1 = str(ver1).split(".")
+    list2 = str(ver2).split(".")
+    for i in range(len(list1)) if len(list1) < len(list2) else range(len(list2)):
+        if int(list1[i]) == int(list2[i]):
+            pass
+        elif int(list1[i]) < int(list2[i]):
+            return -1
+        else:
+            return 1
+    if len(list1) == len(list2):
+        return 0
+    elif len(list1) < len(list2):
+        return -1
+    else:
+        return 1
 
 def check_pypi():
+    if compare_version(platform.python_version(),'3.10.0') >= 0:
+        warnings.warn('程序正运行在Python 3.10及以上版本, 此版本有可能导致录制弹幕失败, 建议切换到Python 3.7版本.')
+    
     try:
         import requests
         import aiohttp
         import execjs
         import lxml
+        import yaml
         return True
     except ImportError:
         input('Python 包未正确安装，回车自动安装:')
@@ -55,7 +80,28 @@ def check_ffmpeg(args):
             shutil.move(f'./tools/{ffmpeg_version}/bin/ffplay.exe','./tools/ffplay.exe')
             shutil.move(f'./tools/{ffmpeg_version}/bin/ffprobe.exe','./tools/ffprobe.exe')
             shutil.rmtree(f'./tools/{ffmpeg_version}')
-            print('FFmpeg 安装完成，请重启程序.')
-            exit(0)
+            print('FFmpeg 安装完成.')
         else:
             print("FFmpeg 未正确安装.")
+            exit(0)
+
+def _update_from_github():
+    pass
+
+def check_update():
+    if not os.path.exists('tools/VERSION.INFO'):
+        resp = requests.get('https://api.github.com/repos/SmallPeaches/DanmakuRender',timeout=5).json()
+        update_time = resp['pushed_at']
+        info = {
+            'last_update':update_time
+        }
+        _update_from_github()
+        with open('tools/VERSION.INFO','w') as f:
+            json.dump(info,f,ensure_ascii=False)
+    else:
+        with open('tools/VERSION.INFO','r') as f:
+            info = json.load(f)
+        update_time = info['last_update']
+        resp = requests.get('https://api.github.com/repos/SmallPeaches/DanmakuRender',timeout=5).json()
+        if update_time < resp['pushed_at']:
+            _update_from_github()

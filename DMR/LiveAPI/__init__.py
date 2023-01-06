@@ -1,4 +1,7 @@
+from .utils import *
 
+AVAILABLE_DANMU = ['huya','douyu','bilibili']
+AVAILABLE_LIVE = ['huya','douyu','bilibili','douyin']
 
 class LiveAPI():
     def __init__(self,platform,rid) -> None:
@@ -25,3 +28,27 @@ class LiveAPI():
             return object.__getattribute__(self,__name)
         except AttributeError:
             return self.api_class.__getattribute__(__name)
+
+def GetStreamerInfo(plat,rid=None) -> tuple:
+    if rid is None:
+        plat,rid = split_url(plat)
+    api = LiveAPI(plat,rid)
+    return api.get_info()
+
+def GetStreamURL(plat,rid=None) -> dict:
+    if rid is None:
+        plat,rid = split_url(plat)
+    api = LiveAPI(plat,rid)
+    return api.get_stream_url()
+
+def Onair(plat,rid=None) -> bool:
+    if rid is None:
+        plat,rid = split_url(plat)
+    api = LiveAPI(plat,rid)
+    return api.onair()
+
+def UrlAvailable(plat,rid=None) -> bool:
+    if rid is None:
+        plat,rid = split_url(plat)
+    api = LiveAPI(plat,rid)
+    return api.is_available()

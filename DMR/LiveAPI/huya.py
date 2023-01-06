@@ -114,7 +114,7 @@ class huya(BaseAPI):
             try:
                 response = self._get_response()
                 selector = etree.HTML(response)
-                rid = selector.xpath('//*[@id="J_roomHeader"]/div[1]/div[2]/div/span[3]/em')[0].text
+                rid = selector.xpath('//*[@class="host-rid"]/em')[0].text
             except:
                 rid = self.rid
         else:
@@ -128,11 +128,14 @@ class huya(BaseAPI):
         liveData=data['data']['liveData']
         
         for i in range(len(multiLine)):
-                obj=multiLine[i]
-                if obj['url'] is not None:
-                    liveline = live(obj['url'])
-                    urls.append(liveline)
-        return urls[0]
+            obj=multiLine[i]
+            if obj['url'] is not None:
+                # liveline = live(obj['url'])
+                # urls.append(liveline)
+                urls.append(obj['url'])
+        return {
+            'url': urls[0]
+        }
 
 
         
