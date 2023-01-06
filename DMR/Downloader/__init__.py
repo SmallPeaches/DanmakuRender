@@ -145,7 +145,7 @@ class Downloader():
                 if Onair(self.url):
                     logging.exception(e)
                     self.pipeSend('restart','error',desc=e)
-                    time.sleep(10)
+                    time.sleep(30)
                 else:
                     logging.debug(e)
             
