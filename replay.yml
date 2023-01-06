@@ -1,3 +1,22 @@
+
+# 录制配置文件规则：
+# 录制任务应该写在replay下，每个任务作为一个数组，
+# 每个任务至少包括一个url键值对，指定需要录制的链接，例如：
+# replay:
+#   - url: https://live.bilibili.com/13308358    #录制B站13308358直播间
+# 
+# 每个任务可以单独指定录制参数 (default.yml文件里下载参数都可以)，例如：
+# replay:
+# - url: https://live.bilibili.com/13308358     #录制B站13308358直播间
+#   segment: 1800                               #指定分段时间1800秒
+# 
+# 同样的，也可以同时录制多个直播间，例如：
+# replay:
+# - url: https://live.bilibili.com/13308358     #录制1：B站13308358直播间
+#   segment: 1800                               #指定此任务分段时间1800秒
+# - url: https://live.bilibili.com/23197314     #录制:2：B站23197314直播间
+#   segment: 3600                               #指定此任务分段时间3600秒
+
 replay:
   - url: https://live.bilibili.com/13308358
       

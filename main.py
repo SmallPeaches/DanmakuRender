@@ -24,8 +24,14 @@ if __name__ == '__main__':
     parser.add_argument('--debug',action='store_true')
     parser.add_argument('--render_only',action='store_true')
     parser.add_argument('--input_dir',type=str)
+    parser.add_argument('--version',type=str)
     args = parser.parse_args()
     sys.path.append('tools')
+
+    if args.version:
+        print('DanmakuRender-4 2023.1.6.')
+        print('https://github.com/SmallPeaches/DanmakuRender')
+        exit(0)
 
     with open(args.default_config,'r',encoding='utf-8') as f:
         default_config = yaml.safe_load(f)

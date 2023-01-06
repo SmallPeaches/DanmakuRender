@@ -1,5 +1,8 @@
 import random
-from .BaseAPI import BaseAPI
+try:
+    from .BaseAPI import BaseAPI
+except ImportError:
+    from BaseAPI import BaseAPI
 import requests
 import re
 import base64
@@ -20,6 +23,13 @@ class huya(BaseAPI):
         }
     def __init__(self,rid:str) -> None:
         self.rid = rid
+        if not self.rid.isdigit():
+            try:
+                response = self._get_response()
+                selector = etree.HTML(response)
+                self.rid = selector.xpath('//*[@class="host-rid"]/em')[0].text
+            except:
+                pass
     
     def _get_response(self,mobile=False):
         if not mobile:
@@ -41,10 +51,11 @@ class huya(BaseAPI):
 
     def onair(self) -> bool:
         try:
-            response = self._get_response(mobile=True)
-            liveLineUrl = re.findall(r'"liveLineUrl":"([\s\S]*?)",', response)[0]
-            liveline = base64.b64decode(liveLineUrl).decode('utf-8')
-            if liveline and 'replay' not in liveline:
+            room_url = 'https://mp.huya.com/cache.php?m=Live&do=profileRoom&roomid=' + str(self.rid)
+            data = requests.get(url=room_url, headers=self.header_mobile).json()
+            
+            status=data['data']['realLiveStatus']
+            if status == 'ON':
                 return True
             else:
                 return False
@@ -73,59 +84,11 @@ class huya(BaseAPI):
         return title,uname,face_url,keyframe_url
 
     def get_stream_url(self) -> str:
-        
-        def live(e):
-            try:
-                i, b = e.split('?')
-                r = i.split('/')
-                s = re.sub(r'.(flv|m3u8)', '', r[-1])
-                c = b.split('&')
-                c = [i for i in c if i != '']
-                n = {i.split('=')[0]: i.split('=')[1] for i in c}
-                
-                fm = urllib.parse.unquote(n['fm']) if ('fm' in n.keys()) else ''
-                u = base64.b64decode(fm).decode('utf-8') if ('fm' in n.keys()) else ''
-                p = u.split('_')[0]
-                f = str(int(time.time() * 1e7))
-                l = n['wsTime']
-                
-                mt = n['txyp'] if ('txyp' in n.keys()) else 'a'
-                t = str(random.randint(1460000000000, 1660000000000))
-
-                mm = t+f
-                ml = n['ctype']
-                fs = n['fs']
-                sp = n['sphdcdn'] if ('sphdcdn' in n.keys()) else 'al_7-tx_3-js_3-ws_7-bd_2-hw_2'
-                spp = n['sphdDC'] if ('sphdDC' in n.keys()) else 'huya'
-                spd = n['sphd'] if ('sphd' in n.keys()) else '264_*-265_'
-                ll = mm+'|'+ml+'|103'
-                ms = hashlib.md5(ll.encode("utf-8")).hexdigest()
-                h = '_'.join([p, t, s, ms, l])
-                m = hashlib.md5(h.encode('utf-8')).hexdigest()
-                urls = "{}?wsSecret={}&wsTime={}&seqid={}&ctype={}&ver=1&txyp={}&fs={}&&sphdcdn={}&sphdDC={}&sphd={}&t=103&ratio=0&u={}&t=103&sv=2110211124".format(i, m, l, mm, ml, mt, fs, sp, spp, spd, t)
-                aa, ab = urls.split('//')
-                url = 'https://'+ab
-            
-                return url
-            except Exception as e: 
-                return ''
-
-        if not self.rid.isdigit():
-            try:
-                response = self._get_response()
-                selector = etree.HTML(response)
-                rid = selector.xpath('//*[@class="host-rid"]/em')[0].text
-            except:
-                rid = self.rid
-        else:
-            rid = self.rid
-        
-        room_url = 'https://mp.huya.com/cache.php?m=Live&do=profileRoom&roomid=' + str(rid)
+        room_url = 'https://mp.huya.com/cache.php?m=Live&do=profileRoom&roomid=' + str(self.rid)
         data = requests.get(url=room_url, headers=self.header_mobile).json()
         
         multiLine=data['data']['stream']['flv']['multiLine']
         urls=[]
-        liveData=data['data']['liveData']
         
         for i in range(len(multiLine)):
             obj=multiLine[i]
@@ -136,6 +99,10 @@ class huya(BaseAPI):
         return {
             'url': urls[0]
         }
+
+if __name__ == '__main__':
+    api = huya('125836')
+    print(api.onair())
 
 
         

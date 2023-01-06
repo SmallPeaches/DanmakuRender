@@ -1,39 +1,88 @@
+# FFprobe 可执行程序地址
 ffprobe: ffprobe
+# FFmpeg 可执行程序地址
 ffmpeg: ffmpeg
 
+# 录制参数
 downloader:
+  # 录制输出文件夹，设置为空则使用主播名称作为文件夹
   output_dir: ./直播回放
+
+  # 录播分段时间（秒），默认一个小时
   segment: 3600
+
+  # 是否录制弹幕
   danmaku: True
 
+  # 默认分辨率，如果程序无法正常判断流的分辨率可以使用以下参数强行指定
   resolution: [1920,1080]
+
+  # 输出文件的格式，默认mp4
   flowtype: mp4
+
+  # 录制程序引擎，只能是ffmpeg
   engine: ffmpeg
+
+  # ffmpeg http参数
   ffmpeg_stream_args: [-fflags,+discardcorrupt,-reconnect,'1',-rw_timeout,'10000000',
                         '-analyzeduration','15000000',
                         '-probesize','50000000',
                         '-thread_queue_size', '16']
+  
+  # 关闭编码过慢自动重启功能，默认false
   disable_lowspeed_interrupt: False
   
+  # 以下是弹幕录制参数
+
+  # 弹幕行距，默认6
   margin: 6
+
+  # 指定弹幕占屏幕的最大比例（即屏幕上半部分有多少可以用来显示弹幕），默认为0.4
   dmrate: 0.4
+
+  # 指定弹幕字体，默认为微软雅黑字体(Microsoft YaHei)
   font: Microsoft YaHei
+
+  # 指定弹幕字体大小，默认为36
   fontsize: 36 
+
+  # 指定过量弹幕的处理方法，
+  # 可选ignore（忽略过量弹幕）或者override（强行叠加弹幕），默认override
   overflow_op: override
+
+  # 指定单条弹幕持续时间（秒），默认为16
   dmduration: 16
+
+  # 指定弹幕不透明度，默认为0.8
   opacity: 0.8
 
+# 渲染参数
 render:
+  # 渲染输出文件夹，默认为空（在录制输出文件夹后面加上“带弹幕版”）
   output_dir: ~
 
+  # 生成的视频文件格式，默认mp4
   format: mp4
+
+  # 渲染引擎，只能是ffmpeg
   engine: ffmpeg
+
+  # 硬件解码参数，NVIDIA显卡默认，AMD显卡或者CPU设为空
   hwaccel_args: [-hwaccel,cuda,-noautorotate]
+
+  # 视频编码器，NVIDIA设置为h264_nvenc，AMD设置为h264_amf，CPU设置为libx264
   vencoder: h264_nvenc
+
+  # 视频编码器参数，默认-b:v,15M
   vencoder_args: [-b:v,15M]
+
+  # 音频编码器
   aencoder: aac
+
+  # 音频编码器参数
   aencoder_args: [-b:a,320K]
 
+# 自动上传参数（暂时没用）
 uploader:
   bilibili:
     engine: biliuprs
