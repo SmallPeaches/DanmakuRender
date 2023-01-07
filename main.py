@@ -1,6 +1,7 @@
 # from tools.check_env import check_pypi
 # check_pypi()
 
+import time
 import argparse
 from datetime import datetime
 import os
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     
     try:
         while 1:
-            pass
+            time.sleep(60)
     except KeyboardInterrupt:
         dmr.stop()
             
