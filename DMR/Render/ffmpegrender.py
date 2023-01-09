@@ -1,4 +1,4 @@
-import re
+import os
 import signal
 import sys
 import subprocess
@@ -17,7 +17,7 @@ class FFmpegRender():
         self.debug = debug
 
     def render_helper(self, video:str, danmaku:str, output:str, to_stdout:bool=False):
-        ffmpeg_args = [self.ffmpeg]
+        ffmpeg_args = [self.ffmpeg, '-y']
         ffmpeg_args += self.hwaccel_args
 
         ffmpeg_args +=  [
@@ -45,6 +45,8 @@ class FFmpegRender():
         return proc
 
     def render_one(self, video:str, danmaku:str, output:str, **kwargs):
+        if os.path.exists(output):
+            raise RuntimeError(f'已经存在文件 {output}，跳过渲染.')
         self.render_proc = self.render_helper(video,danmaku,output,to_stdout=self.debug)
         if self.debug:
             self.render_proc.wait()

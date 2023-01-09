@@ -140,7 +140,7 @@ class FFmpegDownloader():
                 if 'dropping it' in log:
                     raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
 
-                if timer_cnt%2 == 0 and not Onair(self.url):
+                if timer_cnt%2 == 0 and Onair(self.url) == False:
                     logging.debug('Live end.')
                     return
 

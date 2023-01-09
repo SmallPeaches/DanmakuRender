@@ -10,6 +10,7 @@ from lxml import etree
 import urllib.parse
 import hashlib
 import time
+import logging
 
 class huya(BaseAPI):
     header = {
@@ -57,9 +58,18 @@ class huya(BaseAPI):
             status=data['data']['realLiveStatus']
             if status == 'ON':
                 return True
-            else:
+            elif status == 'OFF':
                 return False
-        except:
+            else:
+                response = self._get_response(mobile=True)
+                liveLineUrl = re.findall(r'"liveLineUrl":"([\s\S]*?)",', response)[0]
+                liveline = base64.b64decode(liveLineUrl).decode('utf-8')
+                if liveline and 'replay' not in liveline:
+                    return True
+                else:
+                    return False
+        except Exception as e:
+            logging.exception(e)
             return None
 
     def get_info(self):
@@ -101,8 +111,8 @@ class huya(BaseAPI):
         }
 
 if __name__ == '__main__':
-    api = huya('125836')
-    print(api.onair())
+    api = huya('333003')
+    print(api.get_stream_url())
 
 
         

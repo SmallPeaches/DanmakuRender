@@ -76,6 +76,19 @@ class Downloader():
                     'group': self.group
                 }
             self.pipeSend(nextfile,'split',video_info=video_info)
+        else:
+            thisfile = output.replace(r'%03d','%03d'%part)
+            sinfo = GetStreamerInfo(self.url)
+            t0 = datetime.now() - timedelta(seconds=part*self.segment)
+            video_info = {
+                    'url': self.url,
+                    'taskname': self.taskname,
+                    'streamer': sinfo[1],
+                    'title': sinfo[0],
+                    'time': t0,
+                    'group': self.group
+                }
+            self.pipeSend(thisfile,'split',video_info=video_info)
 
     def start_once(self):
         os.makedirs(self.output_dir,exist_ok=True)
