@@ -133,8 +133,8 @@ class Downloader():
         if self.danmaku:
             description = f'{filename}的弹幕文件, {self.url}, powered by DanmakuRender.'
             self.dmw = DanmakuWriter(self.url,output,self.segment,description,self.width,self.height,**self.kwargs)
-
-        self.dmw.start()
+            self.dmw.start()
+        
         self.downloader.start_helper()
 
     def start_helper(self):

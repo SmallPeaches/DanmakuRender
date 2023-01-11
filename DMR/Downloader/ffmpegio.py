@@ -115,11 +115,11 @@ class FFmpegDownloader():
                 # if 'frame=' in line:
                 #     self.pipeSend('ok',desc=line)
                     
-                if self.ffmpeg_proc.poll() is not None:
-                    logging.debug('FFmpeg exit.')
-                    logging.debug(log)
-                    if Onair(self.url):
-                        raise RuntimeError(f'FFmpeg 异常退出: {log}')
+            if self.ffmpeg_proc.poll() is not None:
+                logging.debug('FFmpeg exit.')
+                logging.debug(log)
+                if Onair(self.url):
+                    raise RuntimeError(f'FFmpeg 异常退出: {log}')
 
             if self.duration > timer_cnt*15 and not self.debug:
                 logging.debug(f'{self.taskname} FFmpeg output:\n{log}')
