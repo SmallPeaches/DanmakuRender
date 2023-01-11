@@ -15,7 +15,7 @@ downloader:
   danmaku: True
 
   # 是否跳过渲染
-  skip_render: True
+  skip_render: False
 
   # 默认分辨率，如果程序无法正常判断流的分辨率可以使用以下参数强行指定
   resolution: [1920,1080]

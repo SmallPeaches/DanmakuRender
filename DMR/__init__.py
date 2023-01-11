@@ -102,7 +102,7 @@ class DanmakuRender():
             fp = msg['msg']
             logging.info(f'分片 {fp} 录制完成.')
             conf = self.config.get_replay_config(src)
-            if conf.get('danmaku'):
+            if conf.get('danmaku') and not conf.get('skip_render'):
                 logging.info(f'添加分片 {fp} 至渲染队列.')
                 self.render.add(fp, output_dir=conf.get('output_dir'), video_info=msg['video_info'])
             
