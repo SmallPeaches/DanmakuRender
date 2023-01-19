@@ -41,6 +41,11 @@ class huya(BaseAPI):
             response = requests.get(url=room_url, headers=self.header_mobile).text
         return response
 
+    def _get_api_response(self):
+        room_url = 'https://mp.huya.com/cache.php?m=Live&do=profileRoom&roomid=' + str(self.rid)
+        data = requests.get(url=room_url, headers=self.header_mobile).json()
+        return data
+
     def is_available(self) -> bool:
         try:
             response = self._get_response(mobile=True)
@@ -52,9 +57,7 @@ class huya(BaseAPI):
 
     def onair(self) -> bool:
         try:
-            room_url = 'https://mp.huya.com/cache.php?m=Live&do=profileRoom&roomid=' + str(self.rid)
-            data = requests.get(url=room_url, headers=self.header_mobile).json()
-            
+            data = self._get_api_response()
             status=data['data']['realLiveStatus']
             if status == 'ON':
                 return True
@@ -76,27 +79,28 @@ class huya(BaseAPI):
         """
         return: title,uname,face_url,keyframe_url
         """
-        response = self._get_response()
-        selector = etree.HTML(response)
+        response = self._get_api_response()
+        data = response['data']['liveData']
         try:
-            title = selector.xpath('//*[@id="J_roomTitle"]')[0].text
+            title = data['introduction']
         except:
             title = 'huya'+self.rid
         try:
-            uname = selector.xpath('//*[@id="J_roomHeader"]/div[1]/div[2]/div/h3')[0].text
+            uname = data['nick']
         except:
             uname = 'huya'+self.rid
         try:
-            face_url = selector.xpath('//*[@id="avatar-img"]/@src')[0]
+            face_url = data['avatar180']
         except:
-            face_url = 'huya'+self.rid
-        keyframe_url = None
+            face_url = None
+        try:
+            keyframe_url = data['screenshot']
+        except:
+            keyframe_url = None
         return title,uname,face_url,keyframe_url
 
     def get_stream_url(self) -> str:
-        room_url = 'https://mp.huya.com/cache.php?m=Live&do=profileRoom&roomid=' + str(self.rid)
-        data = requests.get(url=room_url, headers=self.header_mobile).json()
-        
+        data = self._get_api_response()
         multiLine=data['data']['stream']['flv']['multiLine']
         urls=[]
         
@@ -111,8 +115,8 @@ class huya(BaseAPI):
         }
 
 if __name__ == '__main__':
-    api = huya('333003')
-    print(api.get_stream_url())
+    api = huya('17797964')
+    print(api.get_info())
 
 
         

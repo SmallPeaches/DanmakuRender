@@ -22,7 +22,6 @@ class FFmpegDownloader():
                  stream_url:str, 
                  output:str, 
                  segment:int,
-                 pipe,
                  flowtype:str,
                  url:str,
                  taskname:str,
@@ -34,7 +33,6 @@ class FFmpegDownloader():
         self.stream_url = stream_url
         self.header = header if header else self.default_header
         self.segment = segment
-        self.sender = pipe
         self.ffmpeg_stream_args = ffmpeg_stream_args
         self.debug = debug
         self.kwargs = kwargs
@@ -43,12 +41,6 @@ class FFmpegDownloader():
         self.url = url
         self.ffmpeg = ffmpeg
         self.stoped = False
-    
-    def pipeSend(self,msg,type='info',**kwargs):
-        if self.sender:
-            self.sender.put(PipeMessage(self.taskname,msg=msg,type=type,**kwargs))
-        else:
-            print(PipeMessage(self.taskname,msg=msg,type=type,**kwargs))
 
     @property
     def duration(self):
@@ -92,7 +84,6 @@ class FFmpegDownloader():
         log = ''
         ffmpeg_low_speed = 0
         timer_cnt = 1
-        part = 0
         
         while not self.stoped:
             if self.ffmpeg_proc.stdout is None:
@@ -140,7 +131,7 @@ class FFmpegDownloader():
                 if 'dropping it' in log:
                     raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
 
-                if timer_cnt%2 == 0 and Onair(self.url) == False:
+                if timer_cnt%3 == 0 and Onair(self.url) == False:
                     logging.debug('Live end.')
                     return
 
@@ -166,3 +157,4 @@ class FFmpegDownloader():
                 logging.exception(e)
         except Exception as e:
             logging.exception(e)
+        logging.debug('ffmpeg downloader stoped.')

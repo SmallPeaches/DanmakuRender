@@ -122,7 +122,6 @@ class Downloader():
             header=stream_request_header,
             output=output,
             segment=self.segment,
-            pipe=self.sender,
             flowtype=self.flowtype,
             url=self.url,
             taskname=self.taskname,
@@ -141,11 +140,11 @@ class Downloader():
         self.loop = True
         if not Onair(self.url):
             self.pipeSend('end')
-            time.sleep(30)
+            time.sleep(45)
 
         while self.loop:
             if not Onair(self.url):
-                time.sleep(30)
+                time.sleep(45)
                 continue
 
             try:
@@ -157,8 +156,10 @@ class Downloader():
             except Exception as e:
                 if Onair(self.url):
                     logging.exception(e)
+                    self.stop_once()
                     self.pipeSend('restart','error',desc=e)
                     time.sleep(30)
+                    continue
                 else:
                     logging.debug(e)
             

@@ -74,6 +74,7 @@ class DanmakuWriter():
                 if int(self.duration/self.segment) != self.part:
                     self.part += 1
                     self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
+                    logging.debug(f'New DMfile: {self.dm_file}')
                     with open(self.dm_file,'w',encoding='utf-8') as f:
                         for info in self.meta_info:
                             f.write(info+'\n')
@@ -178,5 +179,6 @@ class DanmakuWriter():
 
     def stop(self):
         self.stoped = True
+        logging.debug('danmaku writer stoped.')
         return True
 

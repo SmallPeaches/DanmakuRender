@@ -1,8 +1,6 @@
 import logging
 import threading
 import multiprocessing
-import os
-import sys
 import queue
 import time
 from .Uploader import Uploader
@@ -17,9 +15,9 @@ class DanmakuRender():
 
         self.downloaders = {}
         self.uploaders = {}
-        self.downloader_recv = multiprocessing.Queue()
-        self.render_recv = multiprocessing.Queue()
-        self.uploader_recv = multiprocessing.Queue()
+        self.downloader_recv = queue.Queue()
+        self.render_recv = queue.Queue()
+        self.uploader_recv = queue.Queue()
         
     def start(self):
         self.monitor = threading.Thread(target=self.start_monitor,daemon=True)
@@ -53,14 +51,14 @@ class DanmakuRender():
     def start_monitor(self):
         while 1:
             try:
-                msg = self.downloader_recv.get_nowait()
-                self.process_downloader_message(msg)
+                msg = self.uploader_recv.get_nowait()
+                self.process_uploader_message(msg)
                 continue
             except queue.Empty:
                 pass
             try:
-                msg = self.uploader_recv.get_nowait()
-                self.process_uploader_message(msg)
+                msg = self.downloader_recv.get_nowait()
+                self.process_downloader_message(msg)
                 continue
             except queue.Empty:
                 pass
@@ -69,7 +67,7 @@ class DanmakuRender():
                 self.process_render_message(msg)
                 continue
             except queue.Empty:
-                time.sleep(0.5)
+                time.sleep(1)
 
     def process_uploader_message(self,msg):
         type = msg['type']
@@ -93,7 +91,7 @@ class DanmakuRender():
             elif info == 'end':
                 if self.downloaders[src]['status'] is None:
                     logging.info(f'{msg["src"]} 直播结束，正在等待.')
-                else:
+                elif self.downloaders[src]['status'] == 'start':
                     logging.info(f'{msg["src"]} 录制结束，正在等待.')
                 # logging.info(f'{msg["src"]} 直播结束，正在等待.')
                 self.downloaders[src]['status'] = 'end'
@@ -147,29 +145,6 @@ class DanmakuRender():
             fp = msg['msg']
             logging.error(f'分片 {fp} 渲染错误.')
             logging.exception(msg.get('desc'))
-    
-    """
-    def add(self, replay_config):
-        config = self.config['downloader'].copy()
-        config.update(replay_config)
-        if not config.get('taskname'):
-            taskname = GetStreamerInfo(config['url'])[1]
-        if self.downloaders.get(taskname):
-            raise RuntimeError(f"录制 {taskname} 已经存在")
-        
-        downloader = Downloader(pipe=self.downloader_recv, debug=self.debug, **config)
-        proc = downloader.start()
-
-        self.downloaders[taskname] = {
-                'class': downloader,
-                'proc': proc,
-                'status': None,
-            }
-        return True
-    """
-
-    def remove(self, taskname):
-        pass
 
     def stop(self):
         for taskname, task in self.downloaders.items():
