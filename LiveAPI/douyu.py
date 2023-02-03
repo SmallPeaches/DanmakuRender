@@ -1,6 +1,9 @@
 # 获取斗鱼直播间的真实流媒体地址，默认最高画质
 # 使用 https://github.com/wbt5/real-url/issues/185 中两位大佬@wjxgzz @4bbu6j5885o3gpv6ss8找到的的CDN，在此感谢！
-from .BaseAPI import BaseAPI
+try:
+    from .BaseAPI import BaseAPI
+except ImportError:
+    from BaseAPI import BaseAPI
 import hashlib
 import warnings
 import re
@@ -72,7 +75,7 @@ class douyu(BaseAPI):
 
     def onair(self) -> bool:
         error, key = self.get_pre()
-        if error not in [104,102]:
+        if error == 0:
             return True
         else:
             return False
@@ -87,11 +90,11 @@ class douyu(BaseAPI):
         try:
             title = selector.xpath('//*[@id="js-player-title"]/div[1]/div[2]/div[1]/div[2]/div[1]/h3')[0].text
         except:
-            title = 'huya'+self.rid
+            title = 'douyu'+self.rid
         try:
             uname = selector.xpath('//*[@id="js-player-title"]/div[1]/div[2]/div[2]/div[1]/div[2]/div/h2')[0].text
         except:
-            uname = 'huya'+self.rid
+            uname = 'douyu'+self.rid
         try:
             face_url = selector.xpath('//*[@id="js-player-title"]/div[1]/div[1]/div/a/div/img/@src')[0]
         except:
