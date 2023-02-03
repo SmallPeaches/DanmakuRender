@@ -72,7 +72,7 @@ class douyu(BaseAPI):
 
     def onair(self) -> bool:
         error, key = self.get_pre()
-        if error not in [104,102]:
+        if error == 0:
             return True
         else:
             return False
