@@ -63,6 +63,10 @@ class douyu(BaseAPI):
             key = re.search(r'(\d{1,8}[0-9a-zA-Z]+)_?\d{0,4}(/playlist|.m3u8)', rtmp_live).group(1)
         return error, key
     
+    def get_resp_new(self):
+        resp = requests.get(f'https://www.douyu.com/betard/{self.rid}', headers=self.header).json()
+        return resp
+    
     def is_available(self) -> bool:
         error, key = self.get_pre()
         if error == 102:
@@ -72,7 +76,9 @@ class douyu(BaseAPI):
 
     def onair(self) -> bool:
         error, key = self.get_pre()
-        if error == 0:
+        resp = self.get_resp_new()
+        videoloop = resp['room']['room_biz_all']['videoLoop']
+        if error == 0 and videoloop == 0:
             return True
         else:
             return False
@@ -81,22 +87,23 @@ class douyu(BaseAPI):
         """
         return: title,uname,face_url,keyframe_url
         """
-        room_url = 'https://www.douyu.com/' + self.rid
-        response = requests.get(url=room_url, headers=self.header).text
-        selector = etree.HTML(response)
+        resp = self.get_resp_new()
         try:
-            title = selector.xpath('//*[@id="js-player-title"]/div[1]/div[2]/div[1]/div[2]/div[1]/h3')[0].text
+            title = resp['room']['room_name']
         except:
             title = 'douyu'+self.rid
         try:
-            uname = selector.xpath('//*[@id="js-player-title"]/div[1]/div[2]/div[2]/div[1]/div[2]/div/h2')[0].text
+            uname = resp['room']['nickname']
         except:
             uname = 'douyu'+self.rid
         try:
-            face_url = selector.xpath('//*[@id="js-player-title"]/div[1]/div[1]/div/a/div/img/@src')[0]
+            face_url = resp['room']['owner_avatar']
         except:
             face_url = None
-        keyframe_url = None
+        try:
+            keyframe_url = resp['room']['room_pic']
+        except:
+            keyframe_url = None
         return title,uname,face_url,keyframe_url
 
     def get_pc_js(self, cdn='ws-h5', rate=0):
