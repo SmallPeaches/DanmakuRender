@@ -56,6 +56,7 @@ if __name__ == '__main__':
     logging.getLogger().addHandler(console_handler)
     logging.getLogger().addHandler(file_handler)
 
+    logging.debug(f'args: {args}')
     logging.debug(f'Full config: {config.config}')
     dmr = DanmakuRender(config, args.debug)
 
