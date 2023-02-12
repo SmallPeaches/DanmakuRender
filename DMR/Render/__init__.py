@@ -47,7 +47,14 @@ class Render():
         thread.start()
         return thread
 
-    def add(self, video, **kwargs):
+    def add(self, video, group=None, video_info=None, **kwargs):
+        if video == 'end':
+            self.wait_queue.put({
+                'msg_type': 'end',
+                'group': group
+            })
+            return 
+        
         danmaku = os.path.splitext(video)[0] + '.ass'
         filename = os.path.splitext(os.path.basename(video))[0] + f'（带弹幕版）.{self.format}'
         if self.output_dir:
@@ -59,19 +66,27 @@ class Render():
         if self.rendering:
             logging.warn('弹幕渲染速度慢于录制速度，可能导致队列阻塞.')
         self.wait_queue.put({
+            'msg_type':'render',
             'video':video,
             'danmaku':danmaku,
             'output':output,
-            **kwargs
+            'group':group,
+            'video_info':video_info,
+            'kwargs': kwargs,
         })
         
     def render_queue(self):
         while not self.stoped:
             task = self.wait_queue.get()
+            if task.get('msg_type') == 'end':
+                self.pipeSend(task.get('group'),'end')
             self.rendering = True
             logging.info(f'正在渲染: {task["video"]}')
             try:
                 info = self.render.render_one(**task)
+                if task.get('video_info'):
+                    task['video_info'] = task['video_info'].copy()
+                    task['video_info']['has_danmu'] = '（带弹幕版）'
                 self.pipeSend(task['output'],desc=info,**task)
             except KeyboardInterrupt:
                 self.stop()

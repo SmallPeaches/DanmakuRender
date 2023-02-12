@@ -12,7 +12,7 @@ class BaseAPI():
         """
         raise NotImplementedError
 
-    def get_stream_url(self) -> dict:
+    def get_stream_url(self, **kwargs) -> dict:
         """
         return dict{url,(header,...)}
         """

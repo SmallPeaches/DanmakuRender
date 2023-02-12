@@ -99,7 +99,7 @@ class huya(BaseAPI):
             keyframe_url = None
         return title,uname,face_url,keyframe_url
 
-    def get_stream_url(self) -> str:
+    def get_stream_url(self, flow_cdn=None, **kwargs) -> str:
         data = self._get_api_response()
         multiLine=data['data']['stream']['flv']['multiLine']
         urls=[]
@@ -110,13 +110,19 @@ class huya(BaseAPI):
                 # liveline = live(obj['url'])
                 # urls.append(liveline)
                 urls.append(obj['url'])
+        url = urls[0]
+        if flow_cdn:
+            url = url.replace('al.flv.huya.com',f'{flow_cdn}.flv.huya.com')
+            if requests.get(url,stream=True,headers=self.header).status_code != 200:
+                raise ValueError(f'虎牙CDN {flow_cdn} 不可用. URL: {url}')
+            
         return {
-            'url': urls[0]
+            'url': url
         }
 
 if __name__ == '__main__':
-    api = huya('17797964')
-    print(api.get_info())
+    api = huya('19558978')
+    print(api.get_stream_url())
 
 
         

@@ -63,7 +63,7 @@ class douyin(BaseAPI):
         code = resp['app']['initialState']['roomStore']['roomInfo']['room']['status']
         return code == 2
 
-    def get_stream_url(self) -> str:
+    def get_stream_url(self, **kwargs) -> str:
         # response = self._get_response()
         # url = response['data']['room']['stream_url']['rtmp_pull_url']
         resp = self._get_response_douyin()
@@ -89,5 +89,5 @@ class douyin(BaseAPI):
         return title,uname,face_url,keyframe_url
 
 if __name__ == '__main__':
-    api = douyin('677820694193')
+    api = douyin('314150336339')
     print(api.get_info())

@@ -69,17 +69,7 @@ class Config():
         FFprobe.setffprobe(self.default_conf.get('ffprobe'))
         
         self.config = default_conf.copy()
-
-        if self.replay_conf.get('upload'):
-            self.config['upload'] = {}
-            upload = self.replay_conf['upload']
-            for upd in upload.keys():
-                if not upload[upd].get('target'):
-                    upload[upd]['target'] = 'bilibili'
-                target = upload[upd]['target']
-                upload_conf = self.default_conf['uploader'][target].copy()
-                upload_conf.update(upload[upd])
-                self.config['upload'][upd] = upload_conf
+        self.config['upload'] = {}
 
         if self.replay_conf.get('replay'):
             self.config['replay'] = {}
@@ -107,6 +97,34 @@ class Config():
                         warnings.warn(f'平台 {plat} 不支持录制弹幕，程序将只录制直播流.')
                         rep_conf['danmaku'] = False
                     self.config['replay'][name] = rep_conf
+        
+        if self.replay_conf.get('upload'):
+            upload = self.replay_conf['upload']
+            for upd in upload.keys():
+                if not upload[upd].get('target'):
+                    upload[upd]['target'] = 'bilibili'
+                target = upload[upd]['target']
+                upload_conf = self.default_conf['uploader'][target].copy()
+                upload_conf.update(upload[upd])
+                self.config['upload'][upd] = upload_conf
+
+        default_upds = set()
+        for name, rep_conf in self.config['replay'].items():
+            for dtype, upds in rep_conf.get('upload',{}).items():
+                if isinstance(upds,str):
+                    upds = upds.split(',')
+                    rep_conf['upload'][dtype] = upds
+                for upd in upds:
+                    if self.config.get('upload') and self.config['upload'].get(upd):
+                        continue
+                    elif self.default_conf['uploader'].get(upd):
+                        default_upds.add(upd)
+                    else:
+                        raise ValueError(f'不存在上传器 {upd}.')
+                    
+        for upd in default_upds:
+            upload_conf = self.default_conf['uploader'][upd].copy()
+            self.config['upload'][upd] = upload_conf
 
     @property
     def render_config(self) -> dict:

@@ -37,7 +37,7 @@ class bilibili(BaseAPI):
             else:
                 return False
 
-    def get_stream_url(self) -> dict:
+    def get_stream_url(self, flow_cdn=None, **kwargs) -> dict:
         real_url = ''
         r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
         with requests.Session() as s:
@@ -54,7 +54,7 @@ class bilibili(BaseAPI):
                     'protocol': '0,1',
                     'format': '0,1,2',
                     'codec': '0',
-                    'qn': 30000,
+                    'qn': 20000,
                     'ptype': 8,
                     'dolby': 5,
                     'panorama': 1
@@ -64,11 +64,20 @@ class bilibili(BaseAPI):
                     stream = resp['data']['playurl_info']['playurl']['stream']
                     http_info = stream[0]['format'][0]['codec'][0]
                     base_url = http_info['base_url']
-                    host = http_info['url_info'][0]['host']
-                    extra = http_info['url_info'][0]['extra']
-                    flv_url = host + base_url + extra
-                    if requests.get(flv_url,stream=True,headers=self.header).status_code == 200:
-                        real_url = flv_url
+                    flv_urls = []
+                    for info in http_info['url_info']:
+                        host = info['host']
+                        extra = info['extra']
+                        flv_url = host + base_url + extra
+                        flv_urls.append(flv_url)
+                    if flow_cdn:
+                        real_url = flv_urls[min(int(flow_cdn), len(flv_urls)-1)]
+                    else:
+                        real_url = flv_urls[0]
+                        for uri in flv_urls:
+                            if 'mcdn.' not in uri:
+                                real_url = uri
+                                break
                 except:
                     raise RuntimeError('bilibili直播流获取错误.')
                 # try:
@@ -131,5 +140,5 @@ class bilibili(BaseAPI):
             return '','',None,None
 
 if __name__ == '__main__':
-    api = bilibili('21864441')    
+    api = bilibili('5851637')    
     print(api.get_stream_url()) 

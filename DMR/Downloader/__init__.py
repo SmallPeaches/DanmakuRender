@@ -1,12 +1,8 @@
 from datetime import datetime, timedelta
 import logging
-import signal
-import subprocess
 import os
-import asyncio
 import threading
 import time
-import multiprocessing
 from DMR.Downloader.danmakuio import DanmakuWriter
 from DMR.message import PipeMessage
 from .ffmpegio import FFmpegDownloader
@@ -15,16 +11,17 @@ from os.path import join,exists
 from DMR.utils import *
 
 class Downloader():
-    def __init__(self, url, output_dir, pipe, segment:int, taskname=None, danmaku=True, flowtype='flv', engine='ffmpeg', debug=False, **kwargs) -> None:
+    def __init__(self, url, output_dir, pipe, segment:int, taskname=None, danmaku=True, video=True, vid_format='flv', engine='ffmpeg', debug=False, **kwargs) -> None:
         self.taskname = taskname
         self.url = url
         self.output_dir = output_dir
         self.sender = pipe
         self.kwargs = kwargs
         self.debug = debug
-        self.flowtype = flowtype
+        self.vid_format = vid_format
         self.segment = segment
         self.danmaku = danmaku
+        self.video = video
 
         if not self.taskname:
             self.taskname = GetStreamerInfo(url)[1]
@@ -36,59 +33,42 @@ class Downloader():
         else:
             print(PipeMessage(self.taskname,msg=msg,type=type,**kwargs))
 
-    def segment_helper(self, output:str):
-        output = output + f'.{self.flowtype}'
-        part = 0
-        duration = 0
-        files = []
-        while not self.stoped:
-            nextfile = output.replace(r'%03d','%03d'%(part+1))
-            if exists(nextfile):
-                thisfile = output.replace(r'%03d','%03d'%part)
-                sinfo = GetStreamerInfo(self.url)
-                t0 = datetime.now() - timedelta(seconds=part*self.segment)
-                video_info = {
-                    'url': self.url,
-                    'taskname': self.taskname,
-                    'streamer': sinfo[1],
-                    'title': sinfo[0],
-                    'time': t0,
-                    'group': self.group
-                }
-                self.pipeSend(thisfile,'split',video_info=video_info)
-                files.append(thisfile)
-                part += 1
-            if duration-self.segment*part > 2*self.segment:
-                break
-            time.sleep(10)
-            duration += 10
-
-        nextfile = output.replace(r'%03d','%03d'%(len(files)))
+    def check_segment(self):
+        nextfile = self._output_fn.replace(r'%03d','%03d'%(self._seg_part+1))
         if exists(nextfile):
+            thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
             sinfo = GetStreamerInfo(self.url)
-            t0 = datetime.now() - timedelta(seconds=part*self.segment)
+            t0 = datetime.now() - timedelta(seconds=self._seg_part*self.segment)
+            video_info = {
+                'url': self.url,
+                'taskname': self.taskname,
+                'streamer': sinfo[1],
+                'title': sinfo[0],
+                'time': t0,
+                'has_danmu': '',
+            }
+            self.pipeSend(thisfile,'split',video_info=video_info)
+            self._seg_part += 1
+        
+        if self.stoped:
+            thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
+            sinfo = GetStreamerInfo(self.url)
+            t0 = datetime.now() - timedelta(seconds=self._seg_part*self.segment)
             video_info = {
                     'url': self.url,
                     'taskname': self.taskname,
                     'streamer': sinfo[1],
                     'title': sinfo[0],
-                    'time': t0,
-                    'group': self.group
-                }
-            self.pipeSend(nextfile,'split',video_info=video_info)
-        else:
-            thisfile = output.replace(r'%03d','%03d'%part)
-            sinfo = GetStreamerInfo(self.url)
-            t0 = datetime.now() - timedelta(seconds=part*self.segment)
-            video_info = {
-                    'url': self.url,
-                    'taskname': self.taskname,
-                    'streamer': sinfo[1],
-                    'title': sinfo[0],
-                    'time': t0,
-                    'group': self.group
+                    'time': t0
                 }
             self.pipeSend(thisfile,'split',video_info=video_info)
+
+    def segment_helper(self, output:str):
+        self._output_fn = output + f'.{self.vid_format}'
+        self._seg_part = 0
+        while not self.stoped:
+            self.check_segment()
+            time.sleep(10)
 
     def start_once(self):
         os.makedirs(self.output_dir,exist_ok=True)
@@ -111,18 +91,16 @@ class Downloader():
             output = join(self.output_dir,filename)
             self.segment_thread = threading.Thread(target=self.segment_helper,args=(output,),daemon=True)
             self.segment_thread.start()
-            self.group = '-'.join(filename.split('-')[:-1])
         else:
             filename = f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}'
             output = join(self.output_dir,filename)
-            self.group = filename
         
         self.downloader = FFmpegDownloader(
             stream_url=stream_url,
             header=stream_request_header,
             output=output,
             segment=self.segment,
-            flowtype=self.flowtype,
+            vid_format=self.vid_format,
             url=self.url,
             taskname=self.taskname,
             debug=self.debug,
@@ -130,11 +108,17 @@ class Downloader():
         )
 
         if self.danmaku:
-            description = f'{filename}的弹幕文件, {self.url}, powered by DanmakuRender.'
+            description = f'{filename}的弹幕文件, {self.url}, powered by DanmakuRender: https://github.com/SmallPeaches/DanmakuRender.'
             self.dmw = DanmakuWriter(self.url,output,self.segment,description,self.width,self.height,**self.kwargs)
             self.dmw.start()
         
-        self.downloader.start_helper()
+        if self.video:
+            self.downloader.start_helper()
+        else:
+            while 1:
+                if not Onair(self.url):
+                    break
+                time.sleep(60)
 
     def start_helper(self):
         self.loop = True
@@ -163,8 +147,8 @@ class Downloader():
                 else:
                     logging.debug(e)
             
-            self.pipeSend('end')
             self.stop_once()
+            self.pipeSend('end')
 
     def start(self):
         thread = threading.Thread(target=self.start_helper,daemon=True)
@@ -177,6 +161,7 @@ class Downloader():
 
     def stop_once(self):
         self.stoped = True
+        self.check_segment()
         if self.danmaku:
             try:
                 self.dmw.stop()

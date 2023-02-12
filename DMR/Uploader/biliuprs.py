@@ -65,9 +65,13 @@ class biliuprs():
             '--tid', tid,
             '--title', title,
         ]
-        upload_args += [video]
+        if isinstance(str,video):
+            upload_args += [video]
+        elif isinstance(list,video):
+            upload_args += video
 
         upload_args = [str(x) for x in upload_args]
+        logging.debug(f'biliuprs: {upload_args}')
         
         if self.debug:
             proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
@@ -140,6 +144,30 @@ class biliuprs():
             return True
         else:
             return False
+        
+    def upload_batch(self, batch):
+        video_batch = [bat['video'] for bat in batch]
+        kwargs = batch[0]['kwargs']
+        
+        if kwargs.get('title'):
+            kwargs['title'] = self.replace_keywords(kwargs['title'], kwargs.get('video_info'))
+        if kwargs.get('desc'):
+            kwargs['desc'] = self.replace_keywords(kwargs['desc'], kwargs.get('video_info'))
+        if kwargs.get('dynamic'):
+            kwargs['dynamic'] = self.replace_keywords(kwargs['dynamic'], kwargs.get('video_info'))
+        
+        self.upload_proc = self.upload_helper(video=video_batch, bvid=None, **kwargs)
+
+        if self.upload_proc.stdout is None:
+            return self.upload_proc.wait()
+
+        status = False
+        for line in self.upload_proc.stdout.readlines():
+            line = line.decode('utf-8')
+            if '上传成功' in line:
+                status = True
+            
+        return status
 
     def stop(self):
         try:

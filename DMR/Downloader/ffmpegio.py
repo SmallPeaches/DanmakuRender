@@ -22,7 +22,7 @@ class FFmpegDownloader():
                  stream_url:str, 
                  output:str, 
                  segment:int,
-                 flowtype:str,
+                 vid_format:str,
                  url:str,
                  taskname:str,
                  ffmpeg_stream_args:list,
@@ -36,7 +36,7 @@ class FFmpegDownloader():
         self.ffmpeg_stream_args = ffmpeg_stream_args
         self.debug = debug
         self.kwargs = kwargs
-        self.output = f'{output}.{flowtype}'
+        self.output = f'{output}.{vid_format}'
         self.taskname = taskname
         self.url = url
         self.ffmpeg = ffmpeg

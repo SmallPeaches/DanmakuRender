@@ -30,7 +30,7 @@ if __name__ == '__main__':
     sys.path.append('tools')
 
     if args.version:
-        print('DanmakuRender-4 2023.1.6.')
+        print('DanmakuRender-4 2023.2.12.')
         print('https://github.com/SmallPeaches/DanmakuRender')
         exit(0)
 

@@ -138,7 +138,7 @@ class douyu(BaseAPI):
             key = re.search(r'(\d{1,8}[0-9a-zA-Z]+)_?\d{0,4}(/playlist|.flv)', rtmp_live).group(1)
         return key
 
-    def get_stream_url(self) -> str:
+    def get_stream_url(self, **kwargs) -> str:
         error, key = self.get_pre()
         if error == 0:
             pass
