@@ -33,22 +33,34 @@ def GetStreamerInfo(plat,rid=None) -> tuple:
     if rid is None:
         plat,rid = split_url(plat)
     api = LiveAPI(plat,rid)
-    return api.get_info()
+    try:
+        return api.get_info()
+    except:
+        return None
 
 def GetStreamURL(plat,rid=None,flow_cdn=None) -> dict:
     if rid is None:
         plat,rid = split_url(plat)
     api = LiveAPI(plat,rid)
-    return api.get_stream_url(flow_cdn=flow_cdn)
+    try:
+        return api.get_stream_url(flow_cdn=flow_cdn)
+    except:
+        return None
 
 def Onair(plat,rid=None) -> bool:
     if rid is None:
         plat,rid = split_url(plat)
     api = LiveAPI(plat,rid)
-    return api.onair()
+    try:
+        return api.onair()
+    except:
+        return None
 
 def UrlAvailable(plat,rid=None) -> bool:
     if rid is None:
         plat,rid = split_url(plat)
     api = LiveAPI(plat,rid)
-    return api.is_available()
+    try:
+        return api.is_available()
+    except:
+        return None

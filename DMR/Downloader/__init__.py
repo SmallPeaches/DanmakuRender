@@ -38,6 +38,8 @@ class Downloader():
         if exists(nextfile):
             thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
             sinfo = GetStreamerInfo(self.url)
+            if sinfo is None:
+                return 
             t0 = datetime.now() - timedelta(seconds=self._seg_part*self.segment)
             video_info = {
                 'url': self.url,
@@ -53,6 +55,8 @@ class Downloader():
         if self.stoped:
             thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
             sinfo = GetStreamerInfo(self.url)
+            if sinfo is None:
+                sinfo = (self.taskname, self.taskname)
             t0 = datetime.now() - timedelta(seconds=self._seg_part*self.segment)
             video_info = {
                     'url': self.url,
