@@ -1,5 +1,5 @@
-# from tools.check_env import check_pypi
-# check_pypi()
+from tools.check_env import check_pypi, check_ffmpeg
+check_pypi()
 
 import time
 import argparse
@@ -36,6 +36,13 @@ if __name__ == '__main__':
 
     with open(args.default_config,'r',encoding='utf-8') as f:
         default_config = yaml.safe_load(f)
+    
+    if default_config.get('ffmpeg') is None or default_config.get('ffprobe') is None:
+        ffmpeg, ffprobe = check_ffmpeg()
+        if default_config.get('ffmpeg') is None:
+            default_config['ffmpeg'] = ffmpeg
+        if default_config.get('ffprobe') is None:
+            default_config['ffprobe'] = ffprobe
     
     with open(args.config,'r',encoding='utf-8') as f:
         replay_config = yaml.safe_load(f)

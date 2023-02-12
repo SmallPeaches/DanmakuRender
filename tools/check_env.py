@@ -29,7 +29,7 @@ def compare_version(ver1, ver2):
 
 def check_pypi():
     if compare_version(platform.python_version(),'3.10.0') >= 0:
-        warnings.warn('程序正运行在Python 3.10及以上版本, 此版本有可能导致录制弹幕失败, 建议切换到Python 3.7版本.')
+        warnings.warn('程序正运行在Python 3.10及以上版本, 此版本有可能导致斗鱼弹幕录制错误, 如果出现此情况可以切换到Python 3.9版本.')
     
     try:
         import requests
@@ -44,23 +44,22 @@ def check_pypi():
         print('Python 包安装完成.')
         return 
 
-def check_ffmpeg(args):
+def check_ffmpeg():
     try:
         proc = subprocess.Popen(['ffmpeg','-version'],stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         out = proc.stdout.readlines()[0].decode('utf-8')
     except:
         out = ''
     if 'ffmpeg version' in out:
-        args.ffmpeg = 'ffmpeg'
-        return True
-    elif os.path.exists(args.ffmpeg):
-        return True
+        return 'ffmpeg', 'ffprobe'
+    elif os.path.exists('tools/ffmpeg.exe') and os.path.exists('tools/ffprobe.exe'):
+        return 'tools/ffmpeg.exe', 'tools/ffprobe.exe'
     else:
         if sys.platform == 'win32':
             input('FFmpeg 未正确安装，回车自动安装:')
             
             import requests
-            print('正在下载FFmpeg (约78MB).')
+            print('正在下载FFmpeg (约80MB, 若下载速度过慢可以参考教程自行下载).')
             r = requests.get('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',stream=True)
             content = b''
             for i,chunk in enumerate(r.iter_content(1024*64)):
@@ -81,6 +80,7 @@ def check_ffmpeg(args):
             shutil.move(f'./tools/{ffmpeg_version}/bin/ffprobe.exe','./tools/ffprobe.exe')
             shutil.rmtree(f'./tools/{ffmpeg_version}')
             print('FFmpeg 安装完成.')
+            return 'tools/ffmpeg.exe', 'tools/ffprobe.exe'
         else:
             print("FFmpeg 未正确安装.")
             exit(0)

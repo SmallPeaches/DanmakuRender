@@ -1,7 +1,7 @@
-# FFprobe 可执行程序地址
-ffprobe: ffprobe
-# FFmpeg 可执行程序地址
-ffmpeg: ffmpeg
+# FFprobe 可执行程序地址，为空自动搜索
+ffprobe: ~
+# FFmpeg 可执行程序地址，为空自动搜索
+ffmpeg: ~
 
 # 录制参数
 downloader:

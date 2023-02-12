@@ -76,11 +76,12 @@ replay:
     
 
 ### 默认参数说明
+**注意：具体参数以default.yml为准.**
 ```yaml
-# FFprobe 可执行程序地址
-ffprobe: ffprobe
-# FFmpeg 可执行程序地址
-ffmpeg: ffmpeg
+# FFprobe 可执行程序地址，为空自动搜索
+ffprobe: ~
+# FFmpeg 可执行程序地址，为空自动搜索
+ffmpeg: ~
 
 # 录制参数
 downloader:
@@ -93,18 +94,29 @@ downloader:
   # 是否录制弹幕
   danmaku: True
 
+  # 是否录制直播流
+  video: True
+
+  # 启动自动渲染
+  auto_render: True
+
   # 默认分辨率，如果程序无法正常判断流的分辨率可以使用以下参数强行指定
   resolution: [1920,1080]
 
-  # 输出文件的格式，默认mp4
-  flowtype: mp4
+  # 视频文件的格式，默认mp4
+  vid_format: mp4
 
   # 录制程序引擎，只能是ffmpeg
   engine: ffmpeg
 
+  # 直播流CDN选项
+  # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认al
+  # 对于B站，此项可选0-n表示不同的cdn服务器，默认为0
+  # 斗鱼和抖音暂时没用
+  flow_cdn: ~
+
   # ffmpeg http参数
-  ffmpeg_stream_args: [-fflags,+discardcorrupt,-reconnect,
-                        '1',-rw_timeout,'10000000',
+  ffmpeg_stream_args: [-fflags,+discardcorrupt,-reconnect,'1',-rw_timeout,'10000000',
                         '-analyzeduration','15000000',
                         '-probesize','50000000',
                         '-thread_queue_size', '16']
@@ -113,6 +125,7 @@ downloader:
   disable_lowspeed_interrupt: False
   
   # 以下是弹幕录制参数
+
   # 弹幕行距，默认6
   margin: 6
 
@@ -146,10 +159,10 @@ render:
   # 渲染引擎，只能是ffmpeg
   engine: ffmpeg
 
-  # 硬件解码参数，NVIDIA默认，AMD设为空
+  # 硬件解码参数，NVIDIA显卡默认，AMD显卡或者CPU设为空
   hwaccel_args: [-hwaccel,cuda,-noautorotate]
 
-  # 视频编码器，NVIDIA设置为h264_nvenc，AMD设置为h264_amf
+  # 视频编码器，NVIDIA设置为h264_nvenc，AMD设置为h264_amf，CPU设置为libx264
   vencoder: h264_nvenc
 
   # 视频编码器参数，默认-b:v,15M
