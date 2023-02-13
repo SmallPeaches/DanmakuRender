@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import re
 import platform
 import warnings
 import requests
@@ -88,20 +89,25 @@ def check_ffmpeg():
 def _update_from_github():
     pass
 
-def check_update():
-    if not os.path.exists('tools/VERSION.INFO'):
-        resp = requests.get('https://api.github.com/repos/SmallPeaches/DanmakuRender',timeout=5).json()
-        update_time = resp['pushed_at']
-        info = {
-            'last_update':update_time
-        }
-        _update_from_github()
-        with open('tools/VERSION.INFO','w') as f:
-            json.dump(info,f,ensure_ascii=False)
-    else:
-        with open('tools/VERSION.INFO','r') as f:
-            info = json.load(f)
-        update_time = info['last_update']
-        resp = requests.get('https://api.github.com/repos/SmallPeaches/DanmakuRender',timeout=5).json()
-        if update_time < resp['pushed_at']:
-            _update_from_github()
+def check_update(thisver):
+        resp = requests.get('https://github.com/SmallPeaches/DanmakuRender/blob/v4/main.py',timeout=5).text
+        version = re.findall(r"DanmakuRender-4 .*\.",resp)[0]
+        version = version.split(' ')[1][:-1]
+        if compare_version(version, thisver) > 0:
+            print('存在可用更新, 如果运行出现问题可以前往 https://github.com/SmallPeaches/DanmakuRender/tree/v4 获取更新.')
+    # if not os.path.exists('tools/VERSION.INFO'):
+    #     resp = requests.get('https://api.github.com/repos/SmallPeaches/DanmakuRender',timeout=5).json()
+    #     update_time = resp['pushed_at']
+    #     info = {
+    #         'last_update':update_time
+    #     }
+    #     _update_from_github()
+    #     with open('tools/VERSION.INFO','w') as f:
+    #         json.dump(info,f,ensure_ascii=False)
+    # else:
+    #     with open('tools/VERSION.INFO','r') as f:
+    #         info = json.load(f)
+    #     update_time = info['last_update']
+    #     resp = requests.get('https://api.github.com/repos/SmallPeaches/DanmakuRender',timeout=5).json()
+    #     if update_time < resp['pushed_at']:
+    #         _update_from_github()

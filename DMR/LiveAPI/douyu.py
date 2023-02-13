@@ -38,6 +38,9 @@ class douyu(BaseAPI):
         else:
             raise Exception('房间号错误')
     
+    def __del__(self):
+        self.s.close()
+
     @staticmethod
     def md5(data):
         return hashlib.md5(data.encode('utf-8')).hexdigest()

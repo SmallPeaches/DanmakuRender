@@ -6,6 +6,7 @@ import sys
 import asyncio
 import threading
 import time
+import queue
 from os.path import *
 
 from DMR.LiveAPI import Onair
@@ -70,25 +71,13 @@ class FFmpegDownloader():
         logging.debug(ffmpeg_args)
 
         if self.debug:
-            proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
+            self.ffmpeg_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
         else:
-            proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
+            self.ffmpeg_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
         
-        return proc
-
-    def start_helper(self):
-        self.stoped = False
-        self.starttime = datetime.now().timestamp()
-        self.ffmpeg_proc = self.start_ffmpeg()
-        
-        log = ''
-        ffmpeg_low_speed = 0
-        timer_cnt = 1
-        
-        while not self.stoped:
-            if self.ffmpeg_proc.stdout is None:
-                time.sleep(0.5)
-            else:
+        self.msg_queue = None
+        def ffmpeg_monitor():
+            while not self.stoped:
                 out = b''
                 t0 = self.duration
                 while 1:
@@ -101,10 +90,36 @@ class FFmpegDownloader():
                         break
                     else:
                         out += char
-                line = out.decode('utf-8')
-                log += line+'\n'
-                # if 'frame=' in line:
-                #     self.pipeSend('ok',desc=line)
+                line = out.decode('utf-8',errors='ignore')
+                line += '\n'
+                self.msg_queue.put(line)
+        
+        if self.ffmpeg_proc.stdout is not None:
+            self.msg_queue = queue.Queue()
+            self.ffmpeg_monitor_proc = threading.Thread(target=ffmpeg_monitor, daemon=True)
+            self.ffmpeg_monitor_proc.start()
+        
+        return self.msg_queue
+    
+    def start_helper(self):
+        self.stoped = False
+        self.starttime = datetime.now().timestamp()
+        q = self.start_ffmpeg()
+        
+        log = ''
+        ffmpeg_low_speed = 0
+        self._timer_cnt = 1
+        
+        while not self.stoped:
+            if q is None:
+                time.sleep(1)
+                continue
+            
+            try:
+                line = self.msg_queue.get_nowait()
+                log += line
+            except queue.Empty:
+                time.sleep(1)
                     
             if self.ffmpeg_proc.poll() is not None:
                 logging.debug('FFmpeg exit.')
@@ -112,7 +127,10 @@ class FFmpegDownloader():
                 if Onair(self.url):
                     raise RuntimeError(f'FFmpeg 异常退出: {log}')
 
-            if self.duration > timer_cnt*15 and not self.debug:
+            if self.duration > self._timer_cnt*15:
+                if log == '':
+                    raise RuntimeError(f'{self.taskname} 管道读取错误, 即将重试.')
+                
                 logging.debug(f'{self.taskname} FFmpeg output:\n{log}')
 
                 if not self.kwargs.get('disable_lowspeed_interrupt'):
@@ -131,12 +149,12 @@ class FFmpegDownloader():
                 if 'dropping it' in log:
                     raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
 
-                if timer_cnt%3 == 0 and Onair(self.url) == False:
+                if self._timer_cnt%3 == 0 and Onair(self.url) == False:
                     logging.debug('Live end.')
                     return
 
                 log = ''
-                timer_cnt += 1
+                self._timer_cnt += 1
 
     def start(self):
         thread = threading.Thread(target=self.start_helper,daemon=True)

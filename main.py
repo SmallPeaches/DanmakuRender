@@ -1,4 +1,4 @@
-from tools.check_env import check_pypi, check_ffmpeg
+from tools.check_env import check_pypi, check_ffmpeg, check_update
 check_pypi()
 
 import time
@@ -11,6 +11,8 @@ import logging.handlers
 import yaml
 
 sys.path.append('./tools')
+VERSION = '2023.2.13'
+VERSION_FULLNAME = 'DanmakuRender-4 2023.2.13'
 
 from DMR import DanmakuRender, utils
 from DMR.Render import Render
@@ -26,13 +28,17 @@ if __name__ == '__main__':
     parser.add_argument('--render_only',action='store_true')
     parser.add_argument('--input_dir',type=str)
     parser.add_argument('--version',type=str)
+    parser.add_argument('--skip_update',action='store_true')
     args = parser.parse_args()
     sys.path.append('tools')
 
     if args.version:
-        print('DanmakuRender-4 2023.2.12.')
+        print(f'DanmakuRender-4 {VERSION}.')
         print('https://github.com/SmallPeaches/DanmakuRender')
         exit(0)
+    
+    if not args.skip_update:
+        check_update(VERSION)
 
     with open(args.default_config,'r',encoding='utf-8') as f:
         default_config = yaml.safe_load(f)
