@@ -103,8 +103,21 @@ class DanmakuWriter():
     def start_dmc(self):
         async def danmu_monitor():
             q = asyncio.Queue()
-            dmc = DanmakuClient(self.url, q)
-            task = asyncio.create_task(dmc.start())
+            dmc = None
+
+            async def dmc_task():
+                global dmc
+                dmc = DanmakuClient(self.url, q)
+                try:
+                    await dmc.start()
+                except asyncio.CancelledError:
+                    await dmc.stop()
+                    logging.debug('Cancel the future.')
+                except Exception as e:
+                    await dmc.stop()
+                    logging.exception(e)
+                
+            task = asyncio.create_task(dmc_task())
             retry = 0
 
             while not self.stoped:
@@ -121,8 +134,7 @@ class DanmakuWriter():
                     logging.error('弹幕下载线程异常退出，正在重试...')
                     retry += 1
                     await asyncio.sleep(min(5*retry,300))
-                    dmc = DanmakuClient(self.url, q)
-                    task = asyncio.create_task(dmc.start())
+                    task = asyncio.create_task(dmc_task())
                 
                 await asyncio.sleep(0.1)
             await dmc.stop()
