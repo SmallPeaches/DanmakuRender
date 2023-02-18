@@ -11,7 +11,7 @@ from os.path import join,exists
 from DMR.utils import *
 
 class Downloader():
-    def __init__(self, url, output_dir, pipe, segment:int, taskname=None, danmaku=True, video=True, vid_format='flv', engine='ffmpeg', debug=False, **kwargs) -> None:
+    def __init__(self, url, output_dir, pipe, segment:int, taskname=None, danmaku=True, video=True, vid_format='flv', flow_cdn=None, engine='ffmpeg', debug=False, **kwargs) -> None:
         self.taskname = taskname
         self.url = url
         self.output_dir = output_dir
@@ -22,6 +22,7 @@ class Downloader():
         self.segment = segment
         self.danmaku = danmaku
         self.video = video
+        self.flow_cdn = flow_cdn
 
         if not self.taskname:
             self.taskname = GetStreamerInfo(url)[1]
@@ -77,7 +78,7 @@ class Downloader():
     def start_once(self):
         os.makedirs(self.output_dir,exist_ok=True)
         
-        stream_info = GetStreamURL(self.url)
+        stream_info = GetStreamURL(self.url,flow_cdn=self.flow_cdn)
         stream_url = stream_info.get('url')
         stream_request_header = stream_info.get('header')
 
