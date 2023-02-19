@@ -72,7 +72,10 @@ class Downloader():
         self._output_fn = output + f'.{self.vid_format}'
         self._seg_part = 0
         while not self.stoped:
-            self.check_segment()
+            try:
+                self.check_segment()
+            except Exception as e:
+                logging.exception(e)
             time.sleep(10)
 
     def start_once(self):
@@ -166,7 +169,10 @@ class Downloader():
 
     def stop_once(self):
         self.stoped = True
-        self.check_segment()
+        try:
+            self.check_segment()
+        except Exception as e:
+            logging.exception(e)
         if self.danmaku:
             try:
                 self.dmw.stop()

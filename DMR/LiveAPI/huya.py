@@ -114,7 +114,9 @@ class huya(BaseAPI):
         if flow_cdn:
             url = url.replace('al.flv.huya.com',f'{flow_cdn}.flv.huya.com')
             if requests.get(url,stream=True,headers=self.header).status_code != 200:
-                raise ValueError(f'虎牙CDN {flow_cdn} 不可用. URL: {url}')
+                e = RuntimeError(f'虎牙CDN {flow_cdn} 不可用, 可能导致录制失败. URL: {url}')
+                logging.exception(e)
+                raise e
             
         return {
             'url': url
