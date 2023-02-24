@@ -65,9 +65,9 @@ class biliuprs():
             '--tid', tid,
             '--title', title,
         ]
-        if isinstance(str,video):
+        if isinstance(video, str):
             upload_args += [video]
-        elif isinstance(list,video):
+        elif isinstance(video, list):
             upload_args += video
 
         upload_args = [str(x) for x in upload_args]
@@ -103,11 +103,11 @@ class biliuprs():
     def replace_keywords(self, msg:str, info):
         if not info:
             return msg
-        for k, v in info:
+        for k, v in info.items():
             if k == 'time':
                 for kw in ['year','month','day','hour','minute','second']:
-                    msg = msg.replace(f'{kw}'.upper(), getattr(v,kw))
-            msg = msg.replace(f'{k}'.upper(), v)
+                    msg = msg.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)))
+            msg = msg.replace('{'+f'{k}'.upper()+'}', str(v))
         return msg
 
     def upload_one(self, video, group=None, **kwargs):
@@ -148,13 +148,14 @@ class biliuprs():
     def upload_batch(self, batch):
         video_batch = [bat['video'] for bat in batch]
         kwargs = batch[0]['kwargs']
+        video_info = batch[0]['video_info']
         
         if kwargs.get('title'):
-            kwargs['title'] = self.replace_keywords(kwargs['title'], kwargs.get('video_info'))
+            kwargs['title'] = self.replace_keywords(kwargs['title'], video_info)
         if kwargs.get('desc'):
-            kwargs['desc'] = self.replace_keywords(kwargs['desc'], kwargs.get('video_info'))
+            kwargs['desc'] = self.replace_keywords(kwargs['desc'], video_info)
         if kwargs.get('dynamic'):
-            kwargs['dynamic'] = self.replace_keywords(kwargs['dynamic'], kwargs.get('video_info'))
+            kwargs['dynamic'] = self.replace_keywords(kwargs['dynamic'], video_info)
         
         self.upload_proc = self.upload_helper(video=video_batch, bvid=None, **kwargs)
 

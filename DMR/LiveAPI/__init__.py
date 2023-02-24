@@ -1,4 +1,5 @@
 from .utils import *
+import logging
 
 AVAILABLE_DANMU = ['huya','douyu','bilibili']
 AVAILABLE_LIVE = ['huya','douyu','bilibili','douyin']
@@ -22,6 +23,30 @@ class LiveAPI():
             self.api_class = douyin(rid=self.rid)
         else:
             raise NotImplementedError
+        
+    def GetStreamerInfo(self):
+        try:
+            return self.api_class.get_info()
+        except Exception as e:
+            logging.debug(e)
+    
+    def GetStreamURL(self, flow_cdn=None):
+        try:
+            return self.api_class.get_stream_url(flow_cdn=flow_cdn)
+        except Exception as e:
+            logging.debug(e)
+
+    def Onair(self):
+        try:
+            return self.api_class.onair()
+        except Exception as e:
+            logging.debug(e)
+    
+    def IsAvailable(self):
+        try:
+            return self.api_class.is_available()
+        except Exception as e:
+            logging.debug(e)
 
     def __getattribute__(self, __name: str):
         try:

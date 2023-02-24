@@ -1,5 +1,7 @@
 import json, re, select, random
 from struct import pack, unpack
+
+import aiohttp
 from ..utils import *
 
 color_tab = {
@@ -18,6 +20,11 @@ class Douyu:
     async def get_ws_info(url):
         reg_datas = []
         _, room_id = split_url(url)
+        async with aiohttp.ClientSession() as session:
+            async with session.get('https://m.douyu.com/' + str(room_id)) as resp:
+                room_page = await resp.text()
+                room_id = re.findall(r'"rid":(\d{1,7})', room_page)[0]
+
         data = f"type@=loginreq/roomid@={room_id}/"
         s = pack("i", 9 + len(data)) * 2
         s += b"\xb1\x02\x00\x00"  # 689

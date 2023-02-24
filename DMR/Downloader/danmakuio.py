@@ -137,7 +137,11 @@ class DanmakuWriter():
                     task = asyncio.create_task(dmc_task())
                 
                 await asyncio.sleep(0.1)
-            await dmc.stop()
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                logging.debug("DMC task cancelled.")
     
         monitor = threading.Thread(target=asyncio.run,args=(danmu_monitor(),),daemon=True)
         monitor.start()

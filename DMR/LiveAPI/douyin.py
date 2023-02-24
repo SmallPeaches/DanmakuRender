@@ -22,7 +22,7 @@ class douyin(BaseAPI):
                 resp = self._get_response_douyin()
                 self.real_rid = resp['app']['initialState']['roomStore']['roomInfo']['roomId']
             except:
-                self.real_rid = ''
+                raise Exception('房间号错误.')
 
     def is_available(self) -> bool:
         return len(self.real_rid) == 19

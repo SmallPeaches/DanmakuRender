@@ -14,6 +14,8 @@ class Downloader():
     def __init__(self, url, output_dir, pipe, segment:int, taskname=None, danmaku=True, video=True, vid_format='flv', flow_cdn=None, engine='ffmpeg', debug=False, **kwargs) -> None:
         self.taskname = taskname
         self.url = url
+        self.plat, self.rid = split_url(url)
+        self.liveapi = LiveAPI(self.plat, self.rid)
         self.output_dir = output_dir
         self.sender = pipe
         self.kwargs = kwargs
@@ -25,7 +27,7 @@ class Downloader():
         self.flow_cdn = flow_cdn
 
         if not self.taskname:
-            self.taskname = GetStreamerInfo(url)[1]
+            self.taskname = self.liveapi.GetStreamerInfo()[1]
         os.makedirs(self.output_dir,exist_ok=True)
     
     def pipeSend(self,msg,type='info',**kwargs):
@@ -38,7 +40,7 @@ class Downloader():
         nextfile = self._output_fn.replace(r'%03d','%03d'%(self._seg_part+1))
         if exists(nextfile):
             thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
-            sinfo = GetStreamerInfo(self.url)
+            sinfo = self.liveapi.GetStreamerInfo()
             if sinfo is None:
                 return 
             t0 = datetime.now() - timedelta(seconds=self._seg_part*self.segment)
@@ -55,7 +57,7 @@ class Downloader():
         
         if self.stoped:
             thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
-            sinfo = GetStreamerInfo(self.url)
+            sinfo = self.liveapi.GetStreamerInfo()
             if sinfo is None:
                 sinfo = (self.taskname, self.taskname)
             t0 = datetime.now() - timedelta(seconds=self._seg_part*self.segment)
@@ -81,7 +83,7 @@ class Downloader():
     def start_once(self):
         os.makedirs(self.output_dir,exist_ok=True)
         
-        stream_info = GetStreamURL(self.url,flow_cdn=self.flow_cdn)
+        stream_info = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
         stream_url = stream_info.get('url')
         stream_request_header = stream_info.get('header')
 
@@ -124,18 +126,18 @@ class Downloader():
             self.downloader.start_helper()
         else:
             while 1:
-                if not Onair(self.url):
+                if not self.liveapi.Onair():
                     break
                 time.sleep(60)
 
     def start_helper(self):
         self.loop = True
-        if not Onair(self.url):
+        if not self.liveapi.Onair():
             self.pipeSend('end')
             time.sleep(45)
 
         while self.loop:
-            if not Onair(self.url):
+            if not self.liveapi.Onair():
                 time.sleep(45)
                 continue
 
@@ -146,7 +148,7 @@ class Downloader():
                 self.stop()
                 exit(0)
             except Exception as e:
-                if Onair(self.url):
+                if self.liveapi.Onair():
                     logging.exception(e)
                     self.stop_once()
                     self.pipeSend('restart','error',desc=e)

@@ -26,16 +26,12 @@ class douyu(BaseAPI):
         self.rid = rid
 
         self.did = '10000000000000000000000000001501'
-        self.t10 = str(int(time.time()))
-        self.t13 = str(int((time.time() * 1000)))
-
         self.s = requests.Session()
-        self.res = self.s.get('https://m.douyu.com/' + str(rid)).text
-        result = re.search(r'rid":(\d{1,8}),"vipId', self.res)
+        res = self.s.get('https://m.douyu.com/' + str(rid)).text
 
-        if result:
-            self.rid = result.group(1)
-        else:
+        try:
+            self.rid = re.findall(r'"rid":(\d{1,7})', res)[0]
+        except:
             raise Exception('房间号错误')
     
     def __del__(self):
@@ -46,6 +42,7 @@ class douyu(BaseAPI):
         return hashlib.md5(data.encode('utf-8')).hexdigest()
 
     def get_pre(self):
+        self.t13 = str(int((time.time() * 1000)))
         url = 'https://playweb.douyucdn.cn/lapi/live/hlsH5Preview/' + self.rid
         data = {
             'rid': self.rid,
@@ -116,6 +113,7 @@ class douyu(BaseAPI):
         :param rate: 1流畅；2高清；3超清；4蓝光4M；0蓝光8M或10M
         :return: JSON格式
         """
+        self.t10 = str(int(time.time()))
         res = self.s.get('https://www.douyu.com/' + str(self.rid)).text
         result = re.search(r'(vdwdae325w_64we[\s\S]*function ub98484234[\s\S]*?)function', res).group(1)
         func_ub9 = re.sub(r'eval.*?;}', 'strc;}', result)
