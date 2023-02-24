@@ -94,26 +94,59 @@ render:
   # 音频编码器参数
   aencoder_args: [-b:a,320K]
 
-# 自动上传参数（暂时没用）
+# 自动上传参数
 uploader:
+  # 上传目标（目前只有B站）
   bilibili:
+    # 上传引擎，目前只能选biliuprs
     engine: biliuprs
+
+    # biliup-rs可执行文件地址
     biliup: tools/biliup.exe
+
+    # 登录信息保存的cookies路径，默认<上传器名字>.json
     cookies: ~
-    min_length: 0
+
+    # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认五分钟
+    min_length: 300
+
+    # 上传线路
     line: kodo
+
+    # 上传线程数
     limit: 3
+
+    # 允许转载
     copyright: 1
+
+    # 封面
     cover: ''
+
+    # 标题，可以使用关键字替换
+    # {STREAMER}主播名称，{TITLE}标题，{YEAR}年，{MONTH}月，{DAY}日，{HAS_DANMU}“带弹幕版”这几个字，{URL}直播间链接
+    # 默认的例子：[飞天狙想要努力变胖/直播回放] 晚上七点半比赛 2023年2月24日 （带弹幕版）
     title: '[{STREAMER}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU}'
+
     desc_format_id: 0
-    desc: "{STREAMER}: {URL} \n直播回放 {TITLE} {YEAR}年{MONTH}月{DAY}日 {HOUR}点 {HAS_DANMU} \nPowered by DanmakuRender"
+
+    # 简介，可以使用关键字替换
+    desc: "{STREAMER}: {URL} \n直播回放 {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU} \nPowered by DanmakuRender \nhttps://github.com/SmallPeaches/DanmakuRender"
+    
+    # 动态内容，可以使用关键字替换
     dynamic: ''
+
+    # 字幕
     subtitle:
       open: 0
       lan: ''
-    tag: 'overwatch'
+
+    # 标签（一定要有！多个标签逗号分割）
+    tag: '直播回放'
+
+    # 延迟发布，单位秒
     dtime: 0
+
+    # 开放字幕
     open_subtitle: False
 
 

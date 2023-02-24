@@ -3,7 +3,7 @@
 - 可以录制纯净直播流和弹幕，并且支持在本地预览带弹幕直播流。
 - 可以自动渲染弹幕到视频中，并且渲染速度快。
 - 支持同时录制多个直播。    
-- 支持录播自动上传至B站（正在测试，暂时用不了）。
+- 支持录播自动上传至B站（正在测试，可能遇到很多问题！！！）。
 
 旧版本可以在分支v1-v3找到。   
 
@@ -66,6 +66,37 @@ replay:
     segment: 3600
     danmaku: false   # 指定此任务不需要录制弹幕                    
 ```
+
+带自动上传功能的录制（demo）     
+**注意此功能正在测试，可能遇到意料之外的问题，真的要用记得拿小号测试！**    
+上传功能由biliup-rs支持，部分参数可以参考 https://biliup.github.io/biliup-rs/index.html     
+简单上传，只上传到b站的一个账号：    
+```yaml
+replay:
+  - url: https://live.bilibili.com/13308358
+    upload:                     # 指定此任务需要自动上传
+      src_video: bilibili       # 指定上传源视频到B站
+      dm_video: bilibili        # 指定上传弹幕视频到B站
+```
+在此任务中，视频会上传到B站的默认账号，弹幕视频和源视频将会分别上传，上传任务会在直播结束后进行。如果不想上传源视频就删掉src_video那一条。    
+如果需要复杂的上传，则必须先在录制配置文件中创建一个上传器，然后对不同任务使用不同上传器上传：
+```yaml
+# replay.yml
+upload:                         # 创建上传器
+  bzhan-1:                      # 上传器名称，可以随便写但是不能重复
+    title: '直播回放1号'         # 接下来的参数就是default.yml里面的自动上传参数
+                                # 相当于可以单独设置上传的标题什么的
+  bzhan-2:
+    title: '直播回放2号'
+
+replay:
+  - url: https://live.bilibili.com/13308358
+    upload:                     # 指定此任务需要自动上传
+      src_video: bzhan-1        # 指定上传源视频到第一个上传器
+      dm_video: bzhan-2         # 指定上传弹幕视频第二个上传器
+``` 
+多个上传器之间按照cookies来区分，默认保存cookies到`.temp/<上传器名称>.json`，如果想把多个上传器指定到一个账号则需要手动指定cookies到相同的路径。    
+**特别提醒：cookies内包含了登录信息，不要将他分享给任何人！**
 
 ### 注意事项
 - 程序的工作流程是：先录制一小时直播，然后在录制下一小时直播时启动对这一小时直播的渲染。录制完成后可以同时得到直播回放和带弹幕的直播回放（分为两个视频）
@@ -173,6 +204,61 @@ render:
 
   # 音频编码器参数
   aencoder_args: [-b:a,320K]
+
+# 自动上传参数
+uploader:
+  # 上传目标（目前只有B站）
+  bilibili:
+    # 上传引擎，目前只能选biliuprs
+    engine: biliuprs
+
+    # biliup-rs可执行文件地址
+    biliup: tools/biliup.exe
+
+    # 登录信息保存的cookies路径，默认<上传器名字>.json
+    cookies: ~
+
+    # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认五分钟
+    min_length: 300
+
+    # 上传线路
+    line: kodo
+
+    # 上传线程数
+    limit: 3
+
+    # 允许转载
+    copyright: 1
+
+    # 封面
+    cover: ''
+
+    # 标题，可以使用关键字替换
+    # {STREAMER}主播名称，{TITLE}标题，{YEAR}年，{MONTH}月，{DAY}日，{HAS_DANMU}“带弹幕版”这几个字，{URL}直播间链接
+    # 默认的例子：[飞天狙想要努力变胖/直播回放] 晚上七点半比赛 2023年2月24日 （带弹幕版）
+    title: '[{STREAMER}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU}'
+
+    desc_format_id: 0
+
+    # 简介，可以使用关键字替换
+    desc: "{STREAMER}: {URL} \n直播回放 {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU} \nPowered by DanmakuRender \nhttps://github.com/SmallPeaches/DanmakuRender"
+    
+    # 动态内容，可以使用关键字替换
+    dynamic: ''
+
+    # 字幕
+    subtitle:
+      open: 0
+      lan: ''
+
+    # 标签（一定要有！多个标签逗号分割）
+    tag: '直播回放'
+
+    # 延迟发布，单位秒
+    dtime: 0
+
+    # 开放字幕
+    open_subtitle: False
 ```
 ### 可选参数
 程序运行时可以指定以下参数
