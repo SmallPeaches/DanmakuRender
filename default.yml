@@ -79,19 +79,19 @@ render:
   # 渲染引擎，只能是ffmpeg
   engine: ffmpeg
 
-  # 硬件解码参数，NVIDIA显卡默认，AMD显卡或者CPU设为空
+  # 硬件解码参数，NVIDIA显卡默认使用cuda硬件解码器，AMD显卡或者CPU设为空
   hwaccel_args: [-hwaccel,cuda,-noautorotate]
 
   # 视频编码器，NVIDIA设置为h264_nvenc，AMD设置为h264_amf，CPU设置为libx264
   vencoder: h264_nvenc
 
-  # 视频编码器参数，默认-b:v,15M
+  # 视频编码器参数，默认恒定码率15Mbps
   vencoder_args: [-b:v,15M]
 
   # 音频编码器
   aencoder: aac
 
-  # 音频编码器参数
+  # 音频编码器参数，默认恒定码率320Kbps
   aencoder_args: [-b:a,320K]
 
 # 自动上传参数
@@ -110,14 +110,21 @@ uploader:
     # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认五分钟
     min_length: 300
 
+    # 以下参数来自biliuprs，详细内容可以参考 https://biliup.github.io/biliup-rs/index.html
     # 上传线路
-    line: kodo
+    line: bda2
 
     # 上传线程数
     limit: 3
 
-    # 允许转载
+    # 是否为转载视频 1-自制 2-转载
     copyright: 1
+
+    # 转载来源
+    source: ''
+
+    # 分区号，分区参考 https://biliup.github.io/tid-ref.html
+    tid: 65
 
     # 封面
     cover: ''
@@ -127,18 +134,14 @@ uploader:
     # 默认的例子：[飞天狙想要努力变胖/直播回放] 晚上七点半比赛 2023年2月24日 （带弹幕版）
     title: '[{STREAMER}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU}'
 
-    desc_format_id: 0
-
     # 简介，可以使用关键字替换
     desc: "{STREAMER}: {URL} \n直播回放 {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU} \nPowered by DanmakuRender \nhttps://github.com/SmallPeaches/DanmakuRender"
     
     # 动态内容，可以使用关键字替换
     dynamic: ''
 
-    # 字幕
-    subtitle:
-      open: 0
-      lan: ''
+    # 不知道是啥
+    interactive: 0
 
     # 标签（一定要有！多个标签逗号分割）
     tag: '直播回放'
@@ -146,7 +149,13 @@ uploader:
     # 延迟发布，单位秒
     dtime: 0
 
-    # 开放字幕
-    open_subtitle: False
+    # 是否开启杜比音效? 0-关闭 1-开启
+    dolby: 0
+
+    # 允许转载? 0-允许转载，1-禁止转载
+    no_reprint: 1
+
+    # 是否开启充电? 0-关闭 1-开启
+    open_elec: 1
 
 

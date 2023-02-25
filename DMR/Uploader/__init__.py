@@ -35,12 +35,12 @@ class Uploader():
             try:
                 status = self.uploader.upload_batch(task)
                 if status == True:
-                    self.pipeSend(task['group'], status)
+                    self.pipeSend(task[0]['group'], status)
             except KeyboardInterrupt:
                 self.stop()
             except Exception as e:
                 logging.exception(e)
-                self.pipeSend(task['group'],'error',desc=e)
+                self.pipeSend(task[0]['group'],'error',desc=e)
             self.uploading = False
 
     def start(self):
@@ -69,8 +69,6 @@ class Uploader():
                     'kwargs': kwargs
                 }
                 self.video_buffer[group].append(task)
-
-                self.wait_queue.put(self.video_buffer[group])
 
     def stop(self):
         self.stoped = True

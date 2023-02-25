@@ -15,6 +15,7 @@ class biliuprs():
             self.cookies = f'./.temp/{name}.json'
         else:
             self.cookies = cookies
+        os.makedirs(os.path.dirname(self.cookies), exist_ok=True)
         self.debug = debug
         self.base_args = [self.biliup, '-u', self.cookies]
         self.wait_queue = queue.Queue()
@@ -30,7 +31,6 @@ class biliuprs():
         cover:str='',
         desc:str='',
         dolby:int=0,
-        hires:int=0,
         dtime:int=0,
         dynamic:str='',
         interactive:int=0,
@@ -56,7 +56,7 @@ class biliuprs():
             '--dtime', dtime,
             '--dynamic', dynamic,
             '--interactive', interactive,
-            # '--line', line,
+            '--line', line,
             '--limit', limit,
             '--no-reprint', no_reprint,
             '--open-elec', open_elec,
@@ -163,10 +163,13 @@ class biliuprs():
             return self.upload_proc.wait()
 
         status = False
+        log = ''
         for line in self.upload_proc.stdout.readlines():
             line = line.decode('utf-8')
+            log += line+'\n'
             if '上传成功' in line:
                 status = True
+        logging.debug(f'Upload {video_batch}: {log}')
             
         return status
 
