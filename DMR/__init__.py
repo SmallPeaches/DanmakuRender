@@ -126,13 +126,13 @@ class DanmakuRender():
 
     def process_render_message(self, msg):
         type = msg['type']
+        conf = self.config.get_replay_config(src)
         if type == 'info':
             fp = msg['msg']
             group = msg['group']
             logging.info(f'分片 {fp} 渲染完成.')
             logging.info(msg.get('desc'))
             src = group
-            conf = self.config.get_replay_config(src)
 
             if conf.get('upload'):
                 self._dist_to_uploader(src, 'dm_video', fp, group, msg.get('video_info'))

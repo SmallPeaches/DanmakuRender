@@ -80,6 +80,7 @@ class Render():
             task = self.wait_queue.get()
             if task.get('msg_type') == 'end':
                 self.pipeSend(task.get('group'),'end')
+                continue
             self.rendering = True
             logging.info(f'正在渲染: {task["video"]}')
             try:
