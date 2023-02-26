@@ -103,6 +103,8 @@ class DanmakuRender():
                 elif self.downloaders[src]['status'] == 'start':
                     logging.info(f'{msg["src"]} 录制结束，正在等待.')
                     conf = self.config.get_replay_config(src)
+                    if conf.get('danmaku') and conf.get('auto_render'):
+                        self.render.add('end', group=src)
                     if conf.get('upload'):
                         self._dist_to_uploader(src, 'src_video', 'end', src)
                 self.downloaders[src]['status'] = 'end'

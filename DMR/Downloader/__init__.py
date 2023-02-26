@@ -11,7 +11,7 @@ from os.path import join,exists
 from DMR.utils import *
 
 class Downloader():
-    def __init__(self, url, output_dir, pipe, segment:int, taskname=None, danmaku=True, video=True, vid_format='flv', flow_cdn=None, engine='ffmpeg', debug=False, **kwargs) -> None:
+    def __init__(self, url, output_dir, pipe, segment:int, taskname=None, danmaku=True, video=True, end_cnt=0, vid_format='flv', flow_cdn=None, engine='ffmpeg', debug=False, **kwargs) -> None:
         self.taskname = taskname
         self.url = url
         self.plat, self.rid = split_url(url)
@@ -25,6 +25,7 @@ class Downloader():
         self.danmaku = danmaku
         self.video = video
         self.flow_cdn = flow_cdn
+        self.end_cnt = end_cnt
 
         if not self.taskname:
             self.taskname = self.liveapi.GetStreamerInfo()[1]
@@ -132,16 +133,21 @@ class Downloader():
 
     def start_helper(self):
         self.loop = True
+        end_cnt = 0
         if not self.liveapi.Onair():
             self.pipeSend('end')
-            time.sleep(45)
+            time.sleep(60)
 
         while self.loop:
             if not self.liveapi.Onair():
-                time.sleep(45)
+                time.sleep(60)
+                end_cnt += 1
+                if end_cnt > self.end_cnt:
+                    self.pipeSend('end')
                 continue
 
             try:
+                end_cnt = 0
                 self.pipeSend('start')
                 self.start_once()
             except KeyboardInterrupt:
@@ -158,7 +164,6 @@ class Downloader():
                     logging.debug(e)
             
             self.stop_once()
-            self.pipeSend('end')
 
     def start(self):
         thread = threading.Thread(target=self.start_helper,daemon=True)
