@@ -92,6 +92,7 @@ class DanmakuRender():
     def process_downloader_message(self, msg):
         type = msg['type']
         src = msg['src']
+        conf = self.config.get_replay_config(src)
         if type == 'info':
             info = msg['msg']
             if info == 'start':
@@ -102,7 +103,6 @@ class DanmakuRender():
                     logging.info(f'{msg["src"]} 直播结束，正在等待.')
                 elif self.downloaders[src]['status'] == 'start':
                     logging.info(f'{msg["src"]} 录制结束，正在等待.')
-                    conf = self.config.get_replay_config(src)
                     if conf.get('danmaku') and conf.get('auto_render'):
                         self.render.add('end', group=src)
                     if conf.get('upload'):
@@ -112,7 +112,7 @@ class DanmakuRender():
         elif type == 'split':
             fp = msg['msg']
             logging.info(f'分片 {fp} 录制完成.')
-            conf = self.config.get_replay_config(src)
+
             if conf.get('danmaku') and conf.get('auto_render'):
                 logging.info(f'添加分片 {fp} 至渲染队列.')
                 self.render.add(fp, group=src, video_info=msg['video_info'])
@@ -126,22 +126,22 @@ class DanmakuRender():
 
     def process_render_message(self, msg):
         type = msg['type']
-        conf = self.config.get_replay_config(src)
+        group = msg['group']
+        conf = self.config.get_replay_config(group)
         if type == 'info':
             fp = msg['msg']
             group = msg['group']
             logging.info(f'分片 {fp} 渲染完成.')
             logging.info(msg.get('desc'))
-            src = group
 
             if conf.get('upload'):
-                self._dist_to_uploader(src, 'dm_video', fp, group, msg.get('video_info'))
+                self._dist_to_uploader(group, 'dm_video', fp, group, msg.get('video_info'))
 
         elif type == 'end':
             group = msg['msg']
             logging.info(f'完成对 {group} 的全部视频渲染.')
             if conf.get('upload'):
-                self._dist_to_uploader(src, 'dm_video', 'end', group)
+                self._dist_to_uploader(group, 'dm_video', 'end', group)
             
         elif type == 'error':
             fp = msg['msg']
