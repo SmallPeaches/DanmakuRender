@@ -126,7 +126,7 @@ class Downloader():
         if self.video:
             self.downloader.start_helper()
         else:
-            while 1:
+            while not self.loop:
                 if not self.liveapi.Onair():
                     break
                 time.sleep(60)

@@ -130,7 +130,6 @@ class DanmakuRender():
         conf = self.config.get_replay_config(group)
         if type == 'info':
             fp = msg['msg']
-            group = msg['group']
             logging.info(f'分片 {fp} 渲染完成.')
             logging.info(msg.get('desc'))
 
@@ -138,7 +137,6 @@ class DanmakuRender():
                 self._dist_to_uploader(group, 'dm_video', fp, group, msg.get('video_info'))
 
         elif type == 'end':
-            group = msg['msg']
             logging.info(f'完成对 {group} 的全部视频渲染.')
             if conf.get('upload'):
                 self._dist_to_uploader(group, 'dm_video', 'end', group)

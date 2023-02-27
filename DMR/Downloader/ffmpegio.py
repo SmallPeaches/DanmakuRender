@@ -80,7 +80,7 @@ class FFmpegDownloader():
             while not self.stoped:
                 out = b''
                 t0 = self.duration
-                while 1:
+                while not self.stoped:
                     if not self.ffmpeg_proc.stdout.readable():
                         break
                     char = self.ffmpeg_proc.stdout.read(1)

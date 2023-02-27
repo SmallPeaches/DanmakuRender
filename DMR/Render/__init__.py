@@ -19,7 +19,7 @@ from DMR.utils import *
 
 def isvideo(path:str) -> bool:
     ext = path.split('.')[-1]
-    if ext in ['mp4','flv']:
+    if ext in ['mp4','flv','ts','mkv']:
         return True
     else:
         return False
@@ -35,11 +35,11 @@ class Render():
         self.wait_queue = queue.Queue()
         self.render = FFmpegRender(self.output_dir, debug=self.debug, **kwargs)
 
-    def pipeSend(self,msg,type='info',**kwargs):
+    def pipeSend(self,msg,type='info',group=None,**kwargs):
         if self.sender:
-            self.sender.put(PipeMessage('render',msg=msg,type=type,**kwargs))
+            self.sender.put(PipeMessage('render',msg=msg,type=type,group=group,**kwargs))
         else:
-            print(PipeMessage('render',msg=msg,type=type,**kwargs))
+            print(PipeMessage('render',msg=msg,type=type,group=group,**kwargs))
 
     def start(self):
         self.stoped = False
@@ -79,7 +79,7 @@ class Render():
         while not self.stoped:
             task = self.wait_queue.get()
             if task.get('msg_type') == 'end':
-                self.pipeSend(task.get('group'),'end')
+                self.pipeSend(task.get('group'),'end',**task)
                 continue
             self.rendering = True
             logging.info(f'正在渲染: {task["video"]}')
@@ -93,7 +93,7 @@ class Render():
                 self.stop()
             except Exception as e:
                 logging.exception(e)
-                self.pipeSend(task['output'],'error',desc=e)
+                self.pipeSend(task['output'],'error',desc=e,**task)
             self.rendering = False
 
     def render_only(self, input_dir):
