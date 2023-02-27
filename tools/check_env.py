@@ -69,8 +69,15 @@ def check_ffmpeg():
             print('')
             with open('./tools/ffmpeg-release-essentials.zip','wb') as f:
                 f.write(content)
-            
-            f = zipfile.ZipFile('./tools/ffmpeg-release-essentials.zip','r')
+
+            # 检测 ffmpeg-release-essentials 完整性
+            try:
+                f = zipfile.ZipFile('./tools/ffmpeg-release-essentials.zip','r')
+            except Exception as e:
+                print("FFmpeg 安装过程出错，请检查网络连接.")
+                exit(0)
+            #f = zipfile.ZipFile('./tools/ffmpeg-release-essentials.zip','r')
+
             for file in f.namelist():
                 f.extract(file,'./tools')
             f.close()
@@ -79,12 +86,56 @@ def check_ffmpeg():
             shutil.move(f'./tools/{ffmpeg_version}/bin/ffmpeg.exe','./tools/ffmpeg.exe')
             shutil.move(f'./tools/{ffmpeg_version}/bin/ffplay.exe','./tools/ffplay.exe')
             shutil.move(f'./tools/{ffmpeg_version}/bin/ffprobe.exe','./tools/ffprobe.exe')
+
+            # 清理下载文件
             shutil.rmtree(f'./tools/{ffmpeg_version}')
+            os.remove("./tools/ffmpeg-release-essentials.zip")
             print('FFmpeg 安装完成.')
             return 'tools/ffmpeg.exe', 'tools/ffprobe.exe'
         else:
             print("FFmpeg 未正确安装.")
             exit(0)
+
+def check_biliup():
+    if not os.access("./tools/biliup.exe", os.F_OK):
+        input("Biliup未正确安装, 回车自动安装:")
+
+        import requests
+        r = requests.get('https://github.com/ForgQi/biliup-rs/releases/download/v0.1.15/biliupR-v0.1.15-x86_64-windows.zip', stream=True)
+
+        # 下载
+        content = b''
+        for i, chunk in enumerate(r.iter_content(1024*64)):
+            print(f'\r已下载{i/16:.1f}MB.', end='')
+            content += chunk
+        print('')
+
+        # 写入文件
+        with open('./tools/biliupR-v0.1.15-x86_64-windows.zip', 'wb') as f:
+            f.write(content)
+        
+        # 检测 biliupR-v0.1.15-x86_64-windows.zip 完整性
+        try:
+            f = zipfile.ZipFile('./tools/biliupR-v0.1.15-x86_64-windows.zip', 'r')
+        except Exception as e:
+            print("Biliup 安装过程出错，请检查网络连接.")
+            exit(0)
+
+        # 解压
+        for file in f.namelist():
+            f.extract(file, './tools')
+        f.close()
+
+        # 文件归位
+        shutil.move(f'./tools/biliupR-v0.1.15-x86_64-windows/biliup.exe', './tools/biliup.exe')
+
+        # 删除下载文件
+        shutil.rmtree(f'./tools/biliupR-v0.1.15-x86_64-windows')
+        os.remove("./tools/biliupR-v0.1.15-x86_64-windows.zip")
+
+        print("Biliup 安装完成.")
+    
+    return "tools/biliup.exe"
 
 def _update_from_github():
     pass

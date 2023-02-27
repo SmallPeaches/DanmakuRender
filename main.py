@@ -1,4 +1,4 @@
-from tools.check_env import check_pypi, check_ffmpeg, check_update
+from tools.check_env import check_pypi, check_ffmpeg, check_update, check_biliup
 check_pypi()
 
 import time
@@ -49,10 +49,14 @@ if __name__ == '__main__':
             default_config['ffmpeg'] = ffmpeg
         if default_config.get('ffprobe') is None:
             default_config['ffprobe'] = ffprobe
-    
+
     with open(args.config,'r',encoding='utf-8') as f:
         replay_config = yaml.safe_load(f)
     
+    #check_biliup
+    if replay_config.get('upload'):
+        biliup = check_biliup()
+
     config = utils.Config(default_config,replay_config)
     
     logging.getLogger().setLevel(logging.DEBUG)
