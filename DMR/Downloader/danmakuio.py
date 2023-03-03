@@ -55,7 +55,7 @@ class DanmakuWriter():
             '[V4+ Styles]',
             'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
             # f'Style: Fix,Microsoft YaHei UI,25,&H66FFFFFF,&H66FFFFFF,&H66000000,&H66000000,1,0,0,0,100,100,0,0,1,2,0,2,20,20,2,0',
-            f'Style: R2L,{self.font},{self.fontsize},&H{self.opacity}ffffff,,&H{self.opacity}242424,,-1,0,0,0,100,100,0,0,1,2,0,1,0,0,0,0',
+            f'Style: R2L,{self.font},{self.fontsize},&H{self.opacity}ffffff,,&H{self.opacity}000000,,-1,0,0,0,100,100,0,0,1,0.4,0,1,0,0,0,0',
             '',
             '[Events]',
             'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
@@ -183,9 +183,13 @@ class DanmakuWriter():
         t1 = time.strftime('%%H:%%M:%%S.%s'%str(t1).split('.')[1][:2],time.gmtime(t1))
 
         dm_info = f'Dialogue: 0,{t0},{t1},R2L,,0,0,0,,'
-        dm_info += '{\move(%d,%d,%d,%d)}'%(x0,y,x1,y)
-        if dm['color'] != 'ffffff':
-            dm_info += '{\\1c&H%s&}'%(self.opacity+dm['color'])
+        dm_info += '{\move(%d,%d,%d,%d)}'%(x0,y+20,x1,y+20)
+
+        # 弹幕颜色 RGB 转 BGR(ass)
+        real_dm_color = dm['color'][4:] + dm['color'][2:4] + dm['color'][0:2]
+
+        if real_dm_color != 'ffffff':
+            dm_info += '{\\1c&H%s&}'%(self.opacity + real_dm_color)
         dm_info += dm['content']
 
         with self.lock,open(self.dm_file,'a',encoding='utf-8') as f:

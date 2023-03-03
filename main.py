@@ -14,6 +14,8 @@ sys.path.append('./tools')
 VERSION = '2023.2.24'
 VERSION_FULLNAME = 'DanmakuRender-4 2023.2.24'
 
+from DMR import Uploader
+
 from DMR import DanmakuRender, utils
 from DMR.Render import Render
 
@@ -53,9 +55,15 @@ if __name__ == '__main__':
     with open(args.config,'r',encoding='utf-8') as f:
         replay_config = yaml.safe_load(f)
     
-    #check_biliup
+    # check biliup env
     if replay_config.get('upload'):
         biliup = check_biliup()
+    
+    # check biliup uploader config
+    check_uploader_config_res = Uploader.check_uploader_config(default_config['uploader'])
+    if check_uploader_config_res is not 'ok':
+        print(check_uploader_config_res)
+        exit(0)
 
     config = utils.Config(default_config,replay_config)
     
