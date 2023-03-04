@@ -11,7 +11,7 @@ from os.path import join,exists
 from DMR.utils import *
 
 class Downloader():
-    def __init__(self, url, output_dir, pipe, segment:int, taskname=None, danmaku=True, video=True, end_cnt=0, vid_format='flv', flow_cdn=None, engine='ffmpeg', debug=False, **kwargs) -> None:
+    def __init__(self, url, output_dir, pipe, segment:int, output_name=None, taskname=None, danmaku=True, video=True, end_cnt=0, vid_format='flv', flow_cdn=None, engine='ffmpeg', debug=False, **kwargs) -> None:
         self.taskname = taskname
         self.url = url
         self.plat, self.rid = split_url(url)
@@ -26,6 +26,7 @@ class Downloader():
         self.video = video
         self.flow_cdn = flow_cdn
         self.end_cnt = end_cnt
+        self.output_name = join(output_dir, output_name+f'.{vid_format}')
 
         if not self.taskname:
             self.taskname = self.liveapi.GetStreamerInfo()[1]
@@ -33,9 +34,9 @@ class Downloader():
     
     def pipeSend(self,msg,type='info',**kwargs):
         if self.sender:
-            self.sender.put(PipeMessage(self.taskname,msg=msg,type=type,**kwargs))
+            self.sender.put(PipeMessage('downloader',msg=msg,type=type,group=self.taskname,**kwargs))
         else:
-            print(PipeMessage(self.taskname,msg=msg,type=type,**kwargs))
+            print(PipeMessage('downloader',msg=msg,type=type,group=self.taskname,**kwargs))
 
     def check_segment(self):
         nextfile = self._output_fn.replace(r'%03d','%03d'%(self._seg_part+1))
@@ -44,7 +45,11 @@ class Downloader():
             sinfo = self.liveapi.GetStreamerInfo()
             if sinfo is None:
                 return 
-            t0 = datetime.now() - timedelta(seconds=self._seg_part*self.segment)
+            try:
+                duration = FFprobe.get_duration(thisfile)
+            except:
+                duration = self.segment
+            t0 = datetime.now() - timedelta(seconds=duration)
             video_info = {
                 'url': self.url,
                 'taskname': self.taskname,
@@ -52,8 +57,16 @@ class Downloader():
                 'title': sinfo[0],
                 'time': t0,
                 'has_danmu': '',
+                'duration': duration
             }
-            self.pipeSend(thisfile,'split',video_info=video_info)
+            try:
+                newfile = replace_keywords(self.output_name, video_info)
+                os.rename(thisfile, newfile)
+                newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
+                self.dmw.split(newdmfile)
+            except:
+                newfile = thisfile
+            self.pipeSend(newfile,'split',video_info=video_info)
             self._seg_part += 1
         
         if self.stoped:
@@ -61,15 +74,29 @@ class Downloader():
             sinfo = self.liveapi.GetStreamerInfo()
             if sinfo is None:
                 sinfo = (self.taskname, self.taskname)
-            t0 = datetime.now() - timedelta(seconds=self._seg_part*self.segment)
+            try:
+                duration = FFprobe.get_duration(thisfile)
+            except:
+                duration = self.segment
+            t0 = datetime.now() - timedelta(seconds=duration)
             video_info = {
-                    'url': self.url,
-                    'taskname': self.taskname,
-                    'streamer': sinfo[1],
-                    'title': sinfo[0],
-                    'time': t0
-                }
-            self.pipeSend(thisfile,'split',video_info=video_info)
+                'url': self.url,
+                'taskname': self.taskname,
+                'streamer': sinfo[1],
+                'title': sinfo[0],
+                'time': t0,
+                'has_danmu': '',
+                'duration': duration
+            }
+            try:
+                newfile = replace_keywords(self.output_name, video_info)
+                os.rename(thisfile, newfile)
+                newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
+                self.dmw.split(newdmfile)
+            except:
+                newfile = thisfile
+            
+            self.pipeSend(newfile,'split',video_info=video_info)
 
     def segment_helper(self, output:str):
         self._output_fn = output + f'.{self.vid_format}'
@@ -79,7 +106,7 @@ class Downloader():
                 self.check_segment()
             except Exception as e:
                 logging.exception(e)
-            time.sleep(10)
+            time.sleep(5)
 
     def start_once(self):
         os.makedirs(self.output_dir,exist_ok=True)
@@ -176,10 +203,6 @@ class Downloader():
 
     def stop_once(self):
         self.stoped = True
-        try:
-            self.check_segment()
-        except Exception as e:
-            logging.exception(e)
         if self.danmaku:
             try:
                 self.dmw.stop()
@@ -187,6 +210,10 @@ class Downloader():
                 logging.exception(e)
         try:
             self.downloader.stop()
+        except Exception as e:
+            logging.exception(e)
+        try:
+            self.check_segment()
         except Exception as e:
             logging.exception(e)
         

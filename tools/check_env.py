@@ -97,7 +97,7 @@ def check_ffmpeg():
             exit(0)
 
 def check_biliup():
-    if not os.access("./tools/biliup.exe", os.F_OK):
+    if sys.platform == 'win32' and (not os.access("./tools/biliup.exe", os.F_OK)):
         input("Biliup未正确安装, 回车自动安装:")
 
         import requests

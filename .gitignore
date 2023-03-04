@@ -1,0 +1,8 @@
+/.vscode
+/.temp
+
+/直播回放**
+/logs/
+
+**.exe
+**.pyc

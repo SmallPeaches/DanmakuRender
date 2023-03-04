@@ -22,9 +22,9 @@ class Uploader():
 
     def pipeSend(self,msg,type='info',**kwargs):
         if self.sender:
-            self.sender.put(PipeMessage('upload',msg=msg,type=type,**kwargs))
+            self.sender.put(PipeMessage('uploader',msg=msg,type=type,**kwargs))
         else:
-            print(PipeMessage('upload',msg=msg,type=type,**kwargs))
+            print(PipeMessage('uploader',msg=msg,type=type,**kwargs))
 
     def upload_queue(self):
         while not self.stoped:
@@ -42,25 +42,6 @@ class Uploader():
                 logging.exception(e)
                 self.pipeSend(task[0]['group'],'error',desc=e)
             self.uploading = False
-
-    def check_uploader_config(uploader_config):
-        # check bilibili config
-        if list(uploader_config)[0] == 'bilibili':
-            config_dict = uploader_config['bilibili']
-            if config_dict['title'] is None:
-                return '上传参数 title 不能为空，请检查 default.yml 中 uploader 的 title 参数.'
-            elif config_dict['desc'] is None:
-                return '上传参数 desc 不能为空，请检查 default.yml 中 uploader 的 desc 参数.'
-            elif config_dict['tid'] is None:
-                return '上传参数 tid 不能为空，请检查 default.yml 中 uploader 的 tid 参数.'
-            elif config_dict['tag'] is None:
-                return '上传参数 tag 不能为空，请检查 default.yml 中 uploader 的 tag 参数.'
-            elif config_dict['dtime'] is None:
-                return '上传参数 dtime 不能为空，请检查 default.yml 中 uploader 的 dtime 参数.'
-            elif int(config_dict['dtime']) < 0 or int(config_dict['dtime']) > 0 and int(config_dict['dtime']) < 14400 or int(config_dict['dtime']) > 1296000:
-                return '上传参数 dtime 的值必须 ≥14400(4小时) 且 ≤1296000(15天), 请重新设置 dtime 参数.'
-            
-        return 'ok'
 
     def start(self):
         self.stoped = False

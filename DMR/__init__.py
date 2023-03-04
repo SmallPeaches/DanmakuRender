@@ -12,23 +12,23 @@ class DanmakuRender():
     def __init__(self, config:Config, debug=False) -> None:
         self.config = config
         self.debug = debug
+        self.stoped = True
 
         self.downloaders = {}
         self.uploaders = {}
-        self.downloader_recv = queue.Queue()
-        self.render_recv = queue.Queue()
-        self.uploader_recv = queue.Queue()
+        self.signal_queue = queue.Queue()
         
     def start(self):
+        self.stoped = False
         self.monitor = threading.Thread(target=self.start_monitor,daemon=True)
         self.monitor.start()
 
-        self.render = Render(pipe=self.render_recv, debug=self.debug, **self.config.render_config)
+        self.render = Render(pipe=self.signal_queue, debug=self.debug, **self.config.render_config)
         self.render.start()
 
         if self.config.uploader_config:
             for name, uploader_conf in self.config.uploader_config.items():
-                uploader = Uploader(name,self.uploader_recv,uploader_conf,debug=True)
+                uploader = Uploader(name,self.signal_queue,uploader_conf,debug=True)
                 proc = uploader.start()
                 self.uploaders[name] = {
                     'class':uploader,
@@ -39,7 +39,7 @@ class DanmakuRender():
         for taskname, replay_conf in self.config.replay_config.items():
             logging.getLogger().info(f'添加直播：{replay_conf["url"]}')
             
-            downloader = Downloader(taskname=taskname, pipe=self.downloader_recv, debug=self.debug, **replay_conf)
+            downloader = Downloader(taskname=taskname, pipe=self.signal_queue, debug=self.debug, **replay_conf)
             proc = downloader.start()
 
             self.downloaders[taskname] = {
@@ -49,25 +49,15 @@ class DanmakuRender():
             }
 
     def start_monitor(self):
-        while 1:
-            try:
-                msg = self.uploader_recv.get_nowait()
-                self.process_uploader_message(msg)
-                continue
-            except queue.Empty:
-                pass
-            try:
-                msg = self.downloader_recv.get_nowait()
+        while not self.stoped:
+            msg = self.signal_queue.get()
+            logging.debug(f'PIPE MESSAGE: {msg}')
+            if msg.get('src') == 'downloader':
                 self.process_downloader_message(msg)
-                continue
-            except queue.Empty:
-                pass
-            try:
-                msg = self.render_recv.get_nowait()
+            elif msg.get('src') == 'render':
                 self.process_render_message(msg)
-                continue
-            except queue.Empty:
-                time.sleep(1)
+            elif msg.get('src') == 'uploader':
+                self.process_uploader_message(msg)
 
     def process_uploader_message(self,msg):
         type = msg['type']
@@ -91,23 +81,23 @@ class DanmakuRender():
 
     def process_downloader_message(self, msg):
         type = msg['type']
-        src = msg['src']
-        conf = self.config.get_replay_config(src)
+        group = msg['group']
+        conf = self.config.get_replay_config(group)
         if type == 'info':
             info = msg['msg']
             if info == 'start':
-                self.downloaders[src]['status'] = 'start'
-                logging.info(f'{msg["src"]} 录制开始.')
+                self.downloaders[group]['status'] = 'start'
+                logging.info(f'{group} 录制开始.')
             elif info == 'end':
-                if self.downloaders[src]['status'] is None:
-                    logging.info(f'{msg["src"]} 直播结束，正在等待.')
-                elif self.downloaders[src]['status'] == 'start':
-                    logging.info(f'{msg["src"]} 录制结束，正在等待.')
+                if self.downloaders[group]['status'] is None:
+                    logging.info(f'{group} 直播结束，正在等待.')
+                elif self.downloaders[group]['status'] == 'start':
+                    logging.info(f'{group} 录制结束，正在等待.')
                     if conf.get('danmaku') and conf.get('auto_render'):
-                        self.render.add('end', group=src)
+                        self.render.add('end', group=group)
                     if conf.get('upload'):
-                        self._dist_to_uploader(src, 'src_video', 'end', src)
-                self.downloaders[src]['status'] = 'end'
+                        self._dist_to_uploader(group, 'src_video', 'end', group)
+                self.downloaders[group]['status'] = 'end'
         
         elif type == 'split':
             fp = msg['msg']
@@ -115,13 +105,13 @@ class DanmakuRender():
 
             if conf.get('danmaku') and conf.get('auto_render'):
                 logging.info(f'添加分片 {fp} 至渲染队列.')
-                self.render.add(fp, group=src, video_info=msg['video_info'])
+                self.render.add(fp, group=group, video_info=msg['video_info'])
             
             if conf.get('upload'):
-                self._dist_to_uploader(src, 'src_video', fp, src, msg.get('video_info'))
+                self._dist_to_uploader(group, 'src_video', fp, group, msg.get('video_info'))
 
         elif type == 'error':
-            logging.error(f'录制 {msg["src"]} 遇到错误，即将重试.')
+            logging.error(f'录制 {group} 遇到错误，即将重试.')
             logging.exception(msg.get('desc'))
 
     def process_render_message(self, msg):
@@ -147,6 +137,7 @@ class DanmakuRender():
             logging.exception(msg.get('desc'))
 
     def stop(self):
+        self.stoped = True
         for taskname, task in self.downloaders.items():
             try:
                 task['class'].stop()

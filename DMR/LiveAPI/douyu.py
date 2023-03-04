@@ -1,6 +1,9 @@
 # 获取斗鱼直播间的真实流媒体地址，默认最高画质
 # 使用 https://github.com/wbt5/real-url/issues/185 中两位大佬@wjxgzz @4bbu6j5885o3gpv6ss8找到的的CDN，在此感谢！
-from .BaseAPI import BaseAPI
+try:
+    from .BaseAPI import BaseAPI
+except ImportError:
+    from BaseAPI import BaseAPI
 import hashlib
 import warnings
 import re
@@ -67,6 +70,29 @@ class douyu(BaseAPI):
         resp = requests.get(f'https://www.douyu.com/betard/{self.rid}', headers=self.header).json()
         return resp
     
+    def get_h5play_resp(self, cdn='', rate=0):
+        t10 = str(int(time.time()))
+        res = self.s.get('https://www.douyu.com/' + str(self.rid)).text
+        result = re.search(r'(vdwdae325w_64we[\s\S]*function ub98484234[\s\S]*?)function', res).group(1)
+        func_ub9 = re.sub(r'eval.*?;}', 'strc;}', result)
+        js = execjs.compile(func_ub9)
+        res = js.call('ub98484234')
+
+        v = re.search(r'v=(\d+)', res).group(1)
+        rb = self.md5(self.rid + self.did + t10 + v)
+
+        func_sign = re.sub(r'return rt;}\);?', 'return rt;}', res)
+        func_sign = func_sign.replace('(function (', 'function sign(')
+        func_sign = func_sign.replace('CryptoJS.MD5(cb).toString()', '"' + rb + '"')
+
+        js = execjs.compile(func_sign)
+        params = js.call('sign', self.rid, self.did, t10)
+
+        params += '&cdn={}&rate={}'.format(cdn, rate)
+        url = 'https://www.douyu.com/lapi/live/getH5Play/{}'.format(self.rid)
+        res = self.s.post(url, params=params).json()
+        return res
+    
     def is_available(self) -> bool:
         error, key = self.get_pre()
         if error == 102:
@@ -75,10 +101,12 @@ class douyu(BaseAPI):
             return True
 
     def onair(self) -> bool:
-        error, key = self.get_pre()
+        h5play_resp = self.get_h5play_resp()
+        error = h5play_resp.get('error')
         resp = self.get_resp_new()
-        videoloop = resp['room']['room_biz_all']['videoLoop']
-        if error == 0 and videoloop == 0:
+        videoloop = resp['room']['videoLoop']
+        show_status = resp['room']['show_status']
+        if error == 0 and show_status == 1 and videoloop == 0:
             return True
         else:
             return False
@@ -113,7 +141,7 @@ class douyu(BaseAPI):
         :param rate: 1流畅；2高清；3超清；4蓝光4M；0蓝光8M或10M
         :return: JSON格式
         """
-        self.t10 = str(int(time.time()))
+        t10 = str(int(time.time()))
         res = self.s.get('https://www.douyu.com/' + str(self.rid)).text
         result = re.search(r'(vdwdae325w_64we[\s\S]*function ub98484234[\s\S]*?)function', res).group(1)
         func_ub9 = re.sub(r'eval.*?;}', 'strc;}', result)
@@ -121,14 +149,14 @@ class douyu(BaseAPI):
         res = js.call('ub98484234')
 
         v = re.search(r'v=(\d+)', res).group(1)
-        rb = self.md5(self.rid + self.did + self.t10 + v)
+        rb = self.md5(self.rid + self.did + t10 + v)
 
         func_sign = re.sub(r'return rt;}\);?', 'return rt;}', res)
         func_sign = func_sign.replace('(function (', 'function sign(')
         func_sign = func_sign.replace('CryptoJS.MD5(cb).toString()', '"' + rb + '"')
 
         js = execjs.compile(func_sign)
-        params = js.call('sign', self.rid, self.did, self.t10)
+        params = js.call('sign', self.rid, self.did, t10)
 
         params += '&cdn={}&rate={}'.format(cdn, rate)
         url = 'https://www.douyu.com/lapi/live/getH5Play/{}'.format(self.rid)
@@ -167,3 +195,6 @@ class douyu(BaseAPI):
             'url': real_url
         }
 
+if __name__ == '__main__':
+    api = douyu('44198')
+    print(api.onair())

@@ -5,7 +5,10 @@ import queue
 import signal
 import sys
 import json
+import time
 import subprocess
+
+from DMR.utils import replace_keywords
 
 class biliuprs():
     def __init__(self, biliup:str, cookies:str, name:str, debug=False, **kwargs) -> None:
@@ -48,6 +51,8 @@ class biliuprs():
             upload_args = self.base_args + ['append', '--vid', bvid]
         else:
             upload_args = self.base_args + ['upload']
+
+        dtime = dtime + int(time.time()) if dtime else 0
         upload_args += [
             '--copyright', copyright,
             '--cover', cover,
@@ -100,25 +105,15 @@ class biliuprs():
         
         print(f'将 {self.name} 的登录信息保存到 {self.cookies}.')
 
-    def replace_keywords(self, msg:str, info):
-        if not info:
-            return msg
-        for k, v in info.items():
-            if k == 'time':
-                for kw in ['year','month','day','hour','minute','second']:
-                    msg = msg.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)))
-            msg = msg.replace('{'+f'{k}'.upper()+'}', str(v))
-        return msg
-
     def upload_one(self, video, group=None, **kwargs):
         bvid = self.group2bvid.get(group) if group else None
 
         if kwargs.get('title'):
-            kwargs['title'] = self.replace_keywords(kwargs['title'], kwargs.get('video_info'))
+            kwargs['title'] = replace_keywords(kwargs['title'], kwargs.get('video_info'))
         if kwargs.get('desc'):
-            kwargs['desc'] = self.replace_keywords(kwargs['desc'], kwargs.get('video_info'))
+            kwargs['desc'] = replace_keywords(kwargs['desc'], kwargs.get('video_info'))
         if kwargs.get('dynamic'):
-            kwargs['dynamic'] = self.replace_keywords(kwargs['dynamic'], kwargs.get('video_info'))
+            kwargs['dynamic'] = replace_keywords(kwargs['dynamic'], kwargs.get('video_info'))
 
         logging.debug(f'Uploading {video}, {bvid}, {kwargs}')
         self.upload_proc = self.upload_helper(video, bvid, **kwargs)
@@ -151,11 +146,11 @@ class biliuprs():
         video_info = batch[0]['video_info']
         
         if kwargs.get('title'):
-            kwargs['title'] = self.replace_keywords(kwargs['title'], video_info)
+            kwargs['title'] = replace_keywords(kwargs['title'], video_info)
         if kwargs.get('desc'):
-            kwargs['desc'] = self.replace_keywords(kwargs['desc'], video_info)
+            kwargs['desc'] = replace_keywords(kwargs['desc'], video_info)
         if kwargs.get('dynamic'):
-            kwargs['dynamic'] = self.replace_keywords(kwargs['dynamic'], video_info)
+            kwargs['dynamic'] = replace_keywords(kwargs['dynamic'], video_info)
         
         self.upload_proc = self.upload_helper(video=video_batch, bvid=None, **kwargs)
 

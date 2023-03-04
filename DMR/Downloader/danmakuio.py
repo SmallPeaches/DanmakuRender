@@ -69,27 +69,38 @@ class DanmakuWriter():
             for info in self.meta_info:
                 f.write(info+'\n')
 
-        def monitor():
-            while not self.stoped:
-                if int(self.duration/self.segment) != self.part:
-                    self.part += 1
-                    self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
-                    logging.debug(f'New DMfile: {self.dm_file}')
-                    with open(self.dm_file,'w',encoding='utf-8') as f:
-                        for info in self.meta_info:
-                            f.write(info+'\n')
-                else:
-                    time.sleep(5)
+        # def monitor():
+        #     while not self.stoped:
+        #         if int(self.duration/self.segment) != self.part:
+        #             self.part += 1
+        #             self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
+        #             logging.debug(f'New DMfile: {self.dm_file}')
+        #             with open(self.dm_file,'w',encoding='utf-8') as f:
+        #                 for info in self.meta_info:
+        #                     f.write(info+'\n')
+        #         else:
+        #             time.sleep(5)
         
-        if self.segment > 0:
-            self.monitor = threading.Thread(target=monitor,daemon=True)
-            self.monitor.start()
+        # if self.segment:
+        #     self.monitor = threading.Thread(target=monitor,daemon=True)
+        #     self.monitor.start()
         
         self.start_dmc()
   
     @property
     def duration(self):
         return datetime.now().timestamp() - self.starttime
+    
+    def split(self, filename=None):
+        self.part += 1
+        if filename:
+            os.rename(self.dm_file, filename)
+        self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
+        logging.debug(f'New DMfile: {self.dm_file}')
+        if not self.stoped:
+            with open(self.dm_file,'w',encoding='utf-8') as f:
+                for info in self.meta_info:
+                    f.write(info+'\n')
 
     def dm_available(self,dm) -> bool:
         if not (dm.get('msg_type') == 'danmaku'):
@@ -118,6 +129,7 @@ class DanmakuWriter():
                     logging.exception(e)
                 
             task = asyncio.create_task(dmc_task())
+            last_dm_time = datetime.now().timestamp()
             retry = 0
 
             while not self.stoped:
@@ -126,12 +138,19 @@ class DanmakuWriter():
                     dm['time'] = self.duration
                     if self.dm_available(dm):
                         self.add(dm)
+                        last_dm_time = datetime.now().timestamp()
                     continue
                 except asyncio.QueueEmpty:
                     pass
                         
                 if task.done():
                     logging.error('弹幕下载线程异常退出，正在重试...')
+                    retry += 1
+                    await asyncio.sleep(min(5*retry,300))
+                    task = asyncio.create_task(dmc_task())
+
+                if datetime.now().timestamp() - last_dm_time > 300:
+                    logging.error('获取弹幕超时，正在重试...')
                     retry += 1
                     await asyncio.sleep(min(5*retry,300))
                     task = asyncio.create_task(dmc_task())

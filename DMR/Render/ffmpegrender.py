@@ -3,6 +3,7 @@ import signal
 import sys
 import subprocess
 import logging
+import tempfile
 
 class FFmpegRender():
     def __init__(self, output_dir:str, hwaccel_args:list, vencoder:str, vencoder_args:list, aencoder:str, aencoder_args:list, ffmpeg:str, debug=False, **kwargs):
@@ -16,7 +17,7 @@ class FFmpegRender():
         self.ffmpeg = ffmpeg
         self.debug = debug
 
-    def render_helper(self, video:str, danmaku:str, output:str, to_stdout:bool=False):
+    def render_helper(self, video:str, danmaku:str, output:str, to_stdout:bool=False, logfile=None):
         ffmpeg_args = [self.ffmpeg, '-y']
         ffmpeg_args += self.hwaccel_args
 
@@ -30,48 +31,49 @@ class FFmpegRender():
                         '-c:a',self.aencoder,
                         *self.aencoder_args,
 
-                        '-movflags','frag_keyframe',
+                        # '-movflags','frag_keyframe',
                         output,
                         ]
         
-        logging.debug('Danmaku Render args:')
-        logging.debug(ffmpeg_args)
+        ffmpeg_args = [str(x) for x in ffmpeg_args]
+        logging.debug(f'ffmpeg render args: {ffmpeg_args}')
+
+        if not logfile:
+            logfile = tempfile.TemporaryFile()
 
         if to_stdout or self.debug:
-            proc = subprocess.Popen(ffmpeg_args, stdin=sys.stdin, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
+            self.render_proc = subprocess.Popen(ffmpeg_args, stdin=sys.stdin, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
         else:
-            proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
-
-        return proc
+            self.render_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT, bufsize=10**8)
+        
+        self.render_proc.wait()
+        return logfile
 
     def render_one(self, video:str, danmaku:str, output:str, **kwargs):
         if os.path.exists(output):
             raise RuntimeError(f'已经存在文件 {output}，跳过渲染.')
-        self.render_proc = self.render_helper(video,danmaku,output,to_stdout=self.debug)
-        if self.debug:
-            self.render_proc.wait()
-            return True
-        else:
-            log = ''
+        
+        with tempfile.TemporaryFile() as logfile:
+            self.render_helper(video,danmaku,output,to_stdout=self.debug,logfile=logfile)
+            if self.debug:
+                return True
+
             info = None
-            for line in self.render_proc.stdout.readlines():
-                try:
-                    line = line.decode('utf-8').strip()
-                except UnicodeError as e:
-                    logging.error(e)
-                    logging.error(line)
-                log += line+'\n'
+            log = ''
+            logfile.seek(0)
+            for line in logfile.readlines():
+                line = line.decode('utf-8',errors='ignore').strip()
+                log += line + '\n'
                 if line.startswith('video:'):
                     info = line
-            logging.debug(f'[Render Process]:{log}')
             if info:
-                # logging.info(f'{output} 渲染完成, {info}')
                 return info
             else:
-                # logging.error(f'{output} 渲染错误:\n{log}')
+                logging.debug(f'ffmpegrender output:{log}')
                 raise RuntimeError(f'{output} 渲染错误:\n{log}')
 
     def stop(self):
+        logging.debug('ffmpeg render stop.')
         try:
             out, _ = self.render_proc.communicate(b'q',timeout=5)
             logging.debug(out)
@@ -81,6 +83,6 @@ class FFmpegRender():
                 out, _ = self.render_proc.communicate()
                 logging.debug(out)
             except Exception as e:
-                logging.exception(e)
+                logging.debug(e)
         except Exception as e:
-            logging.exception(e)
+            logging.debug(e)

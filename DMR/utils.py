@@ -4,6 +4,16 @@ import warnings
 
 from .LiveAPI import GetStreamerInfo, split_url, AVAILABLE_DANMU, AVAILABLE_LIVE
 
+def replace_keywords(string:str, kw_info:dict=None):
+    if not kw_info:
+        return string
+    for k, v in kw_info.items():
+        if k == 'time':
+            for kw in ['year','month','day','hour','minute','second']:
+                string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)))
+        string = string.replace('{'+f'{k}'.upper()+'}', str(v))
+    return string
+
 class FFprobe():
     ffprobe = 'ffprobe'
     header = {
@@ -125,6 +135,23 @@ class Config():
         for upd in default_upds:
             upload_conf = self.default_conf['uploader'][upd].copy()
             self.config['upload'][upd] = upload_conf
+            self.config['upload'][upd]['target'] = upd
+
+        # check bilibili config
+        for upd, upd_conf in self.config['upload'].items():
+            if upd_conf['target'] == 'bilibili':
+                if upd_conf['title'] is None:
+                    raise ValueError('上传参数 title 不能为空，请检查 default.yml 中 uploader 的 title 参数.')
+                elif upd_conf['desc'] is None:
+                    raise ValueError('上传参数 desc 不能为空，请检查 default.yml 中 uploader 的 desc 参数.')
+                elif upd_conf['tid'] is None:
+                    raise ValueError('上传参数 tid 不能为空，请检查 default.yml 中 uploader 的 tid 参数.')
+                elif upd_conf['tag'] is None:
+                    raise ValueError('上传参数 tag 不能为空，请检查 default.yml 中 uploader 的 tag 参数.')
+                elif upd_conf['dtime'] is None:
+                    raise ValueError('上传参数 dtime 不能为空，请检查 default.yml 中 uploader 的 dtime 参数.')
+                elif int(upd_conf['dtime']) < 0 or int(upd_conf['dtime']) > 0 and int(upd_conf['dtime']) < 14400 or int(upd_conf['dtime']) > 1296000:
+                    raise ValueError('上传参数 dtime 的值必须 ≥14400(4小时) 且 ≤1296000(15天), 请重新设置 dtime 参数.')
 
     @property
     def render_config(self) -> dict:
