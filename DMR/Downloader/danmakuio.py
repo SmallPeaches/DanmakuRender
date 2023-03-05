@@ -94,13 +94,18 @@ class DanmakuWriter():
     def split(self, filename=None):
         self.part += 1
         if filename:
-            os.rename(self.dm_file, filename)
-        self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
-        logging.debug(f'New DMfile: {self.dm_file}')
+            try:
+                os.rename(self.dm_file, filename)
+            except Exception as e:
+                logging.error(f'弹幕 {self.dm_file} 分段失败.')
+                logging.exception(e)
+        dm_file = self.output.replace(f'%03d','%03d'%self.part)
+        logging.debug(f'New DMfile: {dm_file}')
         if not self.stoped:
-            with open(self.dm_file,'w',encoding='utf-8') as f:
+            with open(dm_file,'w',encoding='utf-8') as f:
                 for info in self.meta_info:
                     f.write(info+'\n')
+            self.dm_file = dm_file
 
     def dm_available(self,dm) -> bool:
         if not (dm.get('msg_type') == 'danmaku'):

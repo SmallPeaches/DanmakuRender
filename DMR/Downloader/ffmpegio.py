@@ -91,8 +91,8 @@ class FFmpegDownloader():
                     else:
                         out += char
                 line = out.decode('utf-8',errors='ignore')
-                line += '\n'
-                self.msg_queue.put(line)
+                if len(line) > 0:
+                    self.msg_queue.put(line)
         
         if self.ffmpeg_proc.stdout is not None:
             self.msg_queue = queue.Queue()
@@ -117,7 +117,7 @@ class FFmpegDownloader():
             
             try:
                 line = self.msg_queue.get_nowait()
-                log += line
+                log += line + '\n'
             except queue.Empty:
                 time.sleep(1)
                     
@@ -128,10 +128,18 @@ class FFmpegDownloader():
                     raise RuntimeError(f'FFmpeg 异常退出: {log}')
 
             if self.duration > self._timer_cnt*15:
-                if log == '':
+                if len(log) == 0:
                     raise RuntimeError(f'{self.taskname} 管道读取错误, 即将重试.')
                 
-                logging.debug(f'{self.taskname} FFmpeg output:\n{log}')
+                err = 0
+                for li in log.split('\n'):
+                    if li and not li.startswith('frame='):
+                        err = 1
+                
+                if err:
+                    logging.debug(f'{self.taskname} FFmpeg output:\n{log}')
+                else:
+                    logging.debug(f'{self.taskname} FFmpeg output: ok.')
 
                 if not self.kwargs.get('disable_lowspeed_interrupt'):
                     l = line.find('speed=')
