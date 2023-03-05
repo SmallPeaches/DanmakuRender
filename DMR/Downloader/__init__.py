@@ -95,7 +95,7 @@ class Downloader():
                 os.rename(thisfile, newfile)
                 newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
                 self.dmw.split(newdmfile)
-            except:
+            except Exception as e:
                 logging.error(f'视频 {thisfile} 分段失败.')
                 logging.exception(e)
                 newfile = thisfile
