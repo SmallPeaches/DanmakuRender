@@ -168,38 +168,38 @@ class douyu(BaseAPI):
         return key
 
     def get_stream_url(self, flow_cdn='', **kwargs) -> str:
-        # error, key = self.get_pre()
-        # if error == 0:
-        #     pass
-        # elif error == 102:
-        #     raise Exception('房间不存在')
-        # elif error == 104:
-        #     raise Exception('未开播')
-        # else:
-        #     key = self.get_pc_js()
+        error, key = self.get_pre()
+        if error == 0:
+            pass
+        elif error == 102:
+            raise Exception('房间不存在')
+        elif error == 104:
+            raise Exception('未开播')
+        else:
+            key = self.get_pc_js()
         
-        # flag = False
-        # for host in self.host_list:
-        #     real_url = f"http://{host}/live/{key}.xs?uuid="
-        #     try:
-        #         if requests.get(real_url,stream=True).status_code == 200:
-        #             flag = True
-        #             break
-        #     except:
-        #         pass
+        flag = False
+        for host in self.host_list:
+            real_url = f"http://{host}/live/{key}.xs?uuid="
+            try:
+                if requests.get(real_url,stream=True).status_code == 200:
+                    flag = True
+                    break
+            except:
+                pass
         
-        # if not flag:
-        #     warnings.warn('直播CDN可能已经失效.')
+        if not flag:
+            warnings.warn('直播CDN可能已经失效.')
         
-        if not isinstance(flow_cdn,str):
-            flow_cdn = ''
-        resp = self.get_h5play_resp(cdn=flow_cdn)
-        live_data = resp["data"]
-        if type(live_data) is dict:
-            real_url = f"{live_data.get('rtmp_url')}/{live_data.get('rtmp_live')}"
+        # if not isinstance(flow_cdn,str):
+        #     flow_cdn = ''
+        # resp = self.get_h5play_resp(cdn=flow_cdn)
+        # live_data = resp["data"]
+        # if type(live_data) is dict:
+        #     real_url = f"{live_data.get('rtmp_url')}/{live_data.get('rtmp_live')}"
         
-        if requests.get(real_url,stream=True,headers=self.header).status_code != 200:
-            warnings.warn(f'直播CDN可能已经失效. URL: {real_url}')
+        # if requests.get(real_url,stream=True,headers=self.header).status_code != 200:
+        #     warnings.warn(f'直播CDN可能已经失效. URL: {real_url}')
         
         return {
             'url': real_url
