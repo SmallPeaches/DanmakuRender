@@ -27,7 +27,7 @@ class DanmakuWriter():
         self.height = height
         self.width = width
         self.dmrate = dmrate
-        self.fontsize = fontsize
+        self.fontsize = int(width / 1920 * fontsize)
         self.font = font
 
         self.margin = margin

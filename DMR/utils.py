@@ -10,7 +10,10 @@ def replace_keywords(string:str, kw_info:dict=None):
     for k, v in kw_info.items():
         if k == 'time':
             for kw in ['year','month','day','hour','minute','second']:
-                string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)))
+                if kw != 'year':
+                    string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)).zfill(2))
+                else:
+                    string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)))
         string = string.replace('{'+f'{k}'.upper()+'}', str(v))
     return string
 
