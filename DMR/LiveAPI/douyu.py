@@ -23,7 +23,7 @@ class douyu(BaseAPI):
             'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/75.0.3770.100 Mobile Safari/537.36 '
         }
-    host_list = ['tx2play1.douyucdn.cn','hdltctwk.douyucdn2.cn','akm-tct.douyucdn.cn','tc-tct1.douyucdn.cn']
+    host_list = ['hw-tct.douyucdn.cn','tx2play1.douyucdn.cn','hdltctwk.douyucdn2.cn','akm-tct.douyucdn.cn','tc-tct1.douyucdn.cn']
 
     def __init__(self,rid:str) -> None:
         self.rid = rid
