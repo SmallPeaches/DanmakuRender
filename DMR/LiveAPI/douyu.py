@@ -33,7 +33,7 @@ class douyu(BaseAPI):
         res = self.s.get('https://m.douyu.com/' + str(rid)).text
 
         try:
-            self.rid = re.findall(r'"rid":(\d{1,7})', res)[0]
+            self.rid = re.findall(r'rid":(\d*),"vipId', res)[0]
         except:
             raise Exception('房间号错误')
     
