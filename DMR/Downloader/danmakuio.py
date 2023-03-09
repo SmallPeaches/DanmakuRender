@@ -18,7 +18,7 @@ def get_length(string:str,fontsize):
     return int(length)
 
 class DanmakuWriter():
-    def __init__(self,url,output,segment,description,width,height,margin,dmrate,font,fontsize,overflow_op,dmduration,opacity,**kwargs) -> None:
+    def __init__(self,url,output,segment,description,width,height,margin,dmrate,font,fontsize,overflow_op,dmduration,opacity,auto_fontsize,outlinecolor,outlinesize,**kwargs) -> None:
         self.stoped = False
 
         self.url = url
@@ -27,19 +27,21 @@ class DanmakuWriter():
         self.height = height
         self.width = width
         self.dmrate = dmrate
-        self.fontsize = int(width / 1920 * fontsize)
+        if auto_fontsize:
+            self.fontsize = int(width / 1920 * fontsize)
+        else:
+            self.fontsize = int(fontsize)
         self.font = font
 
         self.margin = margin
         self.overflow_op = overflow_op
         self.dmduration = dmduration
-        self.opacity = hex(255-int(opacity*255))[2:]
-        if len(self.opacity) < 2:
-            self.opacity = '0'+self.opacity
+        self.opacity = hex(255-int(opacity*255))[2:].zfill(2)
+        self.outlinecolor = str(outlinecolor).zfill(6)
+        self.outlinesize = outlinesize
         self.kwargs = kwargs
 
         self.lock = threading.Lock()
-        
         self.ntrack = int((height*dmrate - fontsize)/(fontsize+margin))
         self.trackinfo = [None for _ in range(self.ntrack)]
 
@@ -55,7 +57,7 @@ class DanmakuWriter():
             '[V4+ Styles]',
             'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
             # f'Style: Fix,Microsoft YaHei UI,25,&H66FFFFFF,&H66FFFFFF,&H66000000,&H66000000,1,0,0,0,100,100,0,0,1,2,0,2,20,20,2,0',
-            f'Style: R2L,{self.font},{self.fontsize},&H{self.opacity}ffffff,,&H{self.opacity}000000,,-1,0,0,0,100,100,0,0,1,0.4,0,1,0,0,0,0',
+            f'Style: R2L,{self.font},{self.fontsize},&H{self.opacity}ffffff,,&H{self.opacity}{self.outlinecolor},,-1,0,0,0,100,100,0,0,1,{outlinesize},0,1,0,0,0,0',
             '',
             '[Events]',
             'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
@@ -65,7 +67,7 @@ class DanmakuWriter():
     def start(self):
         self.starttime = datetime.now().timestamp()
         self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
-        with open(self.dm_file,'w',encoding='utf-8') as f:
+        with self.lock, open(self.dm_file,'w',encoding='utf-8') as f:
             for info in self.meta_info:
                 f.write(info+'\n')
 
@@ -102,7 +104,7 @@ class DanmakuWriter():
         dm_file = self.output.replace(f'%03d','%03d'%self.part)
         logging.debug(f'New DMfile: {dm_file}')
         if not self.stoped:
-            with open(dm_file,'w',encoding='utf-8') as f:
+            with self.lock, open(dm_file,'w',encoding='utf-8') as f:
                 for info in self.meta_info:
                     f.write(info+'\n')
             self.dm_file = dm_file
@@ -140,7 +142,7 @@ class DanmakuWriter():
             while not self.stoped:
                 try:
                     dm = q.get_nowait()
-                    dm['time'] = self.duration
+                    dm['time'] = self.duration - 3.0
                     if self.dm_available(dm):
                         self.add(dm)
                         last_dm_time = datetime.now().timestamp()
@@ -172,7 +174,7 @@ class DanmakuWriter():
 
     def add(self,dm):
         tid = 0
-        maxbias = -1
+        maxbias = -1e5
         
         def calc_bias(dm,tic):
             if not dm:
@@ -214,9 +216,10 @@ class DanmakuWriter():
 
         if real_dm_color != 'ffffff':
             dm_info += '{\\1c&H%s&}'%(self.opacity + real_dm_color)
-        dm_info += dm['content']
+        content = dm['content'].replace('\n',' ').replace('\r',' ')
+        dm_info += content
 
-        with self.lock,open(self.dm_file,'a',encoding='utf-8') as f:
+        with self.lock, open(self.dm_file,'a',encoding='utf-8') as f:
             f.write(dm_info+'\n')
         
         return True

@@ -6,7 +6,7 @@ import logging
 import tempfile
 
 class FFmpegRender():
-    def __init__(self, output_dir:str, hwaccel_args:list, vencoder:str, vencoder_args:list, aencoder:str, aencoder_args:list, ffmpeg:str, debug=False, **kwargs):
+    def __init__(self, output_dir:str, hwaccel_args:list, vencoder:str, vencoder_args:list, aencoder:str, aencoder_args:list, output_resize:str, ffmpeg:str, debug=False, **kwargs):
         self.rendering = False
         self.output_dir = output_dir
         self.hwaccel_args = hwaccel_args if hwaccel_args is not None else []
@@ -14,12 +14,18 @@ class FFmpegRender():
         self.vencoder_args = vencoder_args
         self.aencoder = aencoder
         self.aencoder_args = aencoder_args
+        self.output_resize = output_resize
         self.ffmpeg = ffmpeg
         self.debug = debug
 
     def render_helper(self, video:str, danmaku:str, output:str, to_stdout:bool=False, logfile=None):
         ffmpeg_args = [self.ffmpeg, '-y']
         ffmpeg_args += self.hwaccel_args
+
+        if self.output_resize: 
+            scale_args = ['-s', self.output_resize]
+        else:
+            scale_args = []
 
         ffmpeg_args +=  [
                         '-fflags','+discardcorrupt',
@@ -31,6 +37,7 @@ class FFmpegRender():
                         '-c:a',self.aencoder,
                         *self.aencoder_args,
 
+                        *scale_args, 
                         # '-movflags','frag_keyframe',
                         output,
                         ]

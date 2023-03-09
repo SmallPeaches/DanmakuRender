@@ -74,6 +74,15 @@ downloader:
   # 指定弹幕不透明度，默认为0.8
   opacity: 0.8
 
+  # 使用自适应弹幕大小（会让把设置的弹幕大小按1080P标准缩放）
+  auto_fontsize: True
+
+  # 弹幕描边颜色(6位十六进制)
+  outlinecolor: 000000
+
+  # 弹幕描边宽度
+  outlinesize: 1.0
+
 # 渲染参数
 render:
   # 渲染输出文件夹，默认为空（在录制输出文件夹后面加上“带弹幕版”）
@@ -99,6 +108,9 @@ render:
 
   # 音频编码器参数，默认恒定码率320Kbps
   aencoder_args: [-b:a,320K]
+
+  # 输出重缩放，会把输出重缩放到指定分辨率，可以设置为'3840x2160'用于在B站传伪4K保证清晰度
+  output_resize: ~
 
 # 自动上传参数
 uploader:
