@@ -18,7 +18,7 @@ def get_length(string:str,fontsize):
     return int(length)
 
 class DanmakuWriter():
-    def __init__(self,url,output,segment,description,width,height,margin,dmrate,font,fontsize,overflow_op,dmduration,opacity,auto_fontsize,outlinecolor,outlinesize,**kwargs) -> None:
+    def __init__(self,url,output,segment,description,width,height,margin,dmrate,font,fontsize,overflow_op,dmduration,opacity,auto_fontsize,outlinecolor,outlinesize,dm_delay_fixed,**kwargs) -> None:
         self.stoped = False
 
         self.url = url
@@ -39,6 +39,7 @@ class DanmakuWriter():
         self.opacity = hex(255-int(opacity*255))[2:].zfill(2)
         self.outlinecolor = str(outlinecolor).zfill(6)
         self.outlinesize = outlinesize
+        self.dm_delay_fixed = dm_delay_fixed
         self.kwargs = kwargs
 
         self.lock = threading.Lock()
@@ -142,7 +143,7 @@ class DanmakuWriter():
             while not self.stoped:
                 try:
                     dm = q.get_nowait()
-                    dm['time'] = self.duration - 3.0
+                    dm['time'] = self.duration - self.dm_delay_fixed
                     if self.dm_available(dm):
                         self.add(dm)
                         last_dm_time = datetime.now().timestamp()
