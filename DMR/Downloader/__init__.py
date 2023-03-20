@@ -62,8 +62,9 @@ class Downloader():
             try:
                 newfile = replace_keywords(self.output_name, video_info)
                 os.rename(thisfile, newfile)
-                newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
-                self.dmw.split(newdmfile)
+                if self.danmaku:
+                    newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
+                    self.dmw.split(newdmfile)
             except Exception as e:
                 logging.error(f'视频 {thisfile} 分段失败.')
                 logging.exception(e)
@@ -73,6 +74,8 @@ class Downloader():
         
         if self.stoped:
             thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
+            if not exists(thisfile):
+                return 
             sinfo = self.liveapi.GetStreamerInfo()
             if sinfo is None:
                 sinfo = (self.taskname, self.taskname)
@@ -93,8 +96,9 @@ class Downloader():
             try:
                 newfile = replace_keywords(self.output_name, video_info)
                 os.rename(thisfile, newfile)
-                newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
-                self.dmw.split(newdmfile)
+                if self.danmaku:
+                    newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
+                    self.dmw.split(newdmfile)
             except Exception as e:
                 logging.error(f'视频 {thisfile} 分段失败.')
                 logging.exception(e)
@@ -152,12 +156,12 @@ class Downloader():
         if self.danmaku:
             description = f'{filename}的弹幕文件, {self.url}, powered by DanmakuRender: https://github.com/SmallPeaches/DanmakuRender.'
             self.dmw = DanmakuWriter(self.url,output,self.segment,description,self.width,self.height,**self.kwargs)
-            self.dmw.start()
+            self.dmw.start(self_segment=not self.video)
         
         if self.video:
             self.downloader.start_helper()
         else:
-            while not self.loop:
+            while self.loop:
                 if not self.liveapi.Onair():
                     break
                 time.sleep(60)
@@ -212,10 +216,11 @@ class Downloader():
                 self.dmw.stop()
             except Exception as e:
                 logging.exception(e)
-        try:
-            self.downloader.stop()
-        except Exception as e:
-            logging.exception(e)
+        if self.video:
+            try:
+                self.downloader.stop()
+            except Exception as e:
+                logging.exception(e)
         try:
             self.check_segment()
         except Exception as e:

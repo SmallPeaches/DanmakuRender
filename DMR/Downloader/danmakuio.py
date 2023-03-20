@@ -65,28 +65,28 @@ class DanmakuWriter():
         ]
         self.part = 0
 
-    def start(self):
+    def start(self, self_segment=False):
         self.starttime = datetime.now().timestamp()
         self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
         with self.lock, open(self.dm_file,'w',encoding='utf-8') as f:
             for info in self.meta_info:
                 f.write(info+'\n')
 
-        # def monitor():
-        #     while not self.stoped:
-        #         if int(self.duration/self.segment) != self.part:
-        #             self.part += 1
-        #             self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
-        #             logging.debug(f'New DMfile: {self.dm_file}')
-        #             with open(self.dm_file,'w',encoding='utf-8') as f:
-        #                 for info in self.meta_info:
-        #                     f.write(info+'\n')
-        #         else:
-        #             time.sleep(5)
+        def monitor():
+            while not self.stoped:
+                if int(self.duration/self.segment) != self.part:
+                    self.part += 1
+                    self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
+                    logging.debug(f'New DMfile: {self.dm_file}')
+                    with self.lock, open(self.dm_file,'w',encoding='utf-8') as f:
+                        for info in self.meta_info:
+                            f.write(info+'\n')
+                else:
+                    time.sleep(5)
         
-        # if self.segment:
-        #     self.monitor = threading.Thread(target=monitor,daemon=True)
-        #     self.monitor.start()
+        if self_segment:
+            self.monitor = threading.Thread(target=monitor,daemon=True)
+            self.monitor.start()
         
         self.start_dmc()
   

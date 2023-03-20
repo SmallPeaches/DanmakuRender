@@ -103,7 +103,7 @@ class DanmakuRender():
             fp = msg['msg']
             logging.info(f'分片 {fp} 录制完成.')
 
-            if conf.get('danmaku') and conf.get('auto_render'):
+            if conf.get('danmaku') and conf.get('auto_render') and conf.get('video'):
                 logging.info(f'添加分片 {fp} 至渲染队列.')
                 self.render.add(fp, group=group, video_info=msg['video_info'])
             
