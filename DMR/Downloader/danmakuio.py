@@ -18,7 +18,7 @@ def get_length(string:str,fontsize):
     return int(length)
 
 class DanmakuWriter():
-    def __init__(self,url,output,segment,description,width,height,margin,dmrate,font,fontsize,overflow_op,dmduration,opacity,auto_fontsize,outlinecolor,outlinesize,dm_delay_fixed,**kwargs) -> None:
+    def __init__(self,url,output,segment,description,width,height,margin,dmrate,font,fontsize,overflow_op,dmduration,opacity,auto_fontsize,outlinecolor,outlinesize,dm_delay_fixed,dm_auto_restart,**kwargs) -> None:
         self.stoped = False
 
         self.url = url
@@ -40,6 +40,7 @@ class DanmakuWriter():
         self.outlinecolor = str(outlinecolor).zfill(6)
         self.outlinesize = outlinesize
         self.dm_delay_fixed = dm_delay_fixed
+        self.dm_auto_restart = dm_auto_restart
         self.kwargs = kwargs
 
         self.lock = threading.Lock()
@@ -157,10 +158,12 @@ class DanmakuWriter():
                     await asyncio.sleep(min(5*retry,300))
                     task = asyncio.create_task(dmc_task())
 
-                if datetime.now().timestamp() - last_dm_time > 300:
+                if self.dm_auto_restart and datetime.now().timestamp()-last_dm_time>self.dm_auto_restart:
                     logging.error('获取弹幕超时，正在重试...')
                     retry += 1
+                    last_dm_time = datetime.now().timestamp()
                     await asyncio.sleep(min(5*retry,300))
+                    task.cancel()
                     task = asyncio.create_task(dmc_task())
                 
                 await asyncio.sleep(0.1)
