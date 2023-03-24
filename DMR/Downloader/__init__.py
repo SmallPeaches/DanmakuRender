@@ -61,6 +61,9 @@ class Downloader():
             }
             try:
                 newfile = replace_keywords(self.output_name, video_info)
+                if newfile in {"", ".", ".."}: # if filename is not valid
+                    warnings.warn(f'文件名中 {newfile} 存在非法词且无法过滤，本次重命名取消，将使用默认文件名命名 {thisfile}.')
+                    newfile = thisfile
                 os.rename(thisfile, newfile)
                 if self.danmaku:
                     newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
@@ -95,6 +98,9 @@ class Downloader():
             }
             try:
                 newfile = replace_keywords(self.output_name, video_info)
+                if newfile in {"", ".", ".."}: # if filename is not valid
+                    warnings.warn(f'文件名中 {newfile} 存在非法词且无法过滤，本次重命名取消，将使用默认文件名命名 {thisfile}.')
+                    newfile = thisfile
                 os.rename(thisfile, newfile)
                 if self.danmaku:
                     newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
