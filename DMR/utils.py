@@ -1,6 +1,7 @@
 import subprocess
 import json
 import warnings
+import re
 
 from .LiveAPI import GetStreamerInfo, split_url, AVAILABLE_DANMU, AVAILABLE_LIVE
 
@@ -14,6 +15,8 @@ def replace_keywords(string:str, kw_info:dict=None):
                     string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)).zfill(2))
                 else:
                     string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)))
+        elif k == 'title':
+            string = string.replace('{'+f'{k}'.upper()+'}', re.sub(r"[\\/:*?\"<>|]", "", str(v)))
         string = string.replace('{'+f'{k}'.upper()+'}', str(v))
     return string
 
@@ -83,6 +86,12 @@ class Config():
         
         self.config = default_conf.copy()
         self.config['upload'] = {}
+
+        # check downloader output name validation
+        self.downloader_output_name = self.default_conf['downloader']['output_name']
+        self.downloader_output_name_check = re.sub(r"[\\/:*?\"<>|]", "", str(self.downloader_output_name))
+        if self.downloader_output_name_check != self.downloader_output_name:
+            raise ValueError(f'自定义录制文件名称不合法: {self.downloader_output_name}')
 
         if self.replay_conf.get('replay'):
             self.config['replay'] = {}
