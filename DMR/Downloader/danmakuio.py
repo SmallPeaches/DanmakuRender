@@ -44,7 +44,7 @@ class DanmakuWriter():
         self.kwargs = kwargs
 
         self.lock = threading.Lock()
-        self.ntrack = int((height*dmrate - fontsize)/(fontsize+margin))
+        self.ntrack = int((height*dmrate - self.fontsize)/(self.fontsize+margin))
         self.trackinfo = [None for _ in range(self.ntrack)]
 
         self.meta_info = [

@@ -28,6 +28,11 @@ class Downloader():
         self.end_cnt = end_cnt
         self.output_name = join(output_dir, output_name+f'.{vid_format}')
 
+        # init stream info
+        self.sinfo = ()
+        while not self.sinfo:
+            self.sinfo = self.liveapi.GetStreamerInfo()
+        self.taskname = self.sinfo[1]
         if not self.taskname:
             self.taskname = self.liveapi.GetStreamerInfo()[1]
         os.makedirs(self.output_dir,exist_ok=True)
@@ -42,8 +47,7 @@ class Downloader():
         nextfile = self._output_fn.replace(r'%03d','%03d'%(self._seg_part+1))
         if exists(nextfile):
             thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
-            sinfo = self.liveapi.GetStreamerInfo()
-            if sinfo is None:
+            if self.sinfo is None:
                 return 
             try:
                 duration = FFprobe.get_duration(thisfile)
@@ -53,8 +57,8 @@ class Downloader():
             video_info = {
                 'url': self.url,
                 'taskname': self.taskname,
-                'streamer': sinfo[1],
-                'title': sinfo[0],
+                'streamer': self.sinfo[1],
+                'title': self.sinfo[0],
                 'time': t0,
                 'has_danmu': '',
                 'duration': duration
@@ -69,26 +73,33 @@ class Downloader():
                 logging.error(f'视频 {thisfile} 分段失败.')
                 logging.exception(e)
                 newfile = thisfile
+
             self.pipeSend(newfile,'split',video_info=video_info)
             self._seg_part += 1
+
+            # 更新 start time
+            self.segment_start_time += timedelta(seconds=duration)
+            # 更新 stream info
+            self.sinfo = ()
+            while not self.sinfo:
+                self.sinfo = self.liveapi.GetStreamerInfo()
         
         if self.stoped:
             thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
             if not exists(thisfile):
-                return 
-            sinfo = self.liveapi.GetStreamerInfo()
-            if sinfo is None:
-                sinfo = (self.taskname, self.taskname)
+                return
+            if self.sinfo is None:
+                self.sinfo = (self.taskname, self.taskname)
             try:
                 duration = FFprobe.get_duration(thisfile)
             except:
                 duration = self.segment
-            t0 = datetime.now() - timedelta(seconds=duration)
+            t0 = self.segment_start_time
             video_info = {
                 'url': self.url,
                 'taskname': self.taskname,
-                'streamer': sinfo[1],
-                'title': sinfo[0],
+                'streamer': self.sinfo[1],
+                'title': self.sinfo[0],
                 'time': t0,
                 'has_danmu': '',
                 'duration': duration
@@ -105,6 +116,13 @@ class Downloader():
                 newfile = thisfile
             
             self.pipeSend(newfile,'split',video_info=video_info)
+
+            # 更新 segment start time
+            self.segment_start_time += timedelta(seconds=duration)
+            # 更新 stream info
+            self.sinfo = ()
+            while not self.sinfo:
+                self.sinfo = self.liveapi.GetStreamerInfo()
 
     def segment_helper(self, output:str):
         self._output_fn = output + f'.{self.vid_format}'
@@ -152,6 +170,9 @@ class Downloader():
             debug=self.debug,
             **self.kwargs
         )
+
+        # init start time
+        self.segment_start_time = datetime.now()
 
         if self.danmaku:
             description = f'{filename}的弹幕文件, {self.url}, powered by DanmakuRender: https://github.com/SmallPeaches/DanmakuRender.'
