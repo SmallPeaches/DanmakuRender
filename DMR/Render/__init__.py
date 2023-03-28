@@ -12,7 +12,6 @@ import queue
 import glob
 
 from DMR.message import PipeMessage
-from .ffmpegrender import FFmpegRender
 from DMR.LiveAPI import *
 from os.path import join,exists
 from DMR.utils import *
@@ -33,7 +32,15 @@ class Render():
         self.debug = debug
         self.rendering = False
         self.wait_queue = queue.Queue()
-        self.render = FFmpegRender(self.output_dir, debug=self.debug, **kwargs)
+
+        if engine == 'ffmpeg':
+            from .ffmpegrender import FFmpegRender
+            self.render = FFmpegRender(debug=self.debug, **kwargs)
+        elif engine == 'python':
+            from .pythonrender import PythonRender
+            self.render = PythonRender(debug=self.debug, **kwargs)
+        else:
+            raise NotImplementedError(f'No Render Named {engine}.')
 
     def pipeSend(self,msg,type='info',group=None,**kwargs):
         if self.sender:

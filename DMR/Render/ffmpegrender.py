@@ -5,10 +5,12 @@ import subprocess
 import logging
 import tempfile
 
-class FFmpegRender():
-    def __init__(self, output_dir:str, hwaccel_args:list, vencoder:str, vencoder_args:list, aencoder:str, aencoder_args:list, output_resize:str, ffmpeg:str, debug=False, **kwargs):
+from .baserender import BaseRender
+from os.path import exists
+
+class FFmpegRender(BaseRender):
+    def __init__(self, hwaccel_args:list, vencoder:str, vencoder_args:list, aencoder:str, aencoder_args:list, output_resize:str, ffmpeg:str, debug=False, **kwargs):
         self.rendering = False
-        self.output_dir = output_dir
         self.hwaccel_args = hwaccel_args if hwaccel_args is not None else []
         self.vencoder = vencoder
         self.vencoder_args = vencoder_args
@@ -38,7 +40,6 @@ class FFmpegRender():
                         *self.aencoder_args,
 
                         *scale_args, 
-                        # '-movflags','frag_keyframe',
                         output,
                         ]
         
@@ -57,8 +58,10 @@ class FFmpegRender():
         return logfile
 
     def render_one(self, video:str, danmaku:str, output:str, **kwargs):
-        if os.path.exists(output):
-            raise RuntimeError(f'已经存在文件 {output}，跳过渲染.')
+        if not exists(video):
+            raise RuntimeError(f'不存在视频文件 {video}，跳过渲染.')
+        if not exists(danmaku):
+            raise RuntimeError(f'不存在弹幕文件 {danmaku}，跳过渲染.')
         
         with tempfile.TemporaryFile() as logfile:
             self.render_helper(video,danmaku,output,to_stdout=self.debug,logfile=logfile)

@@ -11,6 +11,7 @@ from os.path import *
 
 from DMR.LiveAPI import Onair
 from DMR.message import PipeMessage
+from DMR.utils import *
 
 class FFmpegDownloader():
     default_header = {
@@ -108,6 +109,7 @@ class FFmpegDownloader():
         
         log = ''
         ffmpeg_low_speed = 0
+        latest_stream_info = ''
         self._timer_cnt = 1
         
         while not self.stoped:
@@ -157,9 +159,17 @@ class FFmpegDownloader():
                 if 'dropping it' in log:
                     raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
 
-                if self._timer_cnt%3 == 0 and Onair(self.url) == False:
-                    logging.debug('Live end.')
-                    return
+                if self._timer_cnt%3 == 0:
+                    if Onair(self.url) == False:
+                        logging.debug('Live end.')
+                        return
+                    
+                    try:
+                        new_info =  FFprobe.get_livestream_info(self.stream_url, self.header)
+                        if new_info != latest_stream_info:
+                            raise RuntimeError('推流信息变化，即将重试...')
+                    except: 
+                        pass
 
                 log = ''
                 self._timer_cnt += 1

@@ -7,6 +7,7 @@ from datetime import datetime
 from os.path import *
 
 from DMR.LiveAPI.danmaku import DanmakuClient
+from DMR.utils import sec2hms, hms2sec
 
 def get_length(string:str,fontsize):
     length = 0
@@ -123,10 +124,8 @@ class DanmakuWriter():
     def start_dmc(self):
         async def danmu_monitor():
             q = asyncio.Queue()
-            dmc = None
 
             async def dmc_task():
-                global dmc
                 dmc = DanmakuClient(self.url, q)
                 try:
                     await dmc.start()
@@ -154,16 +153,18 @@ class DanmakuWriter():
                         
                 if task.done():
                     logging.error('弹幕下载线程异常退出，正在重试...')
+                    task.cancel()
                     retry += 1
+                    last_dm_time = datetime.now().timestamp()
                     await asyncio.sleep(min(5*retry,300))
                     task = asyncio.create_task(dmc_task())
 
                 if self.dm_auto_restart and datetime.now().timestamp()-last_dm_time>self.dm_auto_restart:
                     logging.error('获取弹幕超时，正在重试...')
+                    task.cancel()
                     retry += 1
                     last_dm_time = datetime.now().timestamp()
                     await asyncio.sleep(min(5*retry,300))
-                    task.cancel()
                     task = asyncio.create_task(dmc_task())
                 
                 await asyncio.sleep(0.1)
@@ -172,8 +173,10 @@ class DanmakuWriter():
                 await task
             except asyncio.CancelledError:
                 logging.debug("DMC task cancelled.")
-    
-        monitor = threading.Thread(target=asyncio.run,args=(danmu_monitor(),),daemon=True)
+
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        monitor = threading.Thread(target=asyncio.get_event_loop().run_until_complete,args=(danmu_monitor(),),daemon=True)
         monitor.start()
 
     def add(self,dm):
@@ -209,8 +212,8 @@ class DanmakuWriter():
         t0 = dm['time']-self.part*self.segment
         t1 = t0+self.dmduration
 
-        t0 = time.strftime('%%H:%%M:%%S.%s'%str(t0).split('.')[1][:2],time.gmtime(t0))
-        t1 = time.strftime('%%H:%%M:%%S.%s'%str(t1).split('.')[1][:2],time.gmtime(t1))
+        t0 = '%d:%d:%02.2f'%sec2hms(t0)
+        t1 = '%d:%d:%02.2f'%sec2hms(t1)
 
         dm_info = f'Dialogue: 0,{t0},{t1},R2L,,0,0,0,,'
         dm_info += '{\move(%d,%d,%d,%d)}'%(x0,y+20,x1,y+20)

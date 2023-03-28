@@ -190,6 +190,7 @@ class Downloader():
     def start_helper(self):
         self.loop = True
         end_cnt = 0
+        restart_cnt = 0
         if not self.liveapi.Onair():
             self.pipeSend('end')
             time.sleep(60)
@@ -197,6 +198,7 @@ class Downloader():
         while self.loop:
             if not self.liveapi.Onair():
                 time.sleep(60)
+                restart_cnt = 0
                 end_cnt += 1
                 if end_cnt > self.end_cnt:
                     self.pipeSend('end')
@@ -214,7 +216,8 @@ class Downloader():
                     logging.exception(e)
                     self.stop_once()
                     self.pipeSend('restart','error',desc=e)
-                    time.sleep(30)
+                    time.sleep(min(restart_cnt*10,30))
+                    restart_cnt += 1
                     continue
                 else:
                     logging.debug(e)

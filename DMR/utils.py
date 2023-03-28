@@ -20,6 +20,21 @@ def replace_keywords(string:str, kw_info:dict=None):
         string = string.replace('{'+f'{k}'.upper()+'}', str(v))
     return string
 
+def sec2hms(sec:float):
+    sec = float(sec)
+    t_m,t_s = divmod(sec ,60)   
+    t_h,t_m = divmod(t_m,60)
+    return t_h, t_m, t_s
+
+def hms2sec(hrs:float,mins:float,secs:float):
+    return float(hrs)*3600 + float(mins)*60 + float(secs)
+
+def BGR2RGB(color):
+    return color[4:6] + color[2:4] + color[0:2]
+
+def RGB2BGR(color):
+    return BGR2RGB(color)
+
 class FFprobe():
     ffprobe = 'ffprobe'
     header = {
@@ -55,7 +70,7 @@ class FFprobe():
             return None
 
     @classmethod
-    def get_resolution(cls,url,header=None) -> tuple:
+    def run_ffprobe_livestream(cls, url, header=None):
         if header is None:
             header = cls.header
         out = subprocess.check_output([
@@ -69,6 +84,16 @@ class FFprobe():
             ])
         out = out.decode('utf8')
         res = json.loads(out)
+        return res
+
+    @classmethod
+    def get_livestream_info(cls,url,header=None) -> dict:
+        res = cls.run_ffprobe_livestream(url,header)
+        return res['streams'][0]
+        
+    @classmethod
+    def get_resolution(cls,url,header=None) -> tuple:
+        res = cls.run_ffprobe_livestream(url,header)
         try:
             resolution = res['streams'][0]['width'],res['streams'][0]['height']
             return resolution
@@ -92,6 +117,9 @@ class Config():
         self.downloader_output_name_check = re.sub(r"[\\/:*?\"<>|]", "", str(self.downloader_output_name))
         if self.downloader_output_name_check != self.downloader_output_name:
             raise ValueError(f'自定义录制文件名称不合法: {self.downloader_output_name}')
+
+        if self.replay_conf.get('render'):
+            self.config['uploader'].update(self.replay_conf.get('render'))
 
         if self.replay_conf.get('replay'):
             self.config['replay'] = {}
