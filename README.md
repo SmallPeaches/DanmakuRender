@@ -69,6 +69,46 @@ replay:
     danmaku: false   # 指定此任务不需要录制弹幕                    
 ```
 
+高阶用例：
+- 使用其他种类的编码器
+```yaml
+# replay.yml
+render: 
+  hwaccel_args: [-hwaccel,cuda,-noautorotate] # 硬件解码参数，不同平台设置不一样，一般情况下不是N卡都设置为空比较好
+  vencoder: hevc_nvenc                        # 使用NVIDIA NVENC H.265编码器
+  vencoder_args: ['b:v','15M']                # 特殊指定编码器参数，可用参数根据编码器不同而不同
+
+replay:
+  - url: https://live.bilibili.com/13308358
+```
+注意：可用编码器根据平台不同而不同，目前比较常用的编码器如下：
+
+| 编码类型   | 编码器  |   注释 |
+| :-------: | :-------: | :-------: |
+| H.264 |   h264_nvenc   |  N卡使用 |
+| H.264 |   h264_amf   |  A卡使用 |
+| H.264 |   libx264   |  纯CPU编码使用 |
+| H.264 |   h264_qsv   |  Intel集成显卡使用 |
+| H.265(HEVC) |   hevc_nvenc   |  N卡使用 |
+| H.265(HEVC) |   hevc_amf   |  A卡使用 |
+| H.265(HEVC) |   libx265   |  纯CPU编码使用 |
+| H.265(HEVC) |   hevc_qsv   |  Intel集成显卡使用 |
+
+一般情况下不建议使用H.265编码器，因为编码慢很多，除非是自己本地存档需要节省磁盘空间。       
+
+- 使用伪4K绕过B站码率限制
+```yaml
+# replay.yml
+render: 
+  output_resize: 3840x2160  # 设置渲染的带弹幕视频的分辨率，3840x2160正好是16:9的4K视频
+
+replay:
+  - url: https://live.bilibili.com/13308358
+```
+现在B站的普通1080P视频最高码率一般不超过2Mbps(AV1编码)，本地看视频不糊但是传B站就糊就是这个原因。
+为了绕开这个限制，需要使用伪4K的功能，简单地说就是把视频缩放到4K，让B站以为是4K视频然后按4K分配码率，最后看的时候就会很清晰。
+当然，你愿意的话甚至可以缩放到8K（7680x4320），不过渲染速度的话就不好说了，并且一般情况下4K已经能分到15M的码率了，8K分30M的码率没什么必要。
+
 带自动上传功能的录制（实验性功能）     
 **注意此功能正在测试，可能遇到意料之外的问题，真的要用记得拿小号测试！**    
 上传功能由biliup-rs支持，请先下载biliup.exe可执行文件到tools文件夹，biliup-rs项目地址：https://biliup.github.io/biliup-rs/index.html     
