@@ -158,6 +158,7 @@ class DanmakuWriter():
                     last_dm_time = datetime.now().timestamp()
                     await asyncio.sleep(min(5*retry,300))
                     task = asyncio.create_task(dmc_task())
+                    continue
 
                 if self.dm_auto_restart and datetime.now().timestamp()-last_dm_time>self.dm_auto_restart:
                     logging.error('获取弹幕超时，正在重试...')
@@ -166,6 +167,7 @@ class DanmakuWriter():
                     last_dm_time = datetime.now().timestamp()
                     await asyncio.sleep(min(5*retry,300))
                     task = asyncio.create_task(dmc_task())
+                    continue
                 
                 await asyncio.sleep(0.1)
             task.cancel()
