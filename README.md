@@ -19,6 +19,7 @@
 2022.2.28更新：增加不录制弹幕的功能
 
 ## 使用说明
+如果你是纯萌新建议看我B站的专栏安装：https://www.bilibili.com/read/cv22343026         
 ### 前置要求
 - Python 3.7+
 - Python库 aiohttp,requests,execjs,lxml,yaml
