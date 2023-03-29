@@ -119,7 +119,7 @@ class Config():
             raise ValueError(f'自定义录制文件名称不合法: {self.downloader_output_name}')
 
         if self.replay_conf.get('render'):
-            self.config['uploader'].update(self.replay_conf.get('render'))
+            self.config['render'].update(self.replay_conf.get('render'))
 
         if self.replay_conf.get('replay'):
             self.config['replay'] = {}
