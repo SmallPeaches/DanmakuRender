@@ -109,7 +109,7 @@ class FFmpegDownloader():
         
         log = ''
         ffmpeg_low_speed = 0
-        latest_stream_info = ''
+        latest_stream_info = None
         self._timer_cnt = 1
         
         while not self.stoped:
@@ -127,7 +127,7 @@ class FFmpegDownloader():
                 logging.debug('FFmpeg exit.')
                 logging.debug(log)
                 if Onair(self.url):
-                    raise RuntimeError(f'FFmpeg 异常退出: {log}')
+                    raise RuntimeError(f'FFmpeg 异常退出.')
 
             if self.duration > self._timer_cnt*15:
                 if len(log) == 0:
@@ -166,10 +166,10 @@ class FFmpegDownloader():
                     
                     try:
                         new_info =  FFprobe.get_livestream_info(self.stream_url, self.header)
-                        if new_info != latest_stream_info:
-                            raise RuntimeError('推流信息变化，即将重试...')
-                    except: 
-                        pass
+                    except Exception:
+                        new_info = latest_stream_info
+                    if latest_stream_info and new_info != latest_stream_info:
+                        raise RuntimeError('推流信息变化，即将重试...')
 
                 log = ''
                 self._timer_cnt += 1
