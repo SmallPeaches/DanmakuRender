@@ -30,7 +30,7 @@ class douyu(BaseAPI):
 
         self.did = '10000000000000000000000000001501'
         self.s = requests.Session()
-        res = self.s.get('https://m.douyu.com/' + str(rid)).text
+        res = self.s.get('https://m.douyu.com/'+str(rid),timeout=5).text
 
         try:
             self.rid = re.findall(r'rid":(\d*),"vipId', res)[0]
@@ -57,7 +57,7 @@ class douyu(BaseAPI):
             'time': self.t13,
             'auth': auth
         }
-        res = self.s.post(url, headers=headers, data=data).json()
+        res = self.s.post(url, headers=headers, data=data,timeout=5).json()
         error = res['error']
         data = res['data']
         key = ''
@@ -67,12 +67,12 @@ class douyu(BaseAPI):
         return error, key
     
     def get_resp_new(self):
-        resp = requests.get(f'https://www.douyu.com/betard/{self.rid}', headers=self.header).json()
+        resp = requests.get(f'https://www.douyu.com/betard/{self.rid}', headers=self.header,timeout=5).json()
         return resp
     
     def get_h5play_resp(self, cdn='', rate=0):
         t10 = str(int(time.time()))
-        res = self.s.get('https://www.douyu.com/' + str(self.rid)).text
+        res = self.s.get('https://www.douyu.com/'+str(self.rid),timeout=5).text
         result = re.search(r'(vdwdae325w_64we[\s\S]*function ub98484234[\s\S]*?)function', res).group(1)
         func_ub9 = re.sub(r'eval.*?;}', 'strc;}', result)
         js = execjs.compile(func_ub9)
@@ -90,7 +90,7 @@ class douyu(BaseAPI):
 
         params += '&cdn={}&rate={}'.format(cdn, rate)
         url = 'https://www.douyu.com/lapi/live/getH5Play/{}'.format(self.rid)
-        res = self.s.post(url, params=params).json()
+        res = self.s.post(url, params=params,timeout=5).json()
         return res
     
     def is_available(self) -> bool:
@@ -142,7 +142,7 @@ class douyu(BaseAPI):
         :return: JSON格式
         """
         t10 = str(int(time.time()))
-        res = self.s.get('https://www.douyu.com/' + str(self.rid)).text
+        res = self.s.get('https://www.douyu.com/'+str(self.rid), timeout=5).text
         result = re.search(r'(vdwdae325w_64we[\s\S]*function ub98484234[\s\S]*?)function', res).group(1)
         func_ub9 = re.sub(r'eval.*?;}', 'strc;}', result)
         js = execjs.compile(func_ub9)
@@ -160,7 +160,7 @@ class douyu(BaseAPI):
 
         params += '&cdn={}&rate={}'.format(cdn, rate)
         url = 'https://www.douyu.com/lapi/live/getH5Play/{}'.format(self.rid)
-        res = self.s.post(url, params=params).json()
+        res = self.s.post(url, params=params, timeout=5).json()
         data = res.get('data')
         if data:
             rtmp_live = data['rtmp_live']

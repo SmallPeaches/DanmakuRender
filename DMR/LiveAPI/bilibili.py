@@ -17,7 +17,7 @@ class bilibili(BaseAPI):
     def _get_response(self):
         r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
         with requests.Session() as s:
-            res = s.get(r_url).json()
+            res = s.get(r_url,timeout=5).json()
         return res
 
     def is_available(self) -> bool:
@@ -41,7 +41,7 @@ class bilibili(BaseAPI):
         real_url = ''
         r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
         with requests.Session() as s:
-            res = s.get(r_url).json()
+            res = s.get(r_url,timeout=5).json()
         code = res['code']
         if code == 0:
             live_status = res['data']['live_status']
@@ -59,7 +59,7 @@ class bilibili(BaseAPI):
                     'dolby': 5,
                     'panorama': 1
                 }
-                resp = requests.get(f_url, params=params, headers=self.header).json()
+                resp = requests.get(f_url, params=params, headers=self.header,timeout=5).json()
                 try:
                     stream = resp['data']['playurl_info']['playurl']['stream']
                     http_info = stream[0]['format'][0]['codec'][0]
@@ -98,14 +98,14 @@ class bilibili(BaseAPI):
         rid = int(self.rid)
         liverInfo = []
         data = json.dumps({'ids': [rid]})  # 根据直播间房号批量获取直播间信息
-        r = requests.post(r'https://api.live.bilibili.com/room/v2/Room/get_by_ids', data=data)
+        r = requests.post(r'https://api.live.bilibili.com/room/v2/Room/get_by_ids', data=data,timeout=5)
         r.encoding = 'utf8'
         data = json.loads(r.text)['data']
         uidList = []
         for roomID in data:
             uidList.append(data[roomID]['uid'])
         data = json.dumps({'uids': uidList})
-        r = requests.post(r'https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids', data=data)
+        r = requests.post(r'https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids', data=data,timeout=5)
         r.encoding = 'utf8'
         data = json.loads(r.text)['data']
         if data:
@@ -121,7 +121,7 @@ class bilibili(BaseAPI):
                     break
             try:
                 if not exist:
-                    r = requests.get(r'https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=%s' % rid)
+                    r = requests.get(r'https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=%s'%rid,timeout=5)
                     r.encoding = 'utf8'
                     banData = json.loads(r.text)['data']
                     if banData:

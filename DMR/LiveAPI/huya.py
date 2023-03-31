@@ -35,15 +35,15 @@ class huya(BaseAPI):
     def _get_response(self,mobile=False):
         if not mobile:
             room_url = 'https://www.huya.com/' + self.rid
-            response = requests.get(url=room_url, headers=self.header).text
+            response = requests.get(url=room_url, headers=self.header, timeout=5).text
         else:
             room_url = 'https://m.huya.com/' + self.rid
-            response = requests.get(url=room_url, headers=self.header_mobile).text
+            response = requests.get(url=room_url, headers=self.header_mobile, timeout=5).text
         return response
 
     def _get_api_response(self):
         room_url = 'https://mp.huya.com/cache.php?m=Live&do=profileRoom&roomid=' + str(self.rid)
-        data = requests.get(url=room_url, headers=self.header_mobile).json()
+        data = requests.get(url=room_url, headers=self.header_mobile, timeout=5).json()
         return data
 
     def is_available(self) -> bool:

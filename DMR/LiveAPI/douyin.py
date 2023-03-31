@@ -39,16 +39,16 @@ class douyin(BaseAPI):
             ('room_id', self.real_rid),
             ('app_id', '1128'),
         )
-        response = requests.get('https://webcast.amemv.com/webcast/room/reflow/info/', headers=headers, params=params).json()
+        response = requests.get('https://webcast.amemv.com/webcast/room/reflow/info/', headers=headers, params=params,timeout=5).json()
 
         return response
     
     def _get_response_douyin(self):
         if not self.headers.get('cookie'):
-            response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers)
+            response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
             self.headers.update({'cookie': '__ac_nonce='+response.cookies.get('__ac_nonce')})
         
-        text = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers).text
+        text = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5).text
         render_data = re.findall(r"<script id=\"RENDER_DATA\" type=\"application/json\">.*?</script>",text)[0]
         data = urllib.parse.unquote(render_data)
         data = re.sub(r'(<script.*?>|</script>)','',data)

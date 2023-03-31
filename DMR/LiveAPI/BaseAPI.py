@@ -1,19 +1,24 @@
+from abc import ABC,abstractmethod
 
 class BaseAPI():
+    @abstractmethod
     def is_available(self) -> bool:
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     def onair(self) -> bool:
-        raise NotImplementedError
+        pass
     
+    @abstractmethod
     def get_info(self) -> tuple:
         """
         return: title,uname,face_url,keyframe_url
         """
-        raise NotImplementedError
-
+        pass
+    
+    @abstractmethod
     def get_stream_url(self, **kwargs) -> dict:
         """
         return dict{url,(header,...)}
         """
-        raise NotImplementedError
+        pass

@@ -181,6 +181,15 @@ class FFmpegDownloader():
 
     def stop(self):
         self.stoped = True
+        log = ''
+        try:
+            while self.msg_queue.qsize() > 0:
+                msg = self.msg_queue.get_nowait()
+                log += msg+'\n'
+        except Exception as e:
+            logging.debug(e)
+        if log:
+            logging.debug(f'{self.taskname} ffmpeg: {log}')
         try:
             out, _ = self.ffmpeg_proc.communicate(b'q',timeout=5)
             logging.debug(out)
