@@ -11,8 +11,8 @@ import logging.handlers
 import yaml
 
 sys.path.append('./tools')
-VERSION = '2023.3.20'
-VERSION_FULLNAME = 'DanmakuRender-4 2023.3.20.'
+VERSION = '2023.4.5'
+VERSION_FULLNAME = 'DanmakuRender-4 2023.4.5.'
 
 from DMR import Uploader
 
