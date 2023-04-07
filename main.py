@@ -11,8 +11,8 @@ import logging.handlers
 import yaml
 
 sys.path.append('./tools')
-VERSION = '2023.4.5'
-VERSION_FULLNAME = 'DanmakuRender-4 2023.4.5.'
+VERSION = '2023.4.7'
+VERSION_FULLNAME = 'DanmakuRender-4 2023.4.7.'
 
 from DMR import Uploader
 
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--debug',action='store_true')
     parser.add_argument('--render_only',action='store_true')
     parser.add_argument('--input_dir',type=str)
-    parser.add_argument('--version',type=str)
+    parser.add_argument('--version',action='store_true')
     parser.add_argument('--skip_update',action='store_true')
     args = parser.parse_args()
     sys.path.append('tools')
