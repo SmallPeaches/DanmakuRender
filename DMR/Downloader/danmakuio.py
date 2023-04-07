@@ -69,6 +69,7 @@ class DanmakuWriter():
 
     def start(self, self_segment=False):
         self.starttime = datetime.now().timestamp()
+        self.part_start_time = self.duration
         self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
         with self.lock, open(self.dm_file,'w',encoding='utf-8') as f:
             for info in self.meta_info:
@@ -76,15 +77,8 @@ class DanmakuWriter():
 
         def monitor():
             while not self.stoped:
-                if int(self.duration/self.segment) != self.part:
-                    self.part += 1
-                    self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
-                    logging.debug(f'New DMfile: {self.dm_file}')
-                    with self.lock, open(self.dm_file,'w',encoding='utf-8') as f:
-                        for info in self.meta_info:
-                            f.write(info+'\n')
-                else:
-                    time.sleep(5)
+                self.split()
+                time.sleep(5)
         
         if self_segment:
             self.monitor = threading.Thread(target=monitor,daemon=True)
@@ -98,9 +92,11 @@ class DanmakuWriter():
     
     def split(self, filename=None):
         self.part += 1
+        self.part_start_time = self.duration
         if filename:
             try:
-                os.rename(self.dm_file, filename)
+                with self.lock:
+                    os.rename(self.dm_file, filename)
             except Exception as e:
                 logging.error(f'弹幕 {self.dm_file} 分段失败.')
                 logging.exception(e)
@@ -211,7 +207,7 @@ class DanmakuWriter():
         x1 = -dm_length
         y = self.fontsize + (self.fontsize+self.margin)*tid
 
-        t0 = dm['time']-self.part*self.segment
+        t0 = dm['time']-self.part_start_time
         t1 = t0+self.dmduration
 
         t0 = '%d:%d:%02.2f'%sec2hms(t0)

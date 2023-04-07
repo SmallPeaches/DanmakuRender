@@ -33,8 +33,6 @@ class Downloader():
         while not self.sinfo:
             self.sinfo = self.liveapi.GetStreamerInfo()
         self.taskname = self.sinfo[1]
-        if not self.taskname:
-            self.taskname = self.liveapi.GetStreamerInfo()[1]
         os.makedirs(self.output_dir,exist_ok=True)
     
     def pipeSend(self,msg,type='info',**kwargs):
@@ -45,7 +43,7 @@ class Downloader():
 
     def check_segment(self):
         nextfile = self._output_fn.replace(r'%03d','%03d'%(self._seg_part+1))
-        if exists(nextfile):
+        if exists(nextfile) or self.stoped:
             thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
             if self.sinfo is None:
                 return 
@@ -72,52 +70,14 @@ class Downloader():
             except Exception as e:
                 logging.error(f'视频 {thisfile} 分段失败.')
                 logging.exception(e)
+                if self.danmaku:
+                    self.dmw.split()
                 newfile = thisfile
 
             self.pipeSend(newfile,'split',video_info=video_info)
             self._seg_part += 1
 
             # 更新 start time
-            self.segment_start_time += timedelta(seconds=duration)
-            # 更新 stream info
-            self.sinfo = ()
-            while not self.sinfo:
-                self.sinfo = self.liveapi.GetStreamerInfo()
-        
-        if self.stoped:
-            thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
-            if not exists(thisfile):
-                return
-            if self.sinfo is None:
-                self.sinfo = (self.taskname, self.taskname)
-            try:
-                duration = FFprobe.get_duration(thisfile)
-            except:
-                duration = self.segment
-            t0 = self.segment_start_time
-            video_info = {
-                'url': self.url,
-                'taskname': self.taskname,
-                'streamer': self.sinfo[1],
-                'title': self.sinfo[0],
-                'time': t0,
-                'has_danmu': '',
-                'duration': duration
-            }
-            try:
-                newfile = replace_keywords(self.output_name, video_info)
-                os.rename(thisfile, newfile)
-                if self.danmaku:
-                    newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
-                    self.dmw.split(newdmfile)
-            except Exception as e:
-                logging.error(f'视频 {thisfile} 分段失败.')
-                logging.exception(e)
-                newfile = thisfile
-            
-            self.pipeSend(newfile,'split',video_info=video_info)
-
-            # 更新 segment start time
             self.segment_start_time += timedelta(seconds=duration)
             # 更新 stream info
             self.sinfo = ()
