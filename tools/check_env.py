@@ -3,7 +3,6 @@ import json
 import re
 import platform
 import warnings
-import requests
 from os import system
 import os
 import shutil
@@ -142,6 +141,7 @@ def _update_from_github():
 
 def check_update(thisver):
     try:
+        import requests
         resp = requests.get('https://github.com/SmallPeaches/DanmakuRender/blob/v4/main.py',timeout=5).text
         version = re.findall(r"DanmakuRender-4 .*\.",resp)[0]
         version = version.split(' ')[1][:-1]
