@@ -13,6 +13,7 @@ import yaml
 sys.path.append('./tools')
 VERSION = '2023.4.7'
 VERSION_FULLNAME = 'DanmakuRender-4 2023.4.7.'
+VERSION_DEBUG = '4-2023.4.18'
 
 from DMR import Uploader
 
@@ -75,6 +76,7 @@ if __name__ == '__main__':
     logging.getLogger().addHandler(console_handler)
     logging.getLogger().addHandler(file_handler)
 
+    logging.debug(f'DEBUG VERSION: {VERSION_DEBUG}')
     logging.debug(f'args: {args}')
     logging.debug(f'Full config: {config.config}')
     dmr = DanmakuRender(config, args.debug)

@@ -1,6 +1,12 @@
 from abc import ABC,abstractmethod
 
-class BaseAPI():
+class BaseAPI(ABC):
+    _default_header = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
+                            '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
+        }
+    
     @abstractmethod
     def is_available(self) -> bool:
         pass
@@ -17,8 +23,15 @@ class BaseAPI():
         pass
     
     @abstractmethod
-    def get_stream_url(self, **kwargs) -> dict:
-        """
-        return dict{url,(header,...)}
-        """
+    def get_stream_url(self, **kwargs) -> str:
         pass
+
+    def is_stable(self) -> bool:
+        return True
+
+    def get_stream_header(self) -> dict:
+        """
+        return: HTTP header of stream url
+        """
+        return self._default_header
+    

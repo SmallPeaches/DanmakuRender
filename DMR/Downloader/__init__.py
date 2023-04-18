@@ -47,9 +47,8 @@ class Downloader():
             thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
             if self.sinfo is None:
                 return 
-            try:
-                duration = FFprobe.get_duration(thisfile)
-            except:
+            duration = FFprobe.get_duration(thisfile)
+            if duration < 0:
                 duration = self.segment
             t0 = datetime.now() - timedelta(seconds=duration)
             video_info = {
@@ -97,11 +96,14 @@ class Downloader():
     def start_once(self):
         os.makedirs(self.output_dir,exist_ok=True)
         
-        stream_info = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
-        stream_url = stream_info.get('url')
-        stream_request_header = stream_info.get('header')
+        stream_url = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
+        stream_request_header = self.liveapi.GetStreamHeader()
 
-        width, height = FFprobe.get_resolution(stream_url,stream_request_header)
+        if not self.liveapi.IsStable():
+            stream_url_2 = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
+            stream_request_header_2 = self.liveapi.GetStreamHeader()
+
+        width, height = FFprobe.get_resolution(stream_url_2,stream_request_header_2)
         if not (width and height):
             logging.warn(f'无法获取视频大小，使用默认值{self.kwargs.get("resolution")}.')
             width, height = self.kwargs.get("resolution")

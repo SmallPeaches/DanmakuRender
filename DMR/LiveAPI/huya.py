@@ -118,9 +118,7 @@ class huya(BaseAPI):
                 logging.exception(e)
                 raise e
             
-        return {
-            'url': url
-        }
+        return url
 
 if __name__ == '__main__':
     api = huya('19558978')

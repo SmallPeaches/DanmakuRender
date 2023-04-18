@@ -11,7 +11,7 @@ import time
 
 import execjs
 import requests
-from lxml import etree
+from urllib import parse
 
 class douyu(BaseAPI):
     header = {
@@ -168,43 +168,84 @@ class douyu(BaseAPI):
         return key
 
     def get_stream_url(self, flow_cdn='', **kwargs) -> str:
-        error, key = self.get_pre()
-        if error == 0:
-            pass
-        elif error == 102:
-            raise Exception('房间不存在')
-        elif error == 104:
-            raise Exception('未开播')
-        else:
-            key = self.get_pc_js()
+        # error, key = self.get_pre()
+        # if error == 0:
+        #     pass
+        # elif error == 102:
+        #     raise Exception('房间不存在')
+        # elif error == 104:
+        #     raise Exception('未开播')
+        # else:
+        #     key = self.get_pc_js()
         
-        flag = False
-        for host in self.host_list:
-            real_url = f"http://{host}/live/{key}.xs?uuid="
+        # flag = False
+        # for host in self.host_list:
+        #     real_url = f"http://{host}/live/{key}.xs?uuid="
+        #     try:
+        #         if requests.get(real_url,stream=True).status_code == 200:
+        #             flag = True
+        #             break
+        #     except:
+        #         pass
+        
+        # if not flag:
+        #     warnings.warn('直播CDN可能已经失效.')
+        
+        # # if not isinstance(flow_cdn,str):
+        # #     flow_cdn = ''
+        # # resp = self.get_h5play_resp(cdn=flow_cdn)
+        # # live_data = resp["data"]
+        # # if type(live_data) is dict:
+        # #     real_url = f"{live_data.get('rtmp_url')}/{live_data.get('rtmp_live')}"
+        
+        # # if requests.get(real_url,stream=True,headers=self.header).status_code != 200:
+        # #     warnings.warn(f'直播CDN可能已经失效. URL: {real_url}')
+
+
+        if not isinstance(flow_cdn,str):
+            flow_cdn = ''
+
+        t10 = str(int(time.time()))
+        res = self.s.get('https://www.douyu.com/'+str(self.rid), timeout=5).text
+        result = re.search(r'(vdwdae325w_64we[\s\S]*function ub98484234[\s\S]*?)function', res).group(1)
+        func_ub9 = re.sub(r'eval.*?;}', 'strc;}', result)
+        js = execjs.compile(func_ub9)
+        res = js.call('ub98484234')
+
+        v = re.search(r'v=(\d+)', res).group(1)
+        rb = self.md5(self.rid + self.did + t10 + v)
+
+        func_sign = re.sub(r'return rt;}\);?', 'return rt;}', res)
+        func_sign = func_sign.replace('(function (', 'function sign(')
+        func_sign = func_sign.replace('CryptoJS.MD5(cb).toString()', '"' + rb + '"')
+
+        js = execjs.compile(func_sign)
+        params_str = js.call('sign', self.rid, self.did, t10)
+        params = parse.parse_qs(params_str)
+
+        def get_play_info(vid, fake_headers, params):
+            import random
             try:
-                if requests.get(real_url,stream=True).status_code == 200:
-                    flag = True
-                    break
-            except:
-                pass
+                html_content = requests.post(f'https://www.douyu.com/lapi/live/getH5Play/{vid}', headers=fake_headers,
+                                        params=params).json()
+                live_data = html_content["data"]
+                # 尝试规避斗鱼自建scdn
+                # scdn 仅在该省市的ISP首次访问上方API后才会新增，且在新增后两分钟内无流可用（404）
+                if not live_data['rtmp_cdn'].endswith('h5'):
+                    while not params.get('cdn','').endswith('h5'):
+                        params['cdn'] = random.choice(live_data['cdnsWithName']).get('cdn')
+                    return get_play_info(vid, fake_headers, params)
+            except Exception:
+                return None
+            return live_data
         
-        if not flag:
-            warnings.warn('直播CDN可能已经失效.')
-        
-        # if not isinstance(flow_cdn,str):
-        #     flow_cdn = ''
-        # resp = self.get_h5play_resp(cdn=flow_cdn)
-        # live_data = resp["data"]
-        # if type(live_data) is dict:
-        #     real_url = f"{live_data.get('rtmp_url')}/{live_data.get('rtmp_live')}"
-        
-        # if requests.get(real_url,stream=True,headers=self.header).status_code != 200:
-        #     warnings.warn(f'直播CDN可能已经失效. URL: {real_url}')
-        
-        return {
-            'url': real_url
-        }
+        live_data = get_play_info(self.rid, self.header, params)
+        raw_stream_url = f"{live_data.get('rtmp_url')}/{live_data.get('rtmp_live')}"
+        return raw_stream_url
+    
+    def is_stable(self) -> bool:
+        return False
 
 if __name__ == '__main__':
-    api = douyu('44198')
-    print(api.onair())
+    api = douyu('920348')
+    print(api.get_stream_url())

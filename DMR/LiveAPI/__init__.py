@@ -48,6 +48,18 @@ class LiveAPI():
         except Exception as e:
             logging.debug(e)
 
+    def GetStreamHeader(self) -> dict:
+        try:
+            return self.api_class.get_stream_header()
+        except Exception as e:
+            logging.debug(e)
+
+    def IsStable(self) -> bool:
+        try:
+            return self.api_class.is_stable()
+        except Exception as e:
+            logging.debug(e)
+
     def __getattribute__(self, __name: str):
         try:
             return object.__getattribute__(self,__name)

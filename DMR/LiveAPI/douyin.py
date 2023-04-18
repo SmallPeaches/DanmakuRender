@@ -69,9 +69,7 @@ class douyin(BaseAPI):
         resp = self._get_response_douyin()
         urls = list(resp['app']['initialState']['roomStore']['roomInfo']['room']['stream_url']['flv_pull_url'].values())
         url = urls[0]
-        return {
-            'url': url
-        }
+        return url
 
     def get_info(self) -> tuple:
         # response = self._get_response()

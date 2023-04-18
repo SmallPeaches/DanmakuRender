@@ -37,7 +37,7 @@ class bilibili(BaseAPI):
             else:
                 return False
 
-    def get_stream_url(self, flow_cdn=None, **kwargs) -> dict:
+    def get_stream_url(self, flow_cdn=None, **kwargs) -> str:
         real_url = ''
         r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
         with requests.Session() as s:
@@ -89,10 +89,7 @@ class bilibili(BaseAPI):
                 #     real_url = host + base_url + extra
                 # except KeyError or IndexError:
                 #     raise RuntimeError('bilibili直播流获取错误.')
-        return {
-            'url': real_url,
-            'header': self.header,
-        }
+        return real_url
 
     def get_info(self) -> tuple:
         rid = int(self.rid)
@@ -138,6 +135,9 @@ class bilibili(BaseAPI):
             return liverInfo[0]
         else:
             return '','',None,None
+    
+    def get_stream_header(self) -> dict:
+        return self.header
 
 if __name__ == '__main__':
     api = bilibili('5851637')    

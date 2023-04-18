@@ -61,13 +61,13 @@ class FFprobe():
         return res
         
     @classmethod
-    def get_duration(cls,fpath):
-        res = cls.run_ffprobe(fpath)
+    def get_duration(cls,fpath) -> float:
         try:
+            res = cls.run_ffprobe(fpath)
             duration = float(res['format']['duration'])
             return duration
         except:
-            return None
+            return -1
 
     @classmethod
     def run_ffprobe_livestream(cls, url, header=None):
