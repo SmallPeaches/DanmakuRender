@@ -4,6 +4,8 @@
 /直播回放**
 /logs/
 
+/replay.yml
+/test**
 **.exe
 **.pyc
 **.mp4

@@ -96,8 +96,8 @@ class Downloader():
     def start_once(self):
         os.makedirs(self.output_dir,exist_ok=True)
         
-        stream_url = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
-        stream_request_header = self.liveapi.GetStreamHeader()
+        stream_url = stream_url_2 = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
+        stream_request_header = stream_request_header_2 = self.liveapi.GetStreamHeader()
 
         if not self.liveapi.IsStable():
             stream_url_2 = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
