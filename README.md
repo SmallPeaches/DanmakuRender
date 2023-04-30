@@ -78,7 +78,7 @@ replay:
     engine: biliuprs  # 使用biliuprs作为下载引擎
     vid_format: flv   # 使用biliuprs作为下载引擎时，录制格式只能是flv
 ```
-注意：biliuprs只能被用于B站、虎牙和斗鱼直播的录制。     
+注意：biliuprs只能被用于B站、虎牙直播的录制。     
 
 - 使用其他种类的编码器
 ```yaml
@@ -184,7 +184,7 @@ downloader:
   output_name: '{STREAMER}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
 
   # 录制程序引擎，可选ffmpeg（由ffmpeg提供拉流服务）或者biliuprs（使用biliuprs提供拉流服务，此功能正在测试）
-  # 在使用biliuprs作为录制引擎时，录制视频格式只能是flv，录制平台只能是斗鱼、虎牙和B站
+  # 在使用biliuprs作为录制引擎时，录制视频格式只能是flv，录制平台只能是虎牙和B站
   engine: ffmpeg
 
   # 录播分段时间（秒），默认一个小时
