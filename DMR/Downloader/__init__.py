@@ -4,7 +4,7 @@ import os
 import threading
 import time
 from functools import partial
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from os.path import join,exists,splitext
 
 from DMR.Downloader.danmakuio import DanmakuWriter

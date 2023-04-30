@@ -55,8 +55,9 @@ class BiliuprsDownloader():
             return
         
         self.thisfile = None
+        line = ''
         while not self.stoped:
-            if not self.biliup_proc.stdout.readable():
+            if not self.biliup_proc.stdout.readable() or self.biliup_proc.poll() is None:
                 break
             out = self.biliup_proc.stdout.readline()
             line = out.decode('utf-8',errors='ignore').strip()
@@ -74,7 +75,7 @@ class BiliuprsDownloader():
                 logging.debug(f'{self.taskname} biliup downloader: {line}')
 
         if Onair(self.url):
-            raise RuntimeError('Biliuprs 异常退出.')
+            raise RuntimeError(f'Biliuprs 异常退出 {line}.')
 
     def start(self):
         return self.start_helper()
