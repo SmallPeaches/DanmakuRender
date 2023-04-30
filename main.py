@@ -9,16 +9,16 @@ import sys
 import logging
 import logging.handlers
 import yaml
+from os.path import exists
 
 sys.path.append('./tools')
 VERSION = '2023.4.7'
 VERSION_FULLNAME = 'DanmakuRender-4 2023.4.7.'
-VERSION_DEBUG = '4-2023.4.18'
+VERSION_DEBUG = '4-2023.4.30'
 
-from DMR import Uploader
-
-from DMR import DanmakuRender, utils
+from DMR import DanmakuRender
 from DMR.Render import Render
+from DMR.Config import Config, new_config
 
 import requests.packages.urllib3.util.ssl_
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS = 'ALL'
@@ -33,7 +33,6 @@ if __name__ == '__main__':
     parser.add_argument('--version',action='store_true')
     parser.add_argument('--skip_update',action='store_true')
     args = parser.parse_args()
-    sys.path.append('tools')
 
     if args.version:
         print(f'DanmakuRender-4 {VERSION}.')
@@ -42,25 +41,20 @@ if __name__ == '__main__':
     
     if not args.skip_update:
         check_update(VERSION)
+    
+    if not exists(args.default_config):
+        print(f'未检测到配置文件：{args.default_config}, 即将自动创建.')
+        new_config(args.default_config, 'default')
+    if not exists(args.config):
+        print(f'未检测到配置文件：{args.config}, 即将自动创建.')
+        new_config(args.config, 'replay')
 
     with open(args.default_config,'r',encoding='utf-8') as f:
         default_config = yaml.safe_load(f)
-    
-    if default_config.get('ffmpeg') is None or default_config.get('ffprobe') is None:
-        ffmpeg, ffprobe = check_ffmpeg()
-        if default_config.get('ffmpeg') is None:
-            default_config['ffmpeg'] = ffmpeg
-        if default_config.get('ffprobe') is None:
-            default_config['ffprobe'] = ffprobe
-
     with open(args.config,'r',encoding='utf-8') as f:
         replay_config = yaml.safe_load(f)
-    
-    # check biliup env
-    if replay_config.get('upload'):
-        biliup = check_biliup()
 
-    config = utils.Config(default_config,replay_config)
+    config = Config(default_config, replay_config)
     
     logging.getLogger().setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler(sys.stdout)

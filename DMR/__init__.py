@@ -6,7 +6,7 @@ import time
 from .Uploader import Uploader
 from .Render import Render
 from .Downloader import Downloader
-from .utils import Config
+from .Config import Config
 
 class DanmakuRender():
     def __init__(self, config:Config, debug=False) -> None:
@@ -51,6 +51,8 @@ class DanmakuRender():
     def start_monitor(self):
         while not self.stoped:
             msg = self.signal_queue.get()
+            if self.stoped:
+                return
             logging.debug(f'PIPE MESSAGE: {msg}')
             if msg.get('src') == 'downloader':
                 self.process_downloader_message(msg)
@@ -68,7 +70,7 @@ class DanmakuRender():
         elif type == 'error':
             fp = msg['msg']
             logging.error(f'分片 {fp} 上传错误.')
-            logging.exception(msg.get('desc'))
+            logging.error(msg.get('desc'))
     
     def _dist_to_uploader(self, _name, _type, _item, _group=None, _video_info=None, **kwargs):
         uploaders = self.config.get_replay_config(_name).get('upload')
@@ -112,7 +114,7 @@ class DanmakuRender():
 
         elif type == 'error':
             logging.error(f'录制 {group} 遇到错误，即将重试.')
-            logging.exception(msg.get('desc'))
+            logging.error(msg.get('desc'))
 
     def process_render_message(self, msg):
         type = msg['type']
@@ -134,7 +136,7 @@ class DanmakuRender():
         elif type == 'error':
             fp = msg['msg']
             logging.error(f'分片 {fp} 渲染错误.')
-            logging.exception(msg.get('desc'))
+            logging.error(msg.get('desc'))
 
     def stop(self):
         self.stoped = True

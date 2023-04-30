@@ -23,7 +23,7 @@ class DanmakuWriter():
         self.stoped = False
 
         self.url = url
-        self.output = output + '.ass'
+        self.output = output
         self.segment = segment
         self.height = height
         self.width = width
@@ -78,13 +78,13 @@ class DanmakuWriter():
         def monitor():
             while not self.stoped:
                 self.split()
-                time.sleep(5)
+                time.sleep(self.segment)
         
         if self_segment:
             self.monitor = threading.Thread(target=monitor,daemon=True)
             self.monitor.start()
         
-        self.start_dmc()
+        return self.start_dmc()
   
     @property
     def duration(self):
@@ -98,8 +98,8 @@ class DanmakuWriter():
                 with self.lock:
                     os.rename(self.dm_file, filename)
             except Exception as e:
+                logging.error(e)
                 logging.error(f'弹幕 {self.dm_file} 分段失败.')
-                logging.exception(e)
         dm_file = self.output.replace(f'%03d','%03d'%self.part)
         logging.debug(f'New DMfile: {dm_file}')
         if not self.stoped:
@@ -174,8 +174,7 @@ class DanmakuWriter():
 
         new_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(new_loop)
-        monitor = threading.Thread(target=asyncio.get_event_loop().run_until_complete,args=(danmu_monitor(),),daemon=True)
-        monitor.start()
+        asyncio.get_event_loop().run_until_complete(danmu_monitor())
 
     def add(self,dm):
         tid = 0

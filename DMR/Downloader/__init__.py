@@ -3,11 +3,13 @@ import logging
 import os
 import threading
 import time
+from functools import partial
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from os.path import join,exists,splitext
+
 from DMR.Downloader.danmakuio import DanmakuWriter
 from DMR.message import PipeMessage
-from .ffmpegio import FFmpegDownloader
 from DMR.LiveAPI import *
-from os.path import join,exists
 from DMR.utils import *
 
 class Downloader():
@@ -28,11 +30,20 @@ class Downloader():
         self.end_cnt = end_cnt
         self.output_name = join(output_dir, output_name+f'.{vid_format}')
 
+        self.engine = engine
+        if self.engine == 'ffmpeg':
+            from .ffmpegio import FFmpegDownloader
+            self.download_class = FFmpegDownloader
+        elif self.engine == 'biliuprs':
+            from .biliuprsio import BiliuprsDownloader
+            self.download_class = BiliuprsDownloader
+        else: 
+            raise NotImplementedError(f'No Downloader Named {self.engine}.')
+
         # init stream info
-        self.sinfo = ()
+        self.sinfo = None
         while not self.sinfo:
             self.sinfo = self.liveapi.GetStreamerInfo()
-        self.taskname = self.sinfo[1]
         os.makedirs(self.output_dir,exist_ok=True)
     
     def pipeSend(self,msg,type='info',**kwargs):
@@ -41,133 +52,124 @@ class Downloader():
         else:
             print(PipeMessage('downloader',msg=msg,type=type,group=self.taskname,**kwargs))
 
-    def check_segment(self):
-        nextfile = self._output_fn.replace(r'%03d','%03d'%(self._seg_part+1))
-        if exists(nextfile) or self.stoped:
-            thisfile = self._output_fn.replace(r'%03d','%03d'%self._seg_part)
-            if self.sinfo is None:
-                return 
-            duration = FFprobe.get_duration(thisfile)
-            if duration < 0:
-                duration = self.segment
-            t0 = datetime.now() - timedelta(seconds=duration)
-            video_info = {
-                'url': self.url,
-                'taskname': self.taskname,
-                'streamer': self.sinfo[1],
-                'title': self.sinfo[0],
-                'time': t0,
-                'has_danmu': '',
-                'duration': duration
-            }
-            try:
-                newfile = replace_keywords(self.output_name, video_info)
-                os.rename(thisfile, newfile)
-                if self.danmaku:
-                    newdmfile = newfile.replace(f'.{self.vid_format}','.ass')
-                    self.dmw.split(newdmfile)
-            except Exception as e:
-                logging.error(f'视频 {thisfile} 分段失败.')
-                logging.exception(e)
-                if self.danmaku:
-                    self.dmw.split()
-                newfile = thisfile
-
-            self.pipeSend(newfile,'split',video_info=video_info)
-            self._seg_part += 1
-
-            # 更新 start time
-            self.segment_start_time += timedelta(seconds=duration)
-            # 更新 stream info
-            self.sinfo = ()
-            while not self.sinfo:
-                self.sinfo = self.liveapi.GetStreamerInfo()
-
-    def segment_helper(self, output:str):
-        self._output_fn = output + f'.{self.vid_format}'
-        self._seg_part = 0
-        while not self.stoped:
-            try:
-                self.check_segment()
-            except Exception as e:
-                logging.exception(e)
-            time.sleep(5)
+    def segment_callback(self, filename:str):
+        if self.sinfo is None or not exists(filename):
+            logging.debug(f'No video file {filename}')
+            return 
+        duration = FFprobe.get_duration(filename)
+        if duration < 0 or duration > self.segment:
+            duration = self.segment
+        t0 = datetime.now() - timedelta(seconds=duration)
+        video_info = {
+            'url': self.url,
+            'taskname': self.taskname,
+            'streamer': self.sinfo[1],
+            'title': self.sinfo[0],
+            'time': t0,
+            'has_danmu': '',
+            'duration': duration
+        }
+        try:
+            newfile = replace_keywords(self.output_name, video_info)
+            os.rename(filename, newfile)
+            if self.danmaku:
+                newdmfile = splitext(newfile)[0]+'.ass'
+                self.dmw.split(newdmfile)
+        except Exception as e:
+            logging.error(e)
+            logging.error(f'视频 {newfile} 分段失败，将使用默认名称 {filename}.')
+            newfile = filename
+            if self.danmaku:
+                newdmfile = splitext(newfile)[0]+'.ass'
+                self.dmw.split(newdmfile)
+        self.pipeSend(newfile,'split',video_info=video_info)
+        while not self.sinfo:
+            self.sinfo = self.liveapi.GetStreamerInfo()
 
     def start_once(self):
+        self.stoped = False
         os.makedirs(self.output_dir,exist_ok=True)
         
-        stream_url = stream_url_2 = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
-        stream_request_header = stream_request_header_2 = self.liveapi.GetStreamHeader()
+        if self.liveapi.IsStable():
+            stream_url = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
+            stream_request_header = self.liveapi.GetStreamHeader()
+            width, height = FFprobe.get_resolution(stream_url,stream_request_header)
+        else:
+            stream_url = partial(self.liveapi.GetStreamURL, flow_cdn=self.flow_cdn)
+            stream_request_header = self.liveapi.GetStreamHeader
+            width, height = FFprobe.get_resolution(stream_url(),stream_request_header())
 
-        if not self.liveapi.IsStable():
-            stream_url_2 = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
-            stream_request_header_2 = self.liveapi.GetStreamHeader()
-
-        width, height = FFprobe.get_resolution(stream_url_2,stream_request_header_2)
         if not (width and height):
             logging.warn(f'无法获取视频大小，使用默认值{self.kwargs.get("resolution")}.')
             width, height = self.kwargs.get("resolution")
+        
         self.width,self.height = width, height
 
-        self._startTime = datetime.now().timestamp()
-        self.stoped = False
+        self.downloader = None
+        self.dmw = None
 
-        if self.segment:
-            filename = f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d'
-            output = join(self.output_dir,filename)
-            self.segment_thread = threading.Thread(target=self.segment_helper,args=(output,),daemon=True)
-            self.segment_thread.start()
-        else:
-            filename = f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}'
-            output = join(self.output_dir,filename)
-        
-        self.downloader = FFmpegDownloader(
-            stream_url=stream_url,
-            header=stream_request_header,
-            output=output,
-            segment=self.segment,
-            vid_format=self.vid_format,
-            url=self.url,
-            taskname=self.taskname,
-            debug=self.debug,
-            **self.kwargs
-        )
-
-        # init start time
-        self.segment_start_time = datetime.now()
-
-        if self.danmaku:
-            description = f'{filename}的弹幕文件, {self.url}, powered by DanmakuRender: https://github.com/SmallPeaches/DanmakuRender.'
-            self.dmw = DanmakuWriter(self.url,output,self.segment,description,self.width,self.height,**self.kwargs)
+        def danmaku_thread():
+            description = f'{self.output_name}的弹幕文件, {self.url}, Powered by DanmakuRender: https://github.com/SmallPeaches/DanmakuRender.'
+            danmu_output = join(self.output_dir, f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d.ass')
+            self.dmw = DanmakuWriter(self.url,danmu_output,self.segment,description,self.width,self.height,**self.kwargs)
             self.dmw.start(self_segment=not self.video)
         
+        def video_thread():
+            self.downloader = self.download_class(
+                stream_url=stream_url,
+                header=stream_request_header,
+                output=self.output_name,
+                segment=self.segment,
+                url=self.url,
+                taskname=self.taskname,
+                callback=self.segment_callback,
+                debug=self.debug,
+                **self.kwargs
+            )
+            self.downloader.start()
+
+        self.executor = ThreadPoolExecutor(max_workers=2)
+        futures = []
+        if self.danmaku:
+            futures.append(self.executor.submit(danmaku_thread))
         if self.video:
-            self.downloader.start_helper()
-        else:
-            while self.loop:
+            futures.append(self.executor.submit(video_thread))
+        
+        while not self.stoped:
+            try:
+                for future in as_completed(futures, timeout=60):
+                    return future.result()
+            except TimeoutError:
                 if not self.liveapi.Onair():
-                    break
-                time.sleep(60)
+                    logging.debug('LIVE END.')
+                    return
 
     def start_helper(self):
         self.loop = True
         end_cnt = 0
+        live_end = False
         restart_cnt = 0
         if not self.liveapi.Onair():
             self.pipeSend('end')
+            live_end = True
             time.sleep(60)
 
         while self.loop:
             if not self.liveapi.Onair():
-                time.sleep(60)
+                if live_end:
+                    time.sleep(60)
+                else:
+                    time.sleep(15)
                 restart_cnt = 0
                 end_cnt += 1
-                if end_cnt > self.end_cnt:
+                if end_cnt > self.end_cnt and not live_end:
+                    live_end = True
                     self.pipeSend('end')
                 continue
 
             try:
                 end_cnt = 0
+                live_end = False
                 self.pipeSend('start')
                 self.start_once()
             except KeyboardInterrupt:
@@ -208,7 +210,6 @@ class Downloader():
             except Exception as e:
                 logging.exception(e)
         try:
-            self.check_segment()
+            self.executor.shutdown(wait=False)
         except Exception as e:
             logging.exception(e)
-        

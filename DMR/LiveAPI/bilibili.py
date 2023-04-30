@@ -108,7 +108,7 @@ class bilibili(BaseAPI):
         if data:
             exist = False
             for uid, info in data.items():
-                if rid == info['room_id']:
+                if rid == info['room_id'] or rid == info['short_id']:
                     title = info['title']
                     uname = info['uname']
                     face = info['face']
@@ -128,7 +128,7 @@ class bilibili(BaseAPI):
                             uname = ''
                     else:
                         uname = ''
-                    liverInfo.append([None, str(rid), uname])
+                    liverInfo.append([uname, uname, None, None])
             except Exception as e:
                 logging.error(str(e))
         if liverInfo:

@@ -8,5 +8,3 @@ class PipeMessage(dict):
         self['group'] = group
         for k,v in kwargs.items():
             self[k] = v
-
-        logging.debug(f'PIPE MESSAGE: {self}')

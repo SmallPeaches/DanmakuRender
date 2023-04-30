@@ -5,11 +5,13 @@ import subprocess
 import logging
 import tempfile
 
+from tools import ToolsList
+
 from .baserender import BaseRender
 from os.path import exists
 
 class FFmpegRender(BaseRender):
-    def __init__(self, hwaccel_args:list, vencoder:str, vencoder_args:list, aencoder:str, aencoder_args:list, output_resize:str, ffmpeg:str, debug=False, **kwargs):
+    def __init__(self, hwaccel_args:list, vencoder:str, vencoder_args:list, aencoder:str, aencoder_args:list, output_resize:str, ffmpeg:str=None, debug=False, **kwargs):
         self.rendering = False
         self.hwaccel_args = hwaccel_args if hwaccel_args is not None else []
         self.vencoder = vencoder
@@ -17,7 +19,7 @@ class FFmpegRender(BaseRender):
         self.aencoder = aencoder
         self.aencoder_args = aencoder_args
         self.output_resize = output_resize
-        self.ffmpeg = ffmpeg
+        self.ffmpeg = ffmpeg if ffmpeg else ToolsList.get('ffmpeg')
         self.debug = debug
 
     def render_helper(self, video:str, danmaku:str, output:str, to_stdout:bool=False, logfile=None):

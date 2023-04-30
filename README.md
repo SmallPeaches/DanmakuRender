@@ -7,6 +7,7 @@
 
 旧版本可以在分支v1-v3找到。     
 
+2023.4.30更新：添加新的biliuprs下载引擎，修改部分代码逻辑     
 2023.3.5更新：添加自动上传功能，修改默认分支为v4        
 2023.1.6更新：更新版本4，优化逻辑       
 
@@ -14,7 +15,7 @@
 - Python3.10及以上版本录制斗鱼弹幕失败？      
   请使用Python3.9版本录制。  
 - 在主播意外断流恢复之后（例如PK结束和开始的时候）视频出现花屏？    
-  正在修复，暂时只能等视频自动分段解决，你可以把视频的分段时间设置为半个小时让它加快分段。
+  修改下载引擎为biliuprs，具体方法见下文示例.
 
 ## 使用说明
 **如果你是纯萌新建议看我B站的专栏安装：https://www.bilibili.com/read/cv22343026**         
@@ -26,11 +27,12 @@
 
 ### 安装
 - 下载源代码
-- 将ffmpeg.exe和ffprobe.exe移动到`tools`文件夹下    
+- 下载ffmpeg，将ffmpeg.exe和ffprobe.exe移动到`tools`文件夹下    
+- 下载biliup-rs可执行文件（https://github.com/biliup/biliup-rs/releases ），将其放到`tools`文件夹下或者修改配置文件。
 
 ### 使用方法
 新版本使用yaml配置文件的方法来指定参数，配置文件一共有两个，分别为`default.yml`（默认配置文件）和`replay.yml`（录制配置文件），
-一般情况下默认配置文件不需要修改，只需要修改录制配置文件。      
+一般情况下默认配置文件不需要修改，只需要修改录制配置文件，**程序第一次启动时会自动创建配置文件**。      
 启动程序可以直接运行`python main.py`，不需要附带参数。    
 
 录制配置文件内录制任务应该满足如下格式
@@ -69,6 +71,15 @@ replay:
 ```
 
 高阶用例：
+- 使用不同的下载引擎
+```yaml
+replay:
+  - url: https://live.bilibili.com/13308358
+    engine: biliuprs  # 使用biliuprs作为下载引擎
+    vid_format: flv   # 使用biliuprs作为下载引擎时，录制格式只能是flv
+```
+注意：biliuprs只能被用于B站、虎牙和斗鱼直播的录制。     
+
 - 使用其他种类的编码器
 ```yaml
 # replay.yml
@@ -161,6 +172,8 @@ replay:
 ffprobe: ~
 # FFmpeg 可执行程序地址，为空自动搜索
 ffmpeg: ~
+# biliup-rs可执行文件地址，为空自动搜索
+biliup: ~
 
 # 录制参数
 downloader:
@@ -169,6 +182,10 @@ downloader:
 
   # 录制文件名称格式，可使用关键字替换，默认效果：飞天狙想要努力变胖-2023年3月1日20点30分，注意这里不能含有冒号，斜杠等非法字符！！
   output_name: '{STREAMER}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
+
+  # 录制程序引擎，可选ffmpeg（由ffmpeg提供拉流服务）或者biliuprs（使用biliuprs提供拉流服务，此功能正在测试）
+  # 在使用biliuprs作为录制引擎时，录制视频格式只能是flv，录制平台只能是斗鱼、虎牙和B站
+  engine: ffmpeg
 
   # 录播分段时间（秒），默认一个小时
   segment: 3600
@@ -188,26 +205,31 @@ downloader:
   # 默认分辨率，如果程序无法正常判断流的分辨率可以使用以下参数强行指定
   resolution: [1920,1080]
 
-  # 录制视频的格式，默认mp4，如果经常遇到文件损坏播不了可以选择ts
+  # 录制视频的格式，默认mp4，如果经常遇到文件损坏播不了可以选择flv或者ts
+  # 使用biliuprs作为录制引擎应该使用flv
   vid_format: mp4
-
-  # 录制程序引擎，只能是ffmpeg
-  engine: ffmpeg
 
   # 直播流CDN选项
   # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认al
   # 对于B站，此项可选0-n表示不同的cdn服务器，默认为0
   # 斗鱼和抖音暂时没用
+  # 使用biliuprs作为录制引擎时不生效
   flow_cdn: ~
 
   # ffmpeg http参数
+  # 使用biliuprs作为录制引擎时不生效
   ffmpeg_stream_args: [-fflags,+discardcorrupt,-reconnect,'1',-rw_timeout,'10000000',
                         '-analyzeduration','15000000',
                         '-probesize','50000000',
                         '-thread_queue_size', '16']
   
-  # 关闭编码过慢自动重启功能，默认false
+  # 关闭下载过慢自动重启功能，默认false
+  # 使用biliuprs作为录制引擎时不生效
   disable_lowspeed_interrupt: False
+
+  # 检测流变化，在推流信息变化时立即分段，默认true
+  # 使用biliuprs作为录制引擎时不生效
+  check_stream_changes: True
   
   # 以下是弹幕录制参数
 
@@ -245,6 +267,9 @@ downloader:
   # 弹幕延迟补偿（秒），一般情况下弹幕比视频慢，设置这个强行把弹幕提前，不同直播间不一样
   dm_delay_fixed: 3.0
 
+  # 弹幕录制程序自动重启间隔（在没人发弹幕的时候会定时重启，保证录制正常，默认300秒，0关闭）
+  dm_auto_restart: 300
+
 # 渲染参数
 render:
   # 渲染输出文件夹，默认为空（在录制输出文件夹后面加上“带弹幕版”）
@@ -253,7 +278,7 @@ render:
   # 生成的视频文件格式，默认mp4
   format: mp4
 
-  # 渲染引擎，只能是ffmpeg
+  # 渲染引擎，可选ffmpeg（纯ffmpeg渲染）或者python（Python PIL作为弹幕的图像渲染器，ffmpeg作为视频编码器，此功能正在测试，请勿使用）
   engine: ffmpeg
 
   # 硬件解码参数，NVIDIA显卡默认使用cuda硬件解码器，AMD显卡或者CPU设为空
@@ -262,8 +287,8 @@ render:
   # 视频编码器，NVIDIA设置为h264_nvenc，AMD设置为h264_amf，CPU设置为libx264
   vencoder: h264_nvenc
 
-  # 视频编码器参数，默认恒定码率15Mbps
-  vencoder_args: [-b:v,15M]
+  # 视频编码器参数，默认恒定码率15Mbps，防止B站DASH技术导致音画不同步(GOP=5s)
+  vencoder_args: [-b:v,15M, -g, 300, -keyint_min, 300, -sc_threshold, 0]
 
   # 音频编码器
   aencoder: aac
@@ -274,15 +299,22 @@ render:
   # 输出重缩放，会把输出重缩放到指定分辨率，可以设置为'3840x2160'用于在B站传伪4K保证清晰度
   output_resize: ~
 
+  # 以下参数只适用于python渲染器
+  # 渲染线程数（单个渲染器使用的进程数量），默认2
+  nproc: 2
+
+  # 渲染管道缓冲区大小（MB）
+  bufsize: 100
+
+  # 弹幕重排序
+  danmaku_resort: False
+
 # 自动上传参数
 uploader:
   # 上传目标（目前只有B站）
   bilibili:
     # 上传引擎，目前只能选biliuprs
     engine: biliuprs
-
-    # biliup-rs可执行文件地址
-    biliup: tools/biliup.exe
 
     # 登录信息保存的cookies路径，默认<上传器名字>.json
     cookies: ~

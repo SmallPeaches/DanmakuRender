@@ -8,11 +8,12 @@ import json
 import time
 import subprocess
 
+from tools import ToolsList
 from DMR.utils import replace_keywords
 
 class biliuprs():
-    def __init__(self, biliup:str, cookies:str, name:str, debug=False, **kwargs) -> None:
-        self.biliup = biliup
+    def __init__(self, cookies:str, name:str, debug=False, biliup:str=None, **kwargs) -> None:
+        self.biliup = biliup if biliup else ToolsList.get('biliup')
         self.name = name
         if cookies is None:
             self.cookies = f'./.temp/{name}.json'

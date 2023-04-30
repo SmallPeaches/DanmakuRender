@@ -3,15 +3,14 @@ import logging
 import signal
 import subprocess
 import sys
-import asyncio
 import threading
 import time
 import queue
 from os.path import *
 
 from DMR.LiveAPI import Onair
-from DMR.message import PipeMessage
 from DMR.utils import *
+from tools import ToolsList
 
 class FFmpegDownloader():
     default_header = {
@@ -22,38 +21,54 @@ class FFmpegDownloader():
     
     def __init__(self, 
                  stream_url:str, 
-                 output:str, 
                  segment:int,
-                 vid_format:str,
+                 output:str,
                  url:str,
                  taskname:str,
-                 ffmpeg_stream_args:list,
-                 ffmpeg:str,
+                 ffmpeg_stream_args:list=None,
+                 ffmpeg:str=None,
                  debug=False,
                  header:dict=None,
+                 callback=None,
                  **kwargs):
         self.stream_url = stream_url
         self.header = header if header else self.default_header
         self.segment = segment
         self.ffmpeg_stream_args = ffmpeg_stream_args
         self.debug = debug
-        self.kwargs = kwargs
-        self.output = f'{output}.{vid_format}'
+        self.output = output
         self.taskname = taskname
         self.url = url
-        self.ffmpeg = ffmpeg
+        self.callback = callback
+        self.kwargs = kwargs
+        self.ffmpeg = ffmpeg if ffmpeg else ToolsList.get('ffmpeg')
+        
+        if isinstance(self.stream_url, str):
+            self.stable = True
+        else:
+            self.stable = False
         self.stoped = False
-
+    
     @property
     def duration(self):
         return datetime.now().timestamp() - self.starttime
+    
+    def extract_stream(self) -> tuple:
+        if self.stable:
+            stream_url = self.stream_url
+            header = self.header
+        else:
+            stream_url = self.stream_url()
+            header = self.header()
+        return stream_url, header
         
     def start_ffmpeg(self):
-        ffmpeg_args =   [
+        stream_url, header = self.extract_stream()
+        ffmpeg_args = [
             self.ffmpeg, '-y',
-            '-headers', ''.join('%s: %s\r\n' % x for x in self.header.items()),
+            '-headers', ''.join('%s: %s\r\n' % x for x in header.items()),
             *self.ffmpeg_stream_args,
-            '-i', self.stream_url,
+            '-i', stream_url,
             '-c','copy'
         ]
         
@@ -62,10 +77,10 @@ class FFmpegDownloader():
                             '-segment_time',str(self.segment),
                             '-reset_timestamps','1',
                             '-movflags','faststart+frag_keyframe+empty_moov',
-                            self.output]
+                            self.raw_name]
         else:
             ffmpeg_args += ['-movflags','faststart+frag_keyframe+empty_moov',
-                            self.output]
+                            self.raw_name]
 
         
         logging.debug('FFmpegDownloader args:')
@@ -102,15 +117,27 @@ class FFmpegDownloader():
         
         return self.msg_queue
     
+    @staticmethod
+    def get_livestream_info(stream_url, header):
+        stream_info = FFprobe.get_livestream_info(stream_url, header)
+        IGNORE_KEYS = ['start_pts', 'start_time']
+        for k in IGNORE_KEYS:
+            stream_info.pop(k, 0)
+        return stream_info
+    
     def start_helper(self):
         self.stoped = False
+        self.raw_name = join(split(self.output)[0], f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d{splitext(self.output)[1]}')
         self.starttime = datetime.now().timestamp()
-        q = self.start_ffmpeg()
-        
+        self._timer_cnt = 1
+        self.thisfile = None
+
+        stream_url, header = self.extract_stream()
+        latest_stream_info = self.get_livestream_info(stream_url, header)
         log = ''
         ffmpeg_low_speed = 0
-        latest_stream_info = None
-        self._timer_cnt = 1
+
+        q = self.start_ffmpeg()
         
         while not self.stoped:
             if q is None:
@@ -137,6 +164,11 @@ class FFmpegDownloader():
                 for li in log.split('\n'):
                     if li and not li.startswith('frame='):
                         err = 1
+                    if li and 'Opening \'' in li:
+                        fname = li.split('\'')[1]
+                        if self.thisfile:
+                            self.callback(self.thisfile)
+                        self.thisfile = fname
                 
                 if err:
                     logging.debug(f'{self.taskname} FFmpeg output:\n{log}')
@@ -160,24 +192,20 @@ class FFmpegDownloader():
                     raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
 
                 if self._timer_cnt%3 == 0:
-                    if Onair(self.url) == False:
-                        logging.debug('Live end.')
-                        return
-                    
-                    try:
-                        new_info =  FFprobe.get_livestream_info(self.stream_url, self.header)
-                    except Exception:
-                        new_info = latest_stream_info
-                    if latest_stream_info and new_info != latest_stream_info:
-                        raise RuntimeError('推流信息变化，即将重试...')
+                    if self.kwargs.get('check_stream_changes'):
+                        try:
+                            new_info = self.get_livestream_info(stream_url, header)
+                        except Exception as e:
+                            logging.debug(f'Check stream info error: {e}.')
+                            new_info = latest_stream_info
+                        if latest_stream_info and new_info != latest_stream_info:
+                            raise RuntimeError('推流信息变化，即将重试...')
 
                 log = ''
                 self._timer_cnt += 1
 
     def start(self):
-        thread = threading.Thread(target=self.start_helper,daemon=True)
-        thread.start()
-        return thread
+        return self.start_helper()
 
     def stop(self):
         self.stoped = True
@@ -190,16 +218,18 @@ class FFmpegDownloader():
             logging.debug(e)
         if log:
             logging.debug(f'{self.taskname} ffmpeg: {log}')
+            for li in log.split('\n'):
+                if li and 'Opening \'' in li:
+                    fname = li.split('\'')[1]
+                    if self.thisfile:
+                        self.callback(self.thisfile)
+                    self.thisfile = fname
         try:
             out, _ = self.ffmpeg_proc.communicate(b'q',timeout=5)
-            logging.debug(out)
-        except subprocess.TimeoutExpired:
-            try:
-                self.ffmpeg_proc.send_signal(signal.SIGINT)
-                out, _ = self.ffmpeg_proc.communicate()
-                logging.debug(out)
-            except Exception as e:
-                logging.exception(e)
+            if out:
+                logging.debug(f'ffmpeg out: {out}.')
         except Exception as e:
-            logging.exception(e)
+            self.ffmpeg_proc.kill()
+            logging.debug(e)
+        self.callback(self.thisfile)
         logging.debug('ffmpeg downloader stoped.')
