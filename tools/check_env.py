@@ -41,6 +41,7 @@ def check_pypi():
         import execjs
         import lxml
         import yaml
+        import stream_gears
         return True
     except ImportError:
         input('Python 包未正确安装，回车自动安装:')
