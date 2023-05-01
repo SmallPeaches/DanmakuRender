@@ -133,9 +133,9 @@ class Render():
         self.stoped = True
         if self.rendering:
             logging.warn('渲染被提前终止，带弹幕的视频可能不完整.')
-            try:
-                self.render.stop()
-            except Exception as e:
-                logging.debug(e)
-            self.rendering = False
+        try:
+            self.render.stop()
+        except Exception as e:
+            logging.debug(e)
+        self.rendering = False
         

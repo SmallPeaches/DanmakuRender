@@ -65,11 +65,12 @@ class Config():
             self.config['upload'][upd]['target'] = upd
 
         # check 3rd party tools
-        TOOLS = ['ffmpeg','biliup']
+        TOOLS = ['ffmpeg']
+        if len(self.config['upload'])>0:
+            TOOLS.append('biliup')
         for k, v in self.default_conf.items():
             if isinstance(v, str):
                 ToolsList.set(k, v)
-        
         for tool in TOOLS:
             if not ToolsList.get(tool):
                 eval(f"check_{tool}")()

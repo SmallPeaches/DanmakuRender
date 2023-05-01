@@ -7,7 +7,7 @@
 
 旧版本可以在分支v1-v3找到。     
 
-2023.4.30更新：添加新的biliuprs下载引擎，修改部分代码逻辑     
+2023.4.30更新：添加新的streamgears下载引擎，修改部分代码逻辑     
 2023.3.5更新：添加自动上传功能，修改默认分支为v4        
 2023.1.6更新：更新版本4，优化逻辑       
 
@@ -15,7 +15,7 @@
 - Python3.10及以上版本录制斗鱼弹幕失败？      
   请使用Python3.9版本录制。  
 - 在主播意外断流恢复之后（例如PK结束和开始的时候）视频出现花屏？    
-  修改下载引擎为biliuprs，具体方法见下文示例.
+  修改下载引擎为streamgears，具体方法见下文示例.
 
 ## 使用说明
 **如果你是纯萌新建议看我B站的专栏安装：https://www.bilibili.com/read/cv22343026**         
@@ -75,10 +75,10 @@ replay:
 ```yaml
 replay:
   - url: https://live.bilibili.com/13308358
-    engine: biliuprs  # 使用biliuprs作为下载引擎
-    vid_format: flv   # 使用biliuprs作为下载引擎时，录制格式只能是flv
+    engine: streamgears   # 使用streamgears作为下载引擎
+    vid_format: flv       # 使用streamgears作为下载引擎时，录制格式只能是flv
 ```
-注意：biliuprs只能被用于B站、虎牙直播的录制。     
+注意：使用streamgears作为下载引擎时，录制格式只能是flv，使用其他格式可能会导致意外错误     
 
 - 使用其他种类的编码器
 ```yaml
@@ -119,7 +119,7 @@ replay:
 为了绕开这个限制，需要使用伪4K的功能，简单地说就是把视频缩放到4K，让B站以为是4K视频然后按4K分配码率，最后看的时候就会很清晰。
 当然，你愿意的话甚至可以缩放到8K（7680x4320），不过渲染速度的话就不好说了，并且一般情况下4K已经能分到15M的码率了，8K分30M的码率没什么必要。
 
-带自动上传功能的录制（实验性功能）     
+带自动上传功能的录制     
 **注意此功能正在测试，可能遇到意料之外的问题，记得拿小号测试！**    
 上传功能由biliup-rs支持，请先下载biliup.exe可执行文件到tools文件夹，biliup-rs项目地址：https://biliup.github.io/biliup-rs/index.html     
 简单上传，只上传到b站的一个账号：    
@@ -183,8 +183,8 @@ downloader:
   # 录制文件名称格式，可使用关键字替换，默认效果：飞天狙想要努力变胖-2023年3月1日20点30分，注意这里不能含有冒号，斜杠等非法字符！！
   output_name: '{STREAMER}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
 
-  # 录制程序引擎，可选ffmpeg（由ffmpeg提供拉流服务）或者biliuprs（使用biliuprs提供拉流服务，此功能正在测试）
-  # 在使用biliuprs作为录制引擎时，录制视频格式只能是flv，录制平台只能是虎牙和B站
+  # 录制程序引擎，可选ffmpeg（由ffmpeg提供拉流服务）或者streamgears（使用streamgears提供拉流服务，此功能正在测试）
+  # 在使用streamgears作为录制引擎时，录制视频格式只能是flv
   engine: ffmpeg
 
   # 录播分段时间（秒），默认一个小时
@@ -206,29 +206,28 @@ downloader:
   resolution: [1920,1080]
 
   # 录制视频的格式，默认mp4，如果经常遇到文件损坏播不了可以选择flv或者ts
-  # 使用biliuprs作为录制引擎应该使用flv
+  # 使用streamgears作为录制引擎应该使用flv
   vid_format: mp4
 
   # 直播流CDN选项
   # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认al
   # 对于B站，此项可选0-n表示不同的cdn服务器，默认为0
   # 斗鱼和抖音暂时没用
-  # 使用biliuprs作为录制引擎时不生效
   flow_cdn: ~
 
   # ffmpeg http参数
-  # 使用biliuprs作为录制引擎时不生效
+  # 使用streamgears作为录制引擎时不生效
   ffmpeg_stream_args: [-fflags,+discardcorrupt,-reconnect,'1',-rw_timeout,'10000000',
                         '-analyzeduration','15000000',
                         '-probesize','50000000',
                         '-thread_queue_size', '16']
   
   # 关闭下载过慢自动重启功能，默认false
-  # 使用biliuprs作为录制引擎时不生效
+  # 使用streamgears作为录制引擎时不生效
   disable_lowspeed_interrupt: False
 
   # 检测流变化，在推流信息变化时立即分段，默认true
-  # 使用biliuprs作为录制引擎时不生效
+  # 使用streamgears作为录制引擎时不生效
   check_stream_changes: True
   
   # 以下是弹幕录制参数
@@ -379,5 +378,5 @@ uploader:
 - `--version` 查看版本号
 
 ## 更多
-感谢 THMonster/danmaku, wbt5/real-url, ForgQi/biliup     
+感谢 THMonster/danmaku, wbt5/real-url, ForgQi/biliup,ForgQi/stream-gears      
 出现问题了可以把日志文件发给我，我会尽量帮忙修复

@@ -13,8 +13,8 @@ downloader:
   # 录制文件名称格式，可使用关键字替换，默认效果：飞天狙想要努力变胖-2023年3月1日20点30分，注意这里不能含有冒号，斜杠等非法字符！！
   output_name: '{STREAMER}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
 
-  # 录制程序引擎，可选ffmpeg（由ffmpeg提供拉流服务）或者biliuprs（使用biliuprs提供拉流服务，此功能正在测试）
-  # 在使用biliuprs作为录制引擎时，录制视频格式只能是flv，录制平台只能是斗鱼、虎牙和B站
+  # 录制程序引擎，可选ffmpeg（由ffmpeg提供拉流服务）或者streamgears（使用streamgears提供拉流服务，此功能正在测试）
+  # 在使用streamgears作为录制引擎时，录制视频格式只能是flv
   engine: ffmpeg
 
   # 录播分段时间（秒），默认一个小时
@@ -36,29 +36,28 @@ downloader:
   resolution: [1920,1080]
 
   # 录制视频的格式，默认mp4，如果经常遇到文件损坏播不了可以选择flv或者ts
-  # 使用biliuprs作为录制引擎应该使用flv
+  # 使用streamgears作为录制引擎应该使用flv
   vid_format: mp4
 
   # 直播流CDN选项
   # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认al
   # 对于B站，此项可选0-n表示不同的cdn服务器，默认为0
   # 斗鱼和抖音暂时没用
-  # 使用biliuprs作为录制引擎时不生效
   flow_cdn: ~
 
   # ffmpeg http参数
-  # 使用biliuprs作为录制引擎时不生效
+  # 使用streamgears作为录制引擎时不生效
   ffmpeg_stream_args: [-fflags,+discardcorrupt,-reconnect,'1',-rw_timeout,'10000000',
                         '-analyzeduration','15000000',
                         '-probesize','50000000',
                         '-thread_queue_size', '16']
   
   # 关闭下载过慢自动重启功能，默认false
-  # 使用biliuprs作为录制引擎时不生效
+  # 使用streamgears作为录制引擎时不生效
   disable_lowspeed_interrupt: False
 
   # 检测流变化，在推流信息变化时立即分段，默认true
-  # 使用biliuprs作为录制引擎时不生效
+  # 使用streamgears作为录制引擎时不生效
   check_stream_changes: True
   
   # 以下是弹幕录制参数

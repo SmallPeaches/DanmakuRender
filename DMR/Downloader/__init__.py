@@ -34,9 +34,9 @@ class Downloader():
         if self.engine == 'ffmpeg':
             from .ffmpegio import FFmpegDownloader
             self.download_class = FFmpegDownloader
-        elif self.engine == 'biliuprs':
-            from .biliuprsio import BiliuprsDownloader
-            self.download_class = BiliuprsDownloader
+        elif self.engine == 'streamgears':
+            from .streamgearsio import StreamgearsDownloader
+            self.download_class = StreamgearsDownloader
         else: 
             raise NotImplementedError(f'No Downloader Named {self.engine}.')
 
@@ -199,17 +199,18 @@ class Downloader():
 
     def stop_once(self):
         self.stoped = True
-        if self.danmaku:
+        if self.danmaku and hasattr(self, 'dmw'):
             try:
                 self.dmw.stop()
             except Exception as e:
                 logging.exception(e)
-        if self.video:
+        if self.video and hasattr(self, 'downloader'):
             try:
                 self.downloader.stop()
             except Exception as e:
                 logging.exception(e)
         try:
-            self.executor.shutdown(wait=False)
+            if hasattr(self, 'executor'):
+                self.executor.shutdown(wait=False)
         except Exception as e:
             logging.exception(e)

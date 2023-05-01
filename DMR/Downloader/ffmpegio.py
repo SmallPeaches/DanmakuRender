@@ -208,6 +208,8 @@ class FFmpegDownloader():
         return self.start_helper()
 
     def stop(self):
+        if self.stoped:
+            return
         self.stoped = True
         log = ''
         try:
@@ -225,7 +227,7 @@ class FFmpegDownloader():
                         self.callback(self.thisfile)
                     self.thisfile = fname
         try:
-            out, _ = self.ffmpeg_proc.communicate(b'q',timeout=5)
+            out, _ = self.ffmpeg_proc.communicate(b'q',timeout=3)
             if out:
                 logging.debug(f'ffmpeg out: {out}.')
         except Exception as e:

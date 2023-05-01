@@ -90,11 +90,6 @@ class FFmpegRender(BaseRender):
             out, _ = self.render_proc.communicate(b'q',timeout=5)
             logging.debug(out)
         except subprocess.TimeoutExpired:
-            try:
-                self.render_proc.send_signal(signal.SIGINT)
-                out, _ = self.render_proc.communicate()
-                logging.debug(out)
-            except Exception as e:
-                logging.debug(e)
+            self.render_proc.kill()
         except Exception as e:
             logging.debug(e)
