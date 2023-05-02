@@ -40,10 +40,6 @@ class Downloader():
         else: 
             raise NotImplementedError(f'No Downloader Named {self.engine}.')
 
-        # init stream info
-        self.sinfo = None
-        while not self.sinfo:
-            self.sinfo = self.liveapi.GetStreamerInfo()
         os.makedirs(self.output_dir,exist_ok=True)
     
     def pipeSend(self,msg,type='info',**kwargs):
@@ -53,21 +49,18 @@ class Downloader():
             print(PipeMessage('downloader',msg=msg,type=type,group=self.taskname,**kwargs))
 
     def segment_callback(self, filename:str):
-        if self.sinfo is None or not exists(filename):
+        if self.segment_info is None or not exists(filename):
             logging.debug(f'No video file {filename}')
             return 
-        duration = FFprobe.get_duration(filename)
-        if duration < 0 or duration > self.segment:
-            duration = self.segment
-        t0 = datetime.now() - timedelta(seconds=duration)
+        t0 = self.segment_start_time
         video_info = {
             'url': self.url,
             'taskname': self.taskname,
-            'streamer': self.sinfo[1],
-            'title': self.sinfo[0],
+            'streamer': self.segment_info[1],
+            'title': self.segment_info[0],
             'time': t0,
             'has_danmu': '',
-            'duration': duration
+            'duration': self.segment,
         }
         try:
             newfile = replace_keywords(self.output_name, video_info)
@@ -83,11 +76,19 @@ class Downloader():
                 newdmfile = splitext(newfile)[0]+'.ass'
                 self.dmw.split(newdmfile)
         self.pipeSend(newfile,'split',video_info=video_info)
-        while not self.sinfo:
-            self.sinfo = self.liveapi.GetStreamerInfo()
+        new_segment_info = self.liveapi.GetStreamerInfo()
+        if new_segment_info:
+            self.segment_info = new_segment_info
+        self.segment_start_time = datetime.now()
 
     def start_once(self):
         self.stoped = False
+        
+        # init stream info
+        self.segment_info = None
+        while not self.segment_info:
+            self.segment_info = self.liveapi.GetStreamerInfo()
+        self.segment_start_time = datetime.now()
         os.makedirs(self.output_dir,exist_ok=True)
         
         if self.liveapi.IsStable():
