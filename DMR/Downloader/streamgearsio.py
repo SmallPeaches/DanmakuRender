@@ -111,19 +111,13 @@ class StreamgearsDownloader():
     def stop(self):
         self.stoped = True
         try:
-            if sys.platform == 'win32':
-                SIGNAL_INT = signal.CTRL_C_EVENT
-            else:
-                SIGNAL_INT = signal.SIGINT
-            self.streamgears_proc.send_signal(SIGNAL_INT)
-            self.streamgears_proc.wait(3)
-        except Exception as e:
             self.streamgears_proc.kill()
+        except Exception as e:
             logging.debug(e)
         finally:
             out, _ = self.streamgears_proc.communicate(timeout=0.1)
             if out: 
-                logging.debug(f'{self.taskname} streamgears downloader: {out}')
+                logging.debug(f'{self.taskname} streamgears: {out}')
 
         if exists(self.thisfile+'.part'):
             self.callback(self.thisfile+'.part')
