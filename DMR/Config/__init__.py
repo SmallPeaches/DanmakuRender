@@ -83,7 +83,7 @@ class Config():
                 raise ValueError(f'不支持的平台: {plat}.')
             if plat not in AVAILABLE_DANMU:
                 warnings.warn(f'平台 {plat} 不支持录制弹幕，程序将只录制直播流.')
-                rep_conf['danmaku'] = False
+                rep['danmaku'] = False
             
             # check downloader output name validation
             output_name = rep['output_name']
