@@ -31,6 +31,8 @@ class FFmpegRender(BaseRender):
         else:
             scale_args = []
 
+        if platform.system().lower() == 'windows':
+            danmaku = danmaku.replace("\\", "/").replace(":", "\\\\:")
         ffmpeg_args +=  [
                         '-fflags','+discardcorrupt',
                         '-i', video,
