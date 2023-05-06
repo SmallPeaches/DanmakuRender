@@ -17,7 +17,7 @@ __all__ = [
     'FFprobe',
 ]
 
-def replace_keywords(string:str, kw_info:dict=None):
+def replace_keywords(string:str, kw_info:dict=None, replace_invalid:bool=False):
     if not kw_info:
         return string
     for k, v in kw_info.items():
@@ -27,7 +27,10 @@ def replace_keywords(string:str, kw_info:dict=None):
                     string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)).zfill(2))
                 else:
                     string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)))
-        string = string.replace('{'+f'{k}'.upper()+'}', replace_invalid_chars(v))
+        if replace_invalid:
+            string = string.replace('{'+f'{k}'.upper()+'}', replace_invalid_chars(v))
+        else:
+            string = string.replace('{'+f'{k}'.upper()+'}', str(v))
     return string
 
 def replace_invalid_chars(string:str) -> str:
