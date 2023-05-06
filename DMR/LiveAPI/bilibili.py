@@ -70,8 +70,11 @@ class bilibili(BaseAPI):
                         extra = info['extra']
                         flv_url = host + base_url + extra
                         flv_urls.append(flv_url)
-                    if flow_cdn:
+                    if isinstance(flow_cdn, int):
                         real_url = flv_urls[min(int(flow_cdn), len(flv_urls)-1)]
+                    elif isinstance(flow_cdn, str):
+                        host = f'https://{flow_cdn}.bilivideo.com'
+                        real_url = host + base_url + extra
                     else:
                         real_url = flv_urls[0]
                         for uri in flv_urls:

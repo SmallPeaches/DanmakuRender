@@ -63,7 +63,7 @@ class Downloader():
             'duration': self.segment,
         }
         try:
-            newfile = replace_keywords(self.output_name, video_info)
+            newfile = replace_keywords(self.output_name, video_info, replace_invalid=True)
             os.rename(filename, newfile)
             if self.danmaku:
                 newdmfile = splitext(newfile)[0]+'.ass'
