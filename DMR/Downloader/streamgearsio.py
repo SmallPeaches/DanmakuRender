@@ -96,14 +96,14 @@ class StreamgearsDownloader():
                 if fname.endswith('.part'):
                     fname = fname[:-5]
                 if self.thisfile and self.thisfile != fname:
-                    time.sleep(1)
+                    time.sleep(5)
                     self.callback(self.thisfile)
                 self.thisfile = fname
             logging.debug(f'{self.taskname} streamgears: {line}')
 
 
         if Onair(self.url):
-            raise RuntimeError(f'Stream-gears 异常退出 {line}.')
+            raise RuntimeError(f'{self.taskname} Stream-gears 异常退出 {line}.')
 
     def start(self):
         return self.start_helper()
