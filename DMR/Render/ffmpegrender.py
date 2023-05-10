@@ -1,4 +1,5 @@
 import os
+import platform
 import signal
 import sys
 import subprocess
@@ -32,11 +33,11 @@ class FFmpegRender(BaseRender):
             scale_args = []
 
         if platform.system().lower() == 'windows':
-            danmaku = danmaku.replace("\\", "/").replace(":", "\\\\:")
-        ffmpeg_args +=  [
+            danmaku = danmaku.replace("\\", "/").replace(":/", "\\:/")
+        ffmpeg_args += [
                         '-fflags','+discardcorrupt',
                         '-i', video,
-                        '-vf', 'subtitles=filename=%s'%danmaku.replace('\\','/'),
+                        '-vf', 'subtitles=filename=%s'%danmaku,
 
                         '-c:v',self.vencoder,
                         *self.vencoder_args,
