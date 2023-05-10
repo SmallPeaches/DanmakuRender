@@ -141,7 +141,7 @@ class Downloader():
                 for future in as_completed(futures, timeout=60):
                     return future.result()
             except TimeoutError:
-                if not self.liveapi.Onair():
+                if self.liveapi.Onair() == False:
                     logging.debug('LIVE END.')
                     return
 
