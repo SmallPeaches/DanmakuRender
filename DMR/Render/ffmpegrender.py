@@ -79,7 +79,7 @@ class FFmpegRender(BaseRender):
             for line in logfile.readlines():
                 line = line.decode('utf-8',errors='ignore').strip()
                 log += line + '\n'
-                if line.startswith('video:'):
+                if 'video:' in line:
                     info = line
             if info:
                 return info

@@ -12,9 +12,9 @@ import yaml
 from os.path import exists
 
 sys.path.append('./tools')
-VERSION = '2023.4.7'
-VERSION_FULLNAME = 'DanmakuRender-4 2023.4.7.'
-VERSION_DEBUG = '4-2023.4.30'
+VERSION = '2023.5.15'
+VERSION_FULLNAME = 'DanmakuRender-4 2023.5.15.'
+VERSION_DEBUG = '4-2023.5.15'
 
 from DMR import DanmakuRender
 from DMR.Render import Render
