@@ -7,7 +7,8 @@ from datetime import datetime
 from os.path import *
 
 from DMR.LiveAPI.danmaku import DanmakuClient
-from DMR.utils import sec2hms, hms2sec
+from DMR.LiveAPI import split_url
+from DMR.utils import sec2hms, hms2sec,  douyu_rgb2bgr
 
 def get_length(string:str,fontsize):
     length = 0
@@ -141,8 +142,8 @@ class DanmakuWriter():
                     dm = q.get_nowait()
                     dm['time'] = self.duration - self.dm_delay_fixed
                     if self.dm_available(dm):
-                        self.add(dm)
-                        last_dm_time = datetime.now().timestamp()
+                        if self.add(dm):
+                            last_dm_time = datetime.now().timestamp()
                     continue
                 except asyncio.QueueEmpty:
                     pass
@@ -208,18 +209,29 @@ class DanmakuWriter():
 
         t0 = dm['time']-self.part_start_time
         t1 = t0+self.dmduration
-
+        
+        if t0 < 0: # reduce useless danmu add into ass file
+            return False
+        
+        if split_url(self.url)[0] == 'douyu':
+            real_dm_color = douyu_rgb2bgr(dm['color']) # douyu rgb 2 bgr
+        else:
+            color = dm['color']
+            real_dm_color = color[4:6] + color[2:4] + color[0:2]
+            
         t0 = '%d:%d:%02.2f'%sec2hms(t0)
         t1 = '%d:%d:%02.2f'%sec2hms(t1)
 
         dm_info = f'Dialogue: 0,{t0},{t1},R2L,,0,0,0,,'
-        dm_info += '{\move(%d,%d,%d,%d)}'%(x0,y+20,x1,y+20)
+        dm_info += '{\move(%d,%d,%d,%d)}'%(x0,y,x1,y)
 
-        # 弹幕颜色 RGB 转 BGR(ass)
-        real_dm_color = dm['color'][4:] + dm['color'][2:4] + dm['color'][0:2]
+        if split_url(self.url)[0] == 'douyu':
+            real_dm_color = douyu_rgb2bgr(dm['color']) # douyu rgb 2 bgr
+        else:
+            color = dm['color']
+            real_dm_color = color[4:6] + color[2:4] + color[0:2]
 
-        if real_dm_color != 'ffffff':
-            dm_info += '{\\1c&H%s&}'%(self.opacity + real_dm_color)
+        dm_info += '{\\1c&H%s&}'%(self.opacity + real_dm_color)
         content = dm['content'].replace('\n',' ').replace('\r',' ')
         dm_info += content
 
