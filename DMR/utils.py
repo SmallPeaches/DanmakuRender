@@ -51,6 +51,20 @@ def BGR2RGB(color):
 def RGB2BGR(color):
     return BGR2RGB(color)
 
+# correct danmu color(only douyu for now)
+# 'ffffff' to 'ffffff' white (default)
+# '1e87f0' to 'ffcc00' light blue (lv.6)
+# '7ac84b' to '00ff66' light green(teal) (lv.9)
+# 'ff69b4' to '7f44f6' pink (lv.12)
+# 'ff7f00' to '0066ff' orange (lv.15)
+# '9b39f4' to 'ff00cc' purple (lv.18)
+# 'ff0000' to '2e2eff' red (lv.21)
+def douyu_rgb2bgr(color):
+    colors_dict = {'ffffff': 'ffffff', '7ac84b': '00ff66', '1e87f0': 'ffcc00', 'ff69b4': '7f44f6', 'ff7f00': '0066ff', '9b39f4': 'ff00cc', 'ff0000': '2e2eff'}
+    if color in colors_dict.keys():
+        return colors_dict[color]
+    return color[4:6] + color[2:4] + color[0:2]
+
 class FFprobe():
     header = {
                 'Content-Type': 'application/x-www-form-urlencoded',
