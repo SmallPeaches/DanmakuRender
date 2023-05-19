@@ -66,10 +66,6 @@ class DanmakuWriter():
             'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
         ]
         self.part = 0
-        
-        import platform
-        if platform.system()=='Windows':
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     def start(self, self_segment=False):
         self.starttime = datetime.now().timestamp()
@@ -213,17 +209,18 @@ class DanmakuWriter():
         t0 = dm['time']-self.part_start_time
         t1 = t0+self.dmduration
 
+        if t0 < 0:
+            return False
+
         t0 = '%d:%d:%02.2f'%sec2hms(t0)
         t1 = '%d:%d:%02.2f'%sec2hms(t1)
 
         dm_info = f'Dialogue: 0,{t0},{t1},R2L,,0,0,0,,'
-        dm_info += '{\move(%d,%d,%d,%d)}'%(x0,y+20,x1,y+20)
+        dm_info += '{\move(%d,%d,%d,%d)}'%(x0,y,x1,y)
 
-        # 弹幕颜色 RGB 转 BGR(ass)
-        real_dm_color = dm['color'][4:] + dm['color'][2:4] + dm['color'][0:2]
+        dm_color = dm['color']
 
-        if real_dm_color != 'ffffff':
-            dm_info += '{\\1c&H%s&}'%(self.opacity + real_dm_color)
+        dm_info += '{\\1c&H%s&}'%(self.opacity + dm_color)
         content = dm['content'].replace('\n',' ').replace('\r',' ')
         dm_info += content
 
