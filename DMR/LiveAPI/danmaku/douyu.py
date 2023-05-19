@@ -4,13 +4,14 @@ from struct import pack, unpack
 import aiohttp
 from ..utils import *
 
+# BGR Color
 color_tab = {
-    "2": "1e87f0",
-    "3": "7ac84b",
-    "4": "ff7f00",
-    "6": "ff69b4",
-    "5": "9b39f4",
-    "1": "ff0000",
+    "2": "ffcc00", # '1e87f0' to 'ffcc00' light blue (lv.6)
+    "3": "00ff66", # '7ac84b' to '00ff66' light green(teal) (lv.9)
+    "4": "0066ff", # 'ff7f00' to '0066ff' orange (lv.15)
+    "6": "7f44f6", # 'ff69b4' to '7f44f6' pink (lv.12)
+    "5": "ff00cc", # '9b39f4' to 'ff00cc' purple (lv.18)
+    "1": "2e2eff", # 'ff0000' to '2e2eff' red (lv.21)
 }
 
 
