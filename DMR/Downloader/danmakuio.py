@@ -66,6 +66,10 @@ class DanmakuWriter():
             'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
         ]
         self.part = 0
+        
+        import platform
+        if platform.system()=='Windows':
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     def start(self, self_segment=False):
         self.starttime = datetime.now().timestamp()
