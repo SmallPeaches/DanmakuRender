@@ -19,7 +19,7 @@ def get_length(string:str,fontsize):
     return int(length)
 
 class DanmakuWriter():
-    def __init__(self,url,output,segment,description,width,height,margin,dmrate,font,fontsize,overflow_op,dmduration,opacity,auto_fontsize,outlinecolor,outlinesize,dm_delay_fixed,dm_auto_restart,**kwargs) -> None:
+    def __init__(self,url,output,segment,description,width,height,margin,dst,dmrate,font,fontsize,overflow_op,dmduration,opacity,auto_fontsize,outlinecolor,outlinesize,dm_delay_fixed,dm_auto_restart,**kwargs) -> None:
         self.stoped = False
 
         self.url = url
@@ -35,6 +35,7 @@ class DanmakuWriter():
         self.font = font
 
         self.margin = margin
+        self.dst = dst # Distance from screen top
         self.overflow_op = overflow_op
         self.dmduration = dmduration
         self.opacity = hex(255-int(opacity*255))[2:].zfill(2)
@@ -45,7 +46,7 @@ class DanmakuWriter():
         self.kwargs = kwargs
 
         self.lock = threading.Lock()
-        self.ntrack = int((height*dmrate - self.fontsize)/(self.fontsize+margin))
+        self.ntrack = int(((height - dst) * dmrate - self.fontsize) / (self.fontsize + margin))
         self.trackinfo = [None for _ in range(self.ntrack)]
 
         self.meta_info = [
@@ -145,8 +146,8 @@ class DanmakuWriter():
                     dm = q.get_nowait()
                     dm['time'] = self.duration - self.dm_delay_fixed
                     if self.dm_available(dm):
-                        self.add(dm)
-                        last_dm_time = datetime.now().timestamp()
+                        if self.add(dm):
+                            last_dm_time = datetime.now().timestamp()
                     continue
                 except asyncio.QueueEmpty:
                     pass
@@ -184,16 +185,16 @@ class DanmakuWriter():
         tid = 0
         maxbias = -1e5
         
-        def calc_bias(dm,tic):
+        def calc_bias(dm, tic):
             if not dm:
                 return self.width
-            dm_length = get_length(dm['content'],self.fontsize)
-            bias = (tic - dm['time'])*(dm_length+self.width)/self.dmduration - dm_length 
+            dm_length = get_length(dm['content'], self.fontsize)
+            bias = (tic - dm['time']) * (dm_length + self.width) / self.dmduration - dm_length 
             return bias
         
         for i,latest_dm in enumerate(self.trackinfo):
-            bias = calc_bias(latest_dm,dm['time'])
-            if bias > 0.2*self.width:
+            bias = calc_bias(latest_dm, dm['time'])
+            if bias > 0.2 * self.width:
                 tid = i
                 maxbias = bias
                 break
@@ -201,34 +202,33 @@ class DanmakuWriter():
                 maxbias = bias
                 tid = i
         
-        dm_length = get_length(dm['content'],self.fontsize)
-        if maxbias<0.05*self.width and self.overflow_op == 'ignore':
+        dm_length = get_length(dm['content'], self.fontsize)
+        if maxbias < 0.05 * self.width and self.overflow_op == 'ignore':
             return False
         
         self.trackinfo[tid] = dm
         x0 = self.width + dm_length
         x1 = -dm_length
-        y = self.fontsize + (self.fontsize+self.margin)*tid
+        y = self.fontsize + (self.fontsize + self.margin) * tid
 
-        t0 = dm['time']-self.part_start_time
-        t1 = t0+self.dmduration
+        t0 = dm['time'] - self.part_start_time
+        t1 = t0 + self.dmduration
 
-        t0 = '%d:%d:%02.2f'%sec2hms(t0)
-        t1 = '%d:%d:%02.2f'%sec2hms(t1)
+        if t0 < 0:
+            return False
 
+        t0 = '%02d:%02d:%02.2f'%sec2hms(t0)
+        t1 = '%02d:%02d:%02.2f'%sec2hms(t1)
+        
+        # set ass Dialogue
         dm_info = f'Dialogue: 0,{t0},{t1},R2L,,0,0,0,,'
-        dm_info += '{\move(%d,%d,%d,%d)}'%(x0,y+20,x1,y+20)
-
-        # 弹幕颜色 RGB 转 BGR(ass)
-        real_dm_color = dm['color'][4:] + dm['color'][2:4] + dm['color'][0:2]
-
-        if real_dm_color != 'ffffff':
-            dm_info += '{\\1c&H%s&}'%(self.opacity + real_dm_color)
+        dm_info += '{\move(%d,%d,%d,%d)}'%(x0, y + self.dst, x1, y + self.dst)
+        dm_info += '{\\1c&H%s&}'%(self.opacity + dm['color'])
         content = dm['content'].replace('\n',' ').replace('\r',' ')
         dm_info += content
 
-        with self.lock, open(self.dm_file,'a',encoding='utf-8') as f:
-            f.write(dm_info+'\n')
+        with self.lock, open(self.dm_file, 'a', encoding='utf-8') as f:
+            f.write(dm_info + '\n')
         
         return True
 

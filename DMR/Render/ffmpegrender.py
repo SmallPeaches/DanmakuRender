@@ -10,6 +10,7 @@ from tools import ToolsList
 
 from .baserender import BaseRender
 from os.path import exists
+from DMR.utils import *
 
 class FFmpegRender(BaseRender):
     def __init__(self, hwaccel_args:list, vencoder:str, vencoder_args:list, aencoder:str, aencoder_args:list, output_resize:str, ffmpeg:str=None, debug=False, **kwargs):
@@ -26,6 +27,9 @@ class FFmpegRender(BaseRender):
     def render_helper(self, video:str, danmaku:str, output:str, to_stdout:bool=False, logfile=None):
         ffmpeg_args = [self.ffmpeg, '-y']
         ffmpeg_args += self.hwaccel_args
+        # get source video fps
+        self.fps = int(FFprobe.run_ffprobe(video)['streams'][0]['avg_frame_rate'].split('/')[0])
+        self.gop = 5 # set GOP=5s
 
         if self.output_resize: 
             scale_args = ['-s', self.output_resize]
@@ -37,13 +41,14 @@ class FFmpegRender(BaseRender):
         ffmpeg_args += [
                         '-fflags','+discardcorrupt',
                         '-i', video,
+                        '-keyint_min', self.fps * self.gop,
+                        '-g', self.fps * self.gop,
                         '-vf', 'subtitles=filename=%s'%danmaku,
 
                         '-c:v',self.vencoder,
                         *self.vencoder_args,
                         '-c:a',self.aencoder,
                         *self.aencoder_args,
-
                         *scale_args, 
                         output,
                         ]
