@@ -28,9 +28,7 @@ class FFmpegRender(BaseRender):
         ffmpeg_args = [self.ffmpeg, '-y']
         ffmpeg_args += self.hwaccel_args
         # get source video fps
-        print(FFprobe.run_ffprobe(video)['streams'][0])
         self.fps = float(FFprobe.run_ffprobe(video)['streams'][0]['avg_frame_rate'].split('/')[0]) / float(FFprobe.run_ffprobe(video)['streams'][0]['avg_frame_rate'].split('/')[1])
-        print(self.fps)
         self.gop = 5 # set GOP=5s
 
         if self.output_resize: 
