@@ -286,8 +286,8 @@ render:
   # 视频编码器，NVIDIA设置为h264_nvenc，AMD设置为h264_amf，CPU设置为libx264
   vencoder: h264_nvenc
 
-  # 视频编码器参数，默认恒定码率15Mbps，防止B站DASH技术导致音画不同步(GOP=5s)
-  vencoder_args: [-b:v,15M, -g, 300, -keyint_min, 300, -sc_threshold, 0]
+  # 视频编码器参数，默认恒定码率15Mbps
+  vencoder_args: [-b:v, 15M]
 
   # 音频编码器
   aencoder: aac
