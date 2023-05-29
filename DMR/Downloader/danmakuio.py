@@ -7,7 +7,7 @@ from datetime import datetime
 from os.path import *
 
 from DMR.LiveAPI.danmaku import DanmakuClient
-from DMR.utils import sec2hms, hms2sec
+from DMR.utils import sec2hms, hms2sec, BGR2RGB
 
 def get_length(string:str,fontsize):
     length = 0
@@ -223,7 +223,7 @@ class DanmakuWriter():
         # set ass Dialogue
         dm_info = f'Dialogue: 0,{t0},{t1},R2L,,0,0,0,,'
         dm_info += '{\move(%d,%d,%d,%d)}'%(x0, y + self.dst, x1, y + self.dst)
-        dm_info += '{\\1c&H%s&}'%(self.opacity + dm['color'])
+        dm_info += '{\\1c&H%s&}'%(self.opacity + BGR2RGB(dm['color']))
         content = dm['content'].replace('\n',' ').replace('\r',' ')
         dm_info += content
 
