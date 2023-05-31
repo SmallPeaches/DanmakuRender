@@ -17,5 +17,6 @@ def split_url(url:str):
         except:
             if 'rid=' in url:
                 rid = re.findall(r'rid=[0-9]*',url)[0][4:]
-    
+    if platform == "163":
+        platform = "cc"
     return (platform, rid)
