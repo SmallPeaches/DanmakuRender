@@ -123,6 +123,9 @@ class FFmpegDownloader():
         IGNORE_KEYS = ['start_pts', 'start_time']
         for k in IGNORE_KEYS:
             stream_info.pop(k, 0)
+        CALC_FRAME_KEYS = ['r_frame_rate', 'avg_frame_rate']
+        for k in CALC_FRAME_KEYS:
+            stream_info[k] = round(float(stream_info[k].split('/')[0]) / float(stream_info[k].split('/')[1]))
         return stream_info
     
     def start_helper(self):
@@ -199,6 +202,8 @@ class FFmpegDownloader():
                             logging.debug(f'Check stream info error: {e}.')
                             new_info = latest_stream_info
                         if latest_stream_info and new_info != latest_stream_info:
+                            logging.debug(f'latest_stream_info: {latest_stream_info}')
+                            logging.debug(f'new_info: {new_info}')
                             raise RuntimeError('推流信息变化，即将重试...')
 
                 log = ''
