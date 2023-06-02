@@ -211,7 +211,7 @@ downloader:
 
   # 直播流CDN选项
   # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认al
-  # 对于B站，此项可选0-n表示不同的cdn服务器，默认为0
+  # 对于B站，此项可选0-n表示不同的cdn服务器，默认为0，也可以输入特定的CDN域名前缀，例如 c1--cn-gotcha208
   # 斗鱼和抖音暂时没用
   flow_cdn: ~
 
@@ -242,7 +242,10 @@ downloader:
   font: Microsoft YaHei
 
   # 指定弹幕字体大小，默认为36
-  fontsize: 36 
+  fontsize: 36
+
+  # Distance from Screen Top 弹幕距离屏幕顶端的距离（像素，例如20，表示距离屏幕顶端20px）
+  dst: 20
 
   # 指定过量弹幕的处理方法，
   # 可选ignore（忽略过量弹幕）或者override（强行叠加弹幕），默认override
@@ -280,6 +283,10 @@ render:
   # 渲染引擎，可选ffmpeg（纯ffmpeg渲染）或者python（Python PIL作为弹幕的图像渲染器，ffmpeg作为视频编码器，此功能正在测试，请勿使用）
   engine: ffmpeg
 
+  # 同时执行的渲染任务数，默认1，若渲染时CPU和GPU使用都低于80%可以调高这个，一般情况下设置应该小于5
+  # 特别提示：如果渲染一个CPU或者显卡占用都很高，调高这个反而有副作用！
+  nrenders: 1
+
   # 硬件解码参数，NVIDIA显卡默认使用cuda硬件解码器，AMD显卡或者CPU设为空
   hwaccel_args: [-hwaccel,cuda,-noautorotate]
 
@@ -287,7 +294,7 @@ render:
   vencoder: h264_nvenc
 
   # 视频编码器参数，默认恒定码率15Mbps
-  vencoder_args: [-b:v, 15M]
+  vencoder_args: [-b:v,15M]
 
   # 音频编码器
   aencoder: aac

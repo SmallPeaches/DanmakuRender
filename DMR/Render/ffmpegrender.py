@@ -27,9 +27,17 @@ class FFmpegRender(BaseRender):
     def render_helper(self, video:str, danmaku:str, output:str, to_stdout:bool=False, logfile=None):
         ffmpeg_args = [self.ffmpeg, '-y']
         ffmpeg_args += self.hwaccel_args
-        # get source video fps
-        self.fps = float(FFprobe.run_ffprobe(video)['streams'][0]['avg_frame_rate'].split('/')[0]) / float(FFprobe.run_ffprobe(video)['streams'][0]['avg_frame_rate'].split('/')[1])
-        self.gop = 5 # set GOP=5s
+        
+        try:
+            # solve bili dash
+            fps = eval(FFprobe.run_ffprobe(video)['streams'][0]['avg_frame_rate'])
+            gop = 5 # set GOP=5s
+            dash_args = [
+                '-keyint_min', int(fps * gop),
+                '-g', int(fps * gop)
+            ]
+        except:
+            dash_args = []
 
         if self.output_resize: 
             scale_args = ['-s', self.output_resize]
@@ -41,8 +49,7 @@ class FFmpegRender(BaseRender):
         ffmpeg_args += [
                         '-fflags','+discardcorrupt',
                         '-i', video,
-                        '-keyint_min', int(self.fps * self.gop),
-                        '-g', int(self.fps * self.gop),
+                        *dash_args, 
                         '-vf', 'subtitles=filename=%s'%danmaku,
 
                         '-c:v',self.vencoder,

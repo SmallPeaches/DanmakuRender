@@ -24,23 +24,26 @@ def isvideo(path:str) -> bool:
         return False
 
 class Render():
-    def __init__(self, output_dir, pipe, format, engine='ffmpeg', debug=False, **kwargs) -> None:
+    def __init__(self, output_dir, pipe, format, nrenders=3, engine='ffmpeg', debug=False, **kwargs) -> None:
         self.output_dir = output_dir
         self.sender = pipe
         self.format = format
-        self.kwargs = kwargs
+        self.nrenders = int(nrenders)
         self.debug = debug
+        self.engine = engine.lower()
+        self.kwargs = kwargs
+
         self.rendering = False
         self.wait_queue = queue.Queue()
 
         if engine == 'ffmpeg':
-            from .ffmpegrender import FFmpegRender
-            self.render = FFmpegRender(debug=self.debug, **kwargs)
+            from .ffmpegrender import FFmpegRender as TargetRender
         elif engine == 'python':
-            from .pythonrender import PythonRender
-            self.render = PythonRender(debug=self.debug, **kwargs)
+            from .pythonrender import PythonRender as TargetRender
         else:
             raise NotImplementedError(f'No Render Named {engine}.')
+        
+        self.render_group = [TargetRender(debug=self.debug, **self.kwargs) for _ in range(self.nrenders)]
 
     def pipeSend(self,msg,type='info',group=None,**kwargs):
         if self.sender:
@@ -50,9 +53,10 @@ class Render():
 
     def start(self):
         self.stoped = False
-        thread = threading.Thread(target=self.render_queue,daemon=True)
-        thread.start()
-        return thread
+        for pid in range(self.nrenders):
+            thread = threading.Thread(target=self.render_subprocess, args=(pid,), daemon=True)
+            thread.start()
+        return
 
     def add(self, video, group=None, video_info=None, **kwargs):
         if video == 'end':
@@ -82,31 +86,40 @@ class Render():
             'kwargs': kwargs,
         })
         
-    def render_queue(self):
+    def render_subprocess(self, pid:int):
+        this_render = self.render_group[pid]
         while not self.stoped:
             task = self.wait_queue.get()
             if task.get('msg_type') == 'end':
                 self.pipeSend(task.get('group'),'end',**task)
+                self.wait_queue.task_done()
                 continue
-            self.rendering = True
+            elif task.get('msg_type') == 'exit':
+                this_render.stop()
+                self.wait_queue.task_done()
+                return
+            
             logging.info(f'正在渲染: {task["video"]}')
             try:
-                info = self.render.render_one(**task)
+                info = this_render.render_one(**task)
                 if task.get('video_info'):
                     task['video_info'] = task['video_info'].copy()
                     task['video_info']['has_danmu'] = '（带弹幕版）'
                 self.pipeSend(task['output'],desc=info,**task)
             except KeyboardInterrupt:
-                self.stop()
+                this_render.stop()
             except Exception as e:
                 logging.exception(e)
                 self.pipeSend(task['output'],'error',desc=e,**task)
-            self.rendering = False
+            
+            self.wait_queue.task_done()
 
     def render_only(self, input_dir):
         files = glob.glob(input_dir+'/*')
         videos = [f for f in files if isvideo(f)]
+        self.start()
         for vid in videos:
+            danmu = os.path.splitext(vid)[0] + '.ass'
             filename = os.path.splitext(os.path.basename(vid))[0] + f'（带弹幕版）.{self.format}'
             if self.output_dir:
                 output_dir = self.output_dir
@@ -117,25 +130,31 @@ class Render():
             if exists(output) and FFprobe.get_duration(output) - FFprobe.get_duration(vid) < 30:
                 logging.info(f'视频 {vid} 已经存在带弹幕视频 {output}，跳过渲染.')
                 continue
-            danmu = os.path.splitext(vid)[0] + '.ass'
             if not exists(danmu):
                 logging.info(f'视频 {vid} 不存在匹配的弹幕文件，跳过渲染.')
                 continue
 
-            logging.info(f'正在渲染: {vid}')
-            self.render.render_one(**{
+            self.wait_queue.put({
+                'msg_type':'render',
                 'video':vid,
                 'danmaku':danmu,
                 'output':output
             })
+        self.wait_queue.join()
+        self.stop()
 
     def stop(self):
         self.stoped = True
-        if self.rendering:
-            logging.warn('渲染被提前终止，带弹幕的视频可能不完整.')
-        try:
-            self.render.stop()
-        except Exception as e:
-            logging.debug(e)
-        self.rendering = False
+        for proc in self.render_group:
+            try:
+                proc.stop()
+            except Exception as e:
+                logging.debug(e)
+        
+        for _ in range(self.nrenders):
+            self.wait_queue.put({
+                'msg_type': 'exit',
+            })
+        
+        self.render_group.clear()
         
