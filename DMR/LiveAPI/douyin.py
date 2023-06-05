@@ -2,7 +2,6 @@ import re
 import requests
 import urllib
 import json
-from lxml import etree
 try:
     from .BaseAPI import BaseAPI
 except ImportError:

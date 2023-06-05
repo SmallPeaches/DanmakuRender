@@ -42,6 +42,8 @@ def check_pypi():
         import lxml
         import yaml
         import stream_gears
+        import google.protobuf 
+        import websocket
         return True
     except ImportError:
         input('Python 包未正确安装，回车自动安装:')
@@ -156,6 +158,6 @@ def check_update(thisver):
         version = re.findall(r"DanmakuRender-4 .*\.",resp)[0]
         version = version.split(' ')[1][:-1]
         if compare_version(version, thisver) > 0:
-            print('存在可用更新, 如果运行出现问题可以前往 https://github.com/SmallPeaches/DanmakuRender/tree/v4 获取更新.')
+            print('存在可用更新, 如果出现问题请前往 https://github.com/SmallPeaches/DanmakuRender 获取更新.')
     except:
         print('检查更新失败.')

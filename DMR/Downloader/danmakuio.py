@@ -154,6 +154,10 @@ class DanmakuWriter():
                         
                 if task.done():
                     logging.error('弹幕下载线程异常退出，正在重试...')
+                    try:
+                        logging.debug(task.result())
+                    except:
+                        logging.exception(task.exception())
                     task.cancel()
                     retry += 1
                     last_dm_time = datetime.now().timestamp()

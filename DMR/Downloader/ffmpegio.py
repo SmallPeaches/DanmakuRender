@@ -42,6 +42,7 @@ class FFmpegDownloader():
         self.callback = callback
         self.kwargs = kwargs
         self.ffmpeg = ffmpeg if ffmpeg else ToolsList.get('ffmpeg')
+        self.stream_type = 'flv' if '.flv' in self.stream_url else 'm3u8'
         
         if isinstance(self.stream_url, str):
             self.stable = True
@@ -120,7 +121,7 @@ class FFmpegDownloader():
     @staticmethod
     def get_livestream_info(stream_url, header):
         stream_info = FFprobe.get_livestream_info(stream_url, header)
-        IGNORE_KEYS = ['start_pts', 'start_time']
+        IGNORE_KEYS = ['start_pts', 'start_time', 'bit_rate']
         for k in IGNORE_KEYS:
             stream_info.pop(k, 0)
         CALC_FRAME_KEYS = ['r_frame_rate', 'avg_frame_rate']
@@ -169,6 +170,8 @@ class FFmpegDownloader():
                         err = 1
                     if li and 'Opening \'' in li:
                         fname = li.split('\'')[1]
+                        if self.stream_type != 'flv' and 'http' in fname:
+                            continue
                         if self.thisfile:
                             self.callback(self.thisfile)
                         self.thisfile = fname
@@ -225,12 +228,12 @@ class FFmpegDownloader():
             logging.debug(e)
         if log:
             logging.debug(f'{self.taskname} ffmpeg: {log}')
-            for li in log.split('\n'):
-                if li and 'Opening \'' in li:
-                    fname = li.split('\'')[1]
-                    if self.thisfile:
-                        self.callback(self.thisfile)
-                    self.thisfile = fname
+            # for li in log.split('\n'):
+            #     if li and 'Opening \'' in li:
+            #         fname = li.split('\'')[1]
+            #         if self.thisfile:
+            #             self.callback(self.thisfile)
+            #         self.thisfile = fname
         try:
             out, _ = self.ffmpeg_proc.communicate(b'q',timeout=3)
             if out:

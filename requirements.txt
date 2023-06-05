@@ -4,3 +4,5 @@ pyexecjs
 lxml
 pyyaml
 stream-gears
+protobuf
+websocket-client

@@ -14,7 +14,7 @@ from os.path import exists
 sys.path.append('./tools')
 VERSION = '2023.5.15'
 VERSION_FULLNAME = 'DanmakuRender-4 2023.5.15.'
-VERSION_DEBUG = '4-2023.5.15'
+VERSION_DEBUG = '4-2023.6.5'
 
 from DMR import DanmakuRender
 from DMR.Render import Render

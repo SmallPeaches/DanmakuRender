@@ -1,7 +1,7 @@
 from .utils import *
 import logging
 
-AVAILABLE_DANMU = ['huya','douyu','bilibili']
+AVAILABLE_DANMU = ['huya','douyu','bilibili','douyin']
 AVAILABLE_LIVE = ['huya','douyu','bilibili','douyin']
 
 class LiveAPI():
