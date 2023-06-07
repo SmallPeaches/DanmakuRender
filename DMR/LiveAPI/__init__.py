@@ -1,14 +1,14 @@
 from .utils import *
 import logging
 
-AVAILABLE_DANMU = ['huya','douyu','bilibili','douyin']
-AVAILABLE_LIVE = ['huya','douyu','bilibili','douyin']
+AVAILABLE_DANMU = ['huya','douyu','bilibili','douyin','cc']
+AVAILABLE_LIVE = ['huya','douyu','bilibili','douyin','cc']
 
 class LiveAPI():
     def __init__(self,platform,rid) -> None:
         self.platform = platform
         self.rid = rid
-        
+
         if platform in ['huya']:
             from .huya import huya
             self.api_class = huya(rid=self.rid)
@@ -21,15 +21,18 @@ class LiveAPI():
         elif platform in ['douyin']:
             from .douyin import douyin
             self.api_class = douyin(rid=self.rid)
+        elif platform in ['cc']:
+            from .cc import cc
+            self.api_class = cc(rid=self.rid)
         else:
             raise NotImplementedError
-        
+
     def GetStreamerInfo(self):
         try:
             return self.api_class.get_info()
         except Exception as e:
             logging.debug(e)
-    
+
     def GetStreamURL(self, flow_cdn=None):
         try:
             return self.api_class.get_stream_url(flow_cdn=flow_cdn)
@@ -41,7 +44,7 @@ class LiveAPI():
             return self.api_class.onair()
         except Exception as e:
             logging.debug(e)
-    
+
     def IsAvailable(self):
         try:
             return self.api_class.is_available()

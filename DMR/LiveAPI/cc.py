@@ -40,8 +40,8 @@ class cc(BaseAPI):
         return title, uname, face_url, keyframe_url
 
     def _find_max_vbr(self, resolution_data):
-        max_vbr = float('-inf')  # 初始化最大 vbr 值为负无穷大
-        max_vbr_item = None  # 初始化最大 vbr 的项为 None
+        max_vbr = float('-inf')
+        max_vbr_item = None
 
         for resolution, data in resolution_data.items():
             if 'vbr' in data and data['vbr'] > max_vbr:

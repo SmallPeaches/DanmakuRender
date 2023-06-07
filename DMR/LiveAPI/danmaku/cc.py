@@ -247,15 +247,18 @@ class CC_Init:
 
 
 class CC:
+    """
+    cc直播，代码参考 https://github.com/wbt5/real-url
+    """
     s = CC_Init()
     heartbeat = s.get_beat()
 
     async def get_ws_info(url):
         reg_datas = []
-        cid = re.search(r'com/(\d+)/', url).group(1)
-        url = 'https://api.cc.163.com/v1/activitylives/anchor/lives?anchor_ccid=' + str(cid)
+        cid = re.search(r'com/(\d+)', url).group(1)
+        _url = 'https://api.cc.163.com/v1/activitylives/anchor/lives?anchor_ccid=' + str(cid)
         async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
+            async with session.get(_url) as resp:
                 res = await resp.text()
                 data = json.loads(res).get('data').get(cid)
                 channel_id = data['channel_id']
@@ -263,7 +266,6 @@ class CC:
                 gametype = data['gametype']
 
                 reg_data = CC.s.get_reg()
-                beat_data = CC.s.get_beat()
                 join_data = CC.s.get_join(channel_id, gametype, roomId)
         reg_datas.append(reg_data)
         reg_datas.append(join_data)
@@ -277,9 +279,6 @@ class CC:
             'tcp-515-32785': 'chat',
             'tcp-535-32769': 'gamechat'
         }
-        # 进场协议：tcp-512-32784
-        # 聊天协议：tcp-515-32785
-        # 游戏聊天：tcp-535-32769
         msgs = []
         if i in studio.keys():
             if p:
@@ -301,19 +300,17 @@ class CC:
                 ms = msg['msg']
 
             for m in ms:
-                if ms_type == 'origin':
-                    name = m['name']
-                    content = '欢迎来到直播间'
-                    type = 'enter'
-                elif ms_type == 'chat':
+                if ms_type == 'chat':
                     name = m[197]
                     content = m[4]
-                    type = 'danmaku'
+                    msg_type = 'danmaku'
                 elif ms_type == 'gamechat':
                     name = json.loads(m[7])['nickname']
                     content = m[4]
-                    type = 'danmaku'
-                msg = {'name': name, 'content': content, 'msg_type': type, 'color': 'ffffff'}
+                    msg_type = 'danmaku'
+                else:
+                    continue
+                msg = {'name': name, 'content': content, 'msg_type': msg_type, 'color': 'ffffff'}
                 msgs.append(msg.copy())
         else:
             msgs = [{'name': '', 'content': '', 'msg_type': 'other', 'color': "ffffff"}]
