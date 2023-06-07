@@ -1,3 +1,6 @@
+import json
+import re
+
 import requests
 
 try:
@@ -11,32 +14,34 @@ class cc(BaseAPI):
         self.rid = rid
 
     def _get_info(self):
-        room_url = f'https://api.cc.163.com/v1/activitylives/anchor/lives?anchor_ccid={self.rid}'
-        response = requests.get(url=room_url).json()
-        data = response.get('data', 0)
-        if data:
-            channel_id = data.get(f'{self.rid}').get('channel_id', 0)
-            if channel_id:
-                response = requests.get(f'https://cc.163.com/live/channel/?channelids={channel_id}').json()
-                info = response.get('data')[0]
-            else:
-                raise Exception('直播间不存在')
-        else:
-            raise Exception('输入错误')
+        room_url = f'https://cc.163.com/{self.rid}'
+        response = requests.get(url=room_url).text
+        data = re.findall(r'<script id="__NEXT_DATA__" type="application/json" crossorigin="anonymous">(.*?)</script>',
+                          response)[0]
+        data = json.loads(data)
+        info = data['props']['pageProps']['roomInfoInitData']
         return info
 
     def is_available(self) -> bool:
+        # 没看到使用的地方，暂时返回True
         return True
 
     def onair(self) -> bool:
-        return True
+        info = self._get_info()
+        return info['live']['swf'] != ''
 
     def get_info(self) -> tuple:
         info = self._get_info()
         title = info['title']
-        uname = info['nickname']
-        face_url = info['nickname']
-        keyframe_url = info['nickname']
+        try:
+            uname = info['nickname']
+        except:
+            uname = info['live']['nickname']
+        try:
+            face_url = info['live']['purl']
+        except:
+            face_url = None
+        keyframe_url = None
         return title, uname, face_url, keyframe_url
 
     def _find_max_vbr(self, resolution_data):
@@ -52,5 +57,5 @@ class cc(BaseAPI):
 
     def get_stream_url(self, **kwargs):
         info = self._get_info()
-        max_vbr = self._find_max_vbr(info['quickplay']['resolution'])
-        return info['quickplay']['resolution'][max_vbr]['cdn']['ks']
+        max_vbr = self._find_max_vbr(info['live']['quickplay']['resolution'])
+        return info['live']['quickplay']['resolution'][max_vbr]['cdn']['ks']
