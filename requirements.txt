@@ -4,5 +4,5 @@ pyexecjs
 lxml
 pyyaml
 stream-gears
-protobuf
+protobuf==4.23.2
 websocket-client
