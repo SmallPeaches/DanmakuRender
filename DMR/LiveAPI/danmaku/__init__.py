@@ -4,6 +4,7 @@ import re, asyncio, aiohttp
 # from .youtube import Youtube
 # from .twitch import Twitch
 from .bilibili import Bilibili
+from .cc import CC
 from .douyu import Douyu
 from .huya import Huya
 from .douyin import Douyin
@@ -16,6 +17,7 @@ site_class = {
     'bilibili': Bilibili,
     'douyu': Douyu, 
     'huya': Huya,
+    'cc': CC
 }
 
 # 使用自建API，DMC会实例化这个类然后调用start方法启动
