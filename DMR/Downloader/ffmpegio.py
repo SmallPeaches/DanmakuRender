@@ -42,7 +42,7 @@ class FFmpegDownloader():
         self.callback = callback
         self.kwargs = kwargs
         self.ffmpeg = ffmpeg if ffmpeg else ToolsList.get('ffmpeg')
-        self.stream_type = 'flv' if '.flv' in self.stream_url else 'm3u8'
+        self.stream_type = 'm3u8' if isinstance(self.stream_url, str) and '.m3u8' in self.stream_url else 'flv'
         
         if isinstance(self.stream_url, str):
             self.stable = True
