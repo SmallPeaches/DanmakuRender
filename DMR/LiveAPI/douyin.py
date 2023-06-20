@@ -14,6 +14,11 @@ class douyin(BaseAPI):
     }
     def __init__(self,rid:str) -> None:
         self.web_rid = rid
+        
+        if not self.headers.get('cookie'):
+            response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
+            self.headers.update({'cookie': '__ac_nonce='+response.cookies.get('__ac_nonce')})
+            
         if len(rid) == 19:
             self.real_rid = rid
         else:
@@ -25,28 +30,8 @@ class douyin(BaseAPI):
 
     def is_available(self) -> bool:
         return len(self.real_rid) == 19
-
-    def _get_response_amemv(self):
-        headers = self.headers.copy()
-        headers.update({
-            'authority': 'webcast.amemv.com',
-            'cookie': '_tea_utm_cache_1128={%22utm_source%22:%22copy%22%2C%22utm_medium%22:%22android%22%2C%22utm_campaign%22:%22client_share%22}',
-        })
-        params = (
-            ('type_id', '0'),
-            ('live_id', '1'),
-            ('room_id', self.real_rid),
-            ('app_id', '1128'),
-        )
-        response = requests.get('https://webcast.amemv.com/webcast/room/reflow/info/', headers=headers, params=params,timeout=5).json()
-
-        return response
     
     def _get_response_douyin(self):
-        if not self.headers.get('cookie'):
-            response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
-            self.headers.update({'cookie': '__ac_nonce='+response.cookies.get('__ac_nonce')})
-        
         text = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5).text
         render_data = re.findall(r"<script id=\"RENDER_DATA\" type=\"application/json\">.*?</script>",text)[0]
         data = urllib.parse.unquote(render_data)
@@ -56,27 +41,24 @@ class douyin(BaseAPI):
         return data
 
     def onair(self) -> bool:
-        # resp = self._get_response()
-        # code = resp['data']['room']['status']
         resp = self._get_response_douyin()
         code = resp['app']['initialState']['roomStore']['roomInfo']['room']['status']
         return code == 2
 
     def get_stream_url(self, **kwargs) -> str:
-        # response = self._get_response()
-        # url = response['data']['room']['stream_url']['rtmp_pull_url']
         resp = self._get_response_douyin()
-        urls = list(resp['app']['initialState']['roomStore']['roomInfo']['room']['stream_url']['flv_pull_url'].values())
-        url = urls[0]
+        stream_info = resp['app']['initialState']['roomStore']['roomInfo']['room']['stream_url']
+        try:
+            extra_data = stream_info['live_core_sdk_data']['pull_data']['stream_data']
+            extra_data = json.loads(urllib.parse.unquote(extra_data))
+            url_dict = extra_data['data']
+            url = url_dict['origin']['main']['flv']
+        except:
+            urls = list(stream_info['flv_pull_url'].values())
+            url = urls[0]
         return url
 
     def get_info(self) -> tuple:
-        # response = self._get_response()
-        # data = response['data']['room']
-        # title = data['title']
-        # uname = data['owner']['nickname']
-        # face_url = data['owner']['avatar_thumb']['url_list'][0]
-        # keyframe_url = None
         resp = self._get_response_douyin()
         room_info = resp['app']['initialState']['roomStore']['roomInfo']
         title = room_info['room']['title']

@@ -10,6 +10,7 @@ import re
 import requests
 import urllib
 import json
+import logging
 
 import websocket
 from google.protobuf import json_format
@@ -28,20 +29,16 @@ class Douyin:
         self.web_rid = rid
         self.q: asyncio.Queue = q
 
-        response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
-        self.headers.update({'cookie': '__ac_nonce='+response.cookies.get('__ac_nonce')})
+        if not self.headers.get('cookie'):
+            try:
+                response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
+                self.headers.update({'cookie': '__ac_nonce='+response.cookies.get('__ac_nonce')})
 
-        response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
-        ttwid = None
-        for c in response.cookies:
-            if c.name == 'ttwid':
-                ttwid = c.value
-                break
-
-        if ttwid is not None:
-            self.headers['cookie'] += '; ttwid=' + ttwid
-        else:
-            raise Exception('获取抖音cookies错误.')
+                response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
+                self.headers['cookie'] += '; ttwid=' + response.cookies.get('ttwid')
+            except Exception as e:
+                logging.exception(e)
+                raise Exception('获取抖音cookies错误.')
 
         if len(rid) == 19:
             self.real_rid = rid
