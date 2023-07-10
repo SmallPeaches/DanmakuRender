@@ -151,13 +151,17 @@ def check_biliup():
     
     return 
 
-def check_update(thisver):
+def check_update(version):
     try:
         import requests
-        resp = requests.get('https://github.com/SmallPeaches/DanmakuRender/blob/v4/main.py',timeout=5).text
-        version = re.findall(r"DanmakuRender-4 .*\.",resp)[0]
-        version = version.split(' ')[1][:-1]
-        if compare_version(version, thisver) > 0:
-            print('存在可用更新, 如果出现问题请前往 https://github.com/SmallPeaches/DanmakuRender 获取更新.')
-    except:
-        print('检查更新失败.')
+        resp = requests.get('https://api.github.com/repos/SmallPeaches/DanmakuRender/releases/latest', timeout=5).json()
+        lastest_version = resp["tag_name"]
+        if compare_version(lastest_version, version) >= 0:
+            print('存在可用更新：')
+            print(f"版本：{lastest_version}")
+            print(f"发行时间：{resp['published_at']}")
+            print(f"发行说明：{resp.get('name')}")
+            print(f"{resp.get('body','')}\n")
+            print("如果需要更新可以直接运行 update.py 或者前往 https://github.com/SmallPeaches/DanmakuRender 更新.")
+    except Exception as e:
+        print(f'检查更新失败, {e}')

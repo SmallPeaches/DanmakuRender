@@ -112,7 +112,13 @@ class Downloader():
         def danmaku_thread():
             description = f'{self.output_name}的弹幕文件, {self.url}, Powered by DanmakuRender: https://github.com/SmallPeaches/DanmakuRender.'
             danmu_output = join(self.output_dir, f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d.ass')
-            self.dmw = DanmakuWriter(self.url,danmu_output,self.segment,description,self.width,self.height,**self.kwargs)
+            self.dmw = DanmakuWriter(self.url,
+                                     danmu_output,
+                                     self.segment,
+                                     description=description,
+                                     width=self.width,
+                                     height=self.height,
+                                     **self.kwargs)
             self.dmw.start(self_segment=not self.video)
         
         def video_thread():
@@ -181,7 +187,7 @@ class Downloader():
                     logging.exception(e)
                     self.stop_once()
                     self.pipeSend('restart','error',desc=e)
-                    time.sleep(min(restart_cnt*10,30))
+                    time.sleep(min(restart_cnt*10,60))
                     restart_cnt += 1
                     continue
                 else:

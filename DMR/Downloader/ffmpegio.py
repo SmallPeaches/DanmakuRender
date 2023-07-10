@@ -69,6 +69,7 @@ class FFmpegDownloader():
             self.ffmpeg, '-y',
             '-headers', ''.join('%s: %s\r\n' % x for x in header.items()),
             *self.ffmpeg_stream_args,
+            '-re', # added
             '-i', stream_url,
             '-c','copy'
         ]
@@ -88,34 +89,23 @@ class FFmpegDownloader():
         logging.debug(ffmpeg_args)
 
         if self.debug:
-            self.ffmpeg_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
+            self.ffmpeg_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8, universal_newlines=True, encoding='utf-8')
         else:
-            self.ffmpeg_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
+            self.ffmpeg_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8, universal_newlines=True, encoding='utf-8')
         
         self.msg_queue = None
         def ffmpeg_monitor():
             while not self.stoped:
-                out = b''
-                t0 = self.duration
-                while not self.stoped:
-                    if not self.ffmpeg_proc.stdout.readable():
-                        break
-                    char = self.ffmpeg_proc.stdout.read(1)
-                    if char in [b'\n',b'\r',b'\0']:
-                        break
-                    elif self.duration-t0 > 10:
-                        break
-                    else:
-                        out += char
-                line = out.decode('utf-8',errors='ignore')
-                if len(line) > 0:
-                    self.msg_queue.put(line)
+                if self.ffmpeg_proc.stdout.readable():
+                    line = self.ffmpeg_proc.stdout.readline().strip()
+                    if len(line) > 0:
+                        self.msg_queue.put(line)
         
         if self.ffmpeg_proc.stdout is not None:
             self.msg_queue = queue.Queue()
             self.ffmpeg_monitor_proc = threading.Thread(target=ffmpeg_monitor, daemon=True)
             self.ffmpeg_monitor_proc.start()
-        
+
         return self.msg_queue
     
     @staticmethod
@@ -141,61 +131,58 @@ class FFmpegDownloader():
         log = ''
         ffmpeg_low_speed = 0
 
-        q = self.start_ffmpeg()
+        self.start_ffmpeg()
         
         while not self.stoped:
-            if q is None:
+            if self.ffmpeg_proc.poll() is not None:
+                logging.debug('FFmpeg exit.')
+                logging.debug(log)
+                raise RuntimeError(f'FFmpeg 退出.')
+            
+            if self.debug:
                 time.sleep(1)
                 continue
             
+            line = ''
             try:
                 line = self.msg_queue.get_nowait()
                 log += line + '\n'
             except queue.Empty:
                 time.sleep(1)
-                    
-            if self.ffmpeg_proc.poll() is not None:
-                logging.debug('FFmpeg exit.')
-                logging.debug(log)
-                if Onair(self.url):
-                    raise RuntimeError(f'FFmpeg 异常退出.')
+            
+            if line.startswith('frame='):
+                if not self.kwargs.get('disable_lowspeed_interrupt'):
+                    l = line.find('speed=')
+                    r = line.find('x', l)
+                    if l > 0 and r > 0:
+                        speed = float(line[l:r][6:])
+                        if speed < 0.8:
+                            ffmpeg_low_speed += 1
+                            logging.warn(f'{self.taskname} 直播流下载速度过慢, 请保证网络带宽充足.')
+                            logging.debug(f'{self.taskname} FFmpeg output:\n{line}')
+                            if ffmpeg_low_speed >= 5:
+                                raise RuntimeError(f'{self.taskname} 下载速度过慢, 即将重试.')
+                        else:
+                            ffmpeg_low_speed = 0
+            
+            if 'Opening' in line:
+                fname = line.split('\'')[1]
+                if not fname.startswith('http'):
+                    if self.thisfile:
+                        self.callback(self.thisfile)
+                    self.thisfile = fname
+
+            if 'dropping it' in line:
+                raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
 
             if self.duration > self._timer_cnt*15:
                 if len(log) == 0:
                     raise RuntimeError(f'{self.taskname} 管道读取错误, 即将重试.')
                 
-                err = 0
                 for li in log.split('\n'):
                     if li and not li.startswith('frame='):
-                        err = 1
-                    if li and 'Opening \'' in li:
-                        fname = li.split('\'')[1]
-                        if self.stream_type != 'flv' and 'http' in fname:
-                            continue
-                        if self.thisfile:
-                            self.callback(self.thisfile)
-                        self.thisfile = fname
-                
-                if err:
-                    logging.debug(f'{self.taskname} FFmpeg output:\n{log}')
-                else:
-                    logging.debug(f'{self.taskname} FFmpeg output: ok.')
-
-                if not self.kwargs.get('disable_lowspeed_interrupt'):
-                    l = line.find('speed=')
-                    r = line.find('x',l)
-                    if l>0 and r>0:
-                        speed = float(line[l:r][6:])
-                        if speed < 0.9:
-                            ffmpeg_low_speed += 1
-                            logging.warn(f'{self.taskname} 直播流下载速度过慢, 请保证网络带宽充足.')
-                            if ffmpeg_low_speed >= 2:
-                                raise RuntimeError(f'{self.taskname} 下载速度过慢, 即将重试.')
-                        else:
-                            ffmpeg_low_speed = 0
-
-                if 'dropping it' in log:
-                    raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
+                        logging.debug(f'{self.taskname} FFmpeg output:\n{log}')
+                        break
 
                 if self._timer_cnt%3 == 0:
                     if self.kwargs.get('check_stream_changes'):
@@ -228,18 +215,15 @@ class FFmpegDownloader():
             logging.debug(e)
         if log:
             logging.debug(f'{self.taskname} ffmpeg: {log}')
-            # for li in log.split('\n'):
-            #     if li and 'Opening \'' in li:
-            #         fname = li.split('\'')[1]
-            #         if self.thisfile:
-            #             self.callback(self.thisfile)
-            #         self.thisfile = fname
+            
         try:
-            out, _ = self.ffmpeg_proc.communicate(b'q',timeout=3)
+            out, _ = self.ffmpeg_proc.communicate('q',timeout=3)
             if out:
                 logging.debug(f'ffmpeg out: {out}.')
         except Exception as e:
             self.ffmpeg_proc.kill()
             logging.debug(e)
+        
+        time.sleep(1)
         self.callback(self.thisfile)
         logging.debug('ffmpeg downloader stoped.')

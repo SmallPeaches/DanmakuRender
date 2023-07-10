@@ -1,6 +1,7 @@
 
 import warnings
 import shutil
+import yaml
 
 from tools import ToolsList
 from tools.check_env import *
@@ -10,8 +11,11 @@ from DMR.LiveAPI import GetStreamerInfo, split_url, AVAILABLE_DANMU, AVAILABLE_L
 __all__ = ['Config', 'new_config']
 
 class Config():
+    _default_config = 'DMR/Config/default_config.yml'
     def __init__(self, default_conf:dict, replay_conf:dict) -> None:
-        self.default_conf = default_conf.copy()
+        with open(self._default_config,'r',encoding='utf-8') as f:
+            self.default_conf = yaml.safe_load(f)
+        self.default_conf.update(self.default_conf.copy())
         self.replay_conf = replay_conf.copy()
         
         self.config = default_conf.copy()

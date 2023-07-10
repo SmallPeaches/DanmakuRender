@@ -73,7 +73,7 @@ class Render():
             self.pipeSend(task['output'], type=status, desc=desc, **task)
             
             if self.state_dict[group] and self.state_dict[group][0]['msg_type'] == 'end':
-                self.state_dict.pop(group)
+                self.state_dict[group].pop(0)
                 self.pipeSend(task.get('group'), 'end', **task)
 
     def pipeSend(self, msg, type='info', group=None, **kwargs):
@@ -101,7 +101,7 @@ class Render():
                 this_render.stop()
             except Exception as e:
                 logging.exception(e)
-                self._gather(task, 'error', desc=info)
+                self._gather(task, 'error', desc=e)
             
             self.render_queue.task_done()
 
