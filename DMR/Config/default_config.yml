@@ -35,9 +35,9 @@ downloader:
   # 默认分辨率，如果程序无法正常判断流的分辨率可以使用以下参数强行指定
   resolution: [1920,1080]
 
-  # 录制视频的格式，默认mp4，如果经常遇到文件损坏播不了可以选择flv或者ts
+  # 录制视频的格式，默认flv
   # 使用streamgears作为录制引擎应该使用flv
-  vid_format: mp4
+  vid_format: flv
 
   # 直播流CDN选项
   # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认al
@@ -210,5 +210,3 @@ uploader:
 
     # 是否开启充电? 0-关闭 1-开启
     open_elec: 1
-
-

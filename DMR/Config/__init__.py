@@ -11,13 +11,19 @@ from DMR.LiveAPI import GetStreamerInfo, split_url, AVAILABLE_DANMU, AVAILABLE_L
 __all__ = ['Config', 'new_config']
 
 class Config():
-    _default_config = 'DMR/Config/default_config.yml'
+    _base_config = 'DMR/Config/default_config.yml'
     def __init__(self, default_conf:dict, replay_conf:dict) -> None:
-        with open(self._default_config,'r',encoding='utf-8') as f:
-            self.default_conf = yaml.safe_load(f)
-        self.default_conf.update(self.default_conf.copy())
-        self.replay_conf = replay_conf.copy()
+        with open(self._base_config,'r',encoding='utf-8') as f:
+            self.base_conf = yaml.safe_load(f)
         
+        self.default_conf = self.base_conf.copy()
+        for k,v in default_conf.items():
+            if isinstance(v, dict) and self.default_conf.get(k):
+                self.default_conf[k].update(v)
+            else:
+                self.default_conf[k] = v
+        
+        self.replay_conf = replay_conf.copy()
         self.config = default_conf.copy()
         self.config['upload'] = {}
 

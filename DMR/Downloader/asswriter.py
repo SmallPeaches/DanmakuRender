@@ -110,7 +110,7 @@ class AssWriter():
         if calc_collision and max_dist < self.margin_w:
             return False
         
-        dm_length = self._get_length(danmu.color)
+        dm_length = self._get_length(danmu.content)
         x0 = self.width + dm_length
         x1 = -dm_length
         y = self.fontsize + (self.fontsize + self.margin_h) * tid

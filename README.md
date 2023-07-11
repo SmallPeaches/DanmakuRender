@@ -7,6 +7,7 @@
 
 旧版本可以在分支v1-v3找到。     
 
+2023.7.10更新：优化弹幕录制和FFmpeg录制，修改部分参数名称，自动更新优化      
 2023.6.5更新：多任务并行渲染，抖音弹幕录制      
 2023.4.30更新：添加新的streamgears下载引擎，修改部分代码逻辑     
 2023.3.5更新：添加自动上传功能，修改默认分支为v4        
@@ -206,9 +207,9 @@ downloader:
   # 默认分辨率，如果程序无法正常判断流的分辨率可以使用以下参数强行指定
   resolution: [1920,1080]
 
-  # 录制视频的格式，默认mp4，如果经常遇到文件损坏播不了可以选择flv或者ts
+  # 录制视频的格式，默认flv
   # 使用streamgears作为录制引擎应该使用flv
-  vid_format: mp4
+  vid_format: flv
 
   # 直播流CDN选项
   # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认al
@@ -227,14 +228,20 @@ downloader:
   # 使用streamgears作为录制引擎时不生效
   disable_lowspeed_interrupt: False
 
-  # 检测流变化，在推流信息变化时立即分段，默认true
+  # 检测流变化，在推流信息变化时立即分段，建议录制手机直播时开启，PC直播时关闭，默认false
   # 使用streamgears作为录制引擎时不生效
-  check_stream_changes: True
+  check_stream_changes: False
   
   # 以下是弹幕录制参数
 
-  # 弹幕行距，默认6
-  margin: 6
+  # 弹幕录制格式，只能选择ass
+  dm_format: ass 
+
+  # 弹幕上下间距（行距），设置为0-1的表示为视频宽度的倍数，设置为大于1的数表示像素，默认6
+  margin_h: 6
+
+  # 弹幕左右间距，设置为-1表示允许弹幕叠加，设置为0-1的表示间距为视频宽度的倍数，设置为大于1的数表示像素，默认0.05
+  margin_w: 0.05
 
   # 指定弹幕占屏幕的最大比例（即屏幕上半部分有多少可以用来显示弹幕），默认为0.4
   dmrate: 0.4
@@ -247,10 +254,6 @@ downloader:
 
   # Distance from Screen Top 弹幕距离屏幕顶端的距离（像素，例如20，表示距离屏幕顶端20px）
   dst: 20
-
-  # 指定过量弹幕的处理方法，
-  # 可选ignore（忽略过量弹幕）或者override（强行叠加弹幕），默认override
-  overflow_op: override
 
   # 指定单条弹幕持续时间（秒），默认为16
   dmduration: 16
@@ -272,6 +275,9 @@ downloader:
 
   # 弹幕录制程序自动重启间隔（在没人发弹幕的时候会定时重启，保证录制正常，默认300秒，0关闭）
   dm_auto_restart: 300
+
+  # 弹幕过滤规则，一个正则表达式，符合此条件的弹幕将被过滤，默认为空（不过滤弹幕）
+  dm_filter: ~
 
 # 渲染参数
 render:
