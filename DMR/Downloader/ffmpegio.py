@@ -69,9 +69,8 @@ class FFmpegDownloader():
             self.ffmpeg, '-y',
             '-headers', ''.join('%s: %s\r\n' % x for x in header.items()),
             *self.ffmpeg_stream_args,
-            '-re', # added
             '-i', stream_url,
-            '-c','copy'
+            '-c', 'copy'
         ]
         
         if self.segment:
