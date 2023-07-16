@@ -124,7 +124,7 @@ class AssWriter():
         # set ass Dialogue
         dm_info = f'Dialogue: 0,{t0},{t1},R2L,,0,0,0,,'
         dm_info += '{\move(%d,%d,%d,%d)}'%(x0, y + self.dst, x1, y + self.dst)
-        dm_info += '{\\1c&H%s&}'%(self.opacity + RGB2BGR(danmu.color))
+        dm_info += '{\\alpha&H%s\\1c%s&}'%(self.opacity, BGR2RGB(dm['color']))
         content = danmu.content.replace('\n',' ').replace('\r',' ')
         dm_info += content
 
