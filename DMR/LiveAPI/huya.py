@@ -103,11 +103,6 @@ class huya(BaseAPI):
             keyframe_url = None
         return title, uname, face_url, keyframe_url
 
-    def _get_uuid(self):
-        now = int(time.time())
-        random_num = random.randint(0, 999)
-        return int((now % 10000000000 * 1000 + random_num) % 4294967295)
-
     def _parse_anti_code(self, anticode, streamName):
         qr = urllib.parse.parse_qs(anticode)
 
