@@ -1,0 +1,5 @@
+logs/
+venv/
+/直播回放**
+.idea/
+.vs_code/
