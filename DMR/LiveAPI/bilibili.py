@@ -38,110 +38,60 @@ class bilibili(BaseAPI):
                 return False
 
     def get_stream_url(self, flow_cdn=None, **kwargs) -> str:
-        real_url = ''
-        r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
-        with requests.Session() as s:
-            res = s.get(r_url,timeout=5).json()
-        code = res['code']
-        if code == 0:
-            live_status = res['data']['live_status']
-            if live_status == 1:
-                room_id = res['data']['room_id']
-                f_url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo'
-                params = {
-                    'room_id': room_id,
-                    'platform': 'web',
-                    'protocol': '0,1',
-                    'format': '0,1,2',
-                    'codec': '0',
-                    'qn': 20000,
-                    'ptype': 8,
-                    'dolby': 5,
-                    'panorama': 1
-                }
-                resp = requests.get(f_url, params=params, headers=self.header,timeout=5).json()
-                try:
-                    stream = resp['data']['playurl_info']['playurl']['stream']
-                    http_info = stream[0]['format'][0]['codec'][0]
-                    base_url = http_info['base_url']
-                    flv_urls = []
-                    for info in http_info['url_info']:
-                        host = info['host']
-                        extra = info['extra']
-                        flv_url = host + base_url + extra
-                        flv_urls.append(flv_url)
-                    if isinstance(flow_cdn, int):
-                        real_url = flv_urls[min(int(flow_cdn), len(flv_urls)-1)]
-                    elif isinstance(flow_cdn, str):
-                        host = f'https://{flow_cdn}.bilivideo.com'
-                        real_url = host + base_url + extra
-                    else:
-                        real_url = flv_urls[0]
-                        for uri in flv_urls:
-                            if 'mcdn.' not in uri:
-                                real_url = uri
-                                break
-                except:
-                    raise RuntimeError('bilibili直播流获取错误.')
-                # try:
-                #     stream = resp['data']['playurl_info']['playurl']['stream']
-                #     http_info = stream[1]['format'][1]['codec'][0]
-                #     base_url = http_info['base_url']
-                #     host = http_info['url_info'][0]['host']
-                #     extra = http_info['url_info'][0]['extra']
-                #     real_url = host + base_url + extra
-                # except KeyError or IndexError:
-                #     raise RuntimeError('bilibili直播流获取错误.')
+        res = self._get_response()
+        room_id = res['data']['room_id']
+        f_url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo'
+        params = {
+            'room_id': room_id,
+            'platform': 'web',
+            'protocol': '0,1',
+            'format': '0,1,2',
+            'codec': '0',
+            'qn': 20000,
+            'ptype': 8,
+            'dolby': 5,
+            'panorama': 1
+        }
+        resp = requests.get(f_url, params=params, headers=self.header,timeout=5).json()
+        try:
+            stream = resp['data']['playurl_info']['playurl']['stream']
+            http_info = stream[0]['format'][0]['codec'][0]
+            base_url = http_info['base_url']
+            flv_urls = []
+            for info in http_info['url_info']:
+                host = info['host']
+                extra = info['extra']
+                flv_url = host + base_url + extra
+                flv_urls.append(flv_url)
+            if isinstance(flow_cdn, int):
+                real_url = flv_urls[min(int(flow_cdn), len(flv_urls)-1)]
+            elif isinstance(flow_cdn, str):
+                host = f'https://{flow_cdn}.bilivideo.com'
+                real_url = host + base_url + extra
+            else:
+                real_url = flv_urls[0]
+                for uri in flv_urls:
+                    if 'mcdn.' not in uri:
+                        real_url = uri
+                        break
+        except:
+            raise RuntimeError('bilibili直播流获取错误.')
         return real_url
 
     def get_info(self) -> tuple:
-        rid = int(self.rid)
-        liverInfo = []
-        data = json.dumps({'ids': [rid]})  # 根据直播间房号批量获取直播间信息
-        r = requests.post(r'https://api.live.bilibili.com/room/v2/Room/get_by_ids', data=data,timeout=5)
-        r.encoding = 'utf8'
-        data = json.loads(r.text)['data']
-        uidList = []
-        for roomID in data:
-            uidList.append(data[roomID]['uid'])
-        data = json.dumps({'uids': uidList})
-        r = requests.post(r'https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids', data=data,timeout=5)
-        r.encoding = 'utf8'
-        data = json.loads(r.text)['data']
-        if data:
-            exist = False
-            for uid, info in data.items():
-                if rid == info['room_id'] or rid == info['short_id']:
-                    title = info['title']
-                    uname = info['uname']
-                    face = info['face']
-                    keyFrame = info['keyframe']
-                    exist = True
-                    liverInfo.append([title, uname, face, keyFrame])
-                    break
-            try:
-                if not exist:
-                    r = requests.get(r'https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=%s'%rid,timeout=5)
-                    r.encoding = 'utf8'
-                    banData = json.loads(r.text)['data']
-                    if banData:
-                        try:
-                            uname = banData['anchor_info']['base_info']['uname']
-                        except:
-                            uname = ''
-                    else:
-                        uname = ''
-                    liverInfo.append([uname, uname, None, None])
-            except Exception as e:
-                logging.error(str(e))
-        if liverInfo:
-            return liverInfo[0]
-        else:
-            return '','',None,None
+        resp = requests.get(f'https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id={self.rid}', headers=self.header).json()
+        data = resp['data']
+        
+        title = data['room_info']['title']
+        uname = data['anchor_info']['base_info']['uname']
+        face_url = data['anchor_info']['base_info']['face']
+        keyframe_url = data['room_info']['keyframe']
+
+        return title, uname, face_url, keyframe_url
     
     def get_stream_header(self) -> dict:
         return self.header
 
 if __name__ == '__main__':
-    api = bilibili('5851637')    
-    print(api.get_stream_url()) 
+    api = bilibili('55')    
+    print(api.get_info()) 
