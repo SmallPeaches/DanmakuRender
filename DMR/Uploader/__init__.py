@@ -47,40 +47,66 @@ class Uploader():
                 for _ in range(len(self.uploaders)):
                     self.upload_queue.put(task)
                 return
-
-            group = task.get('group')
-            if task.get('msg_type') == 'end':
-                buffer_tasks = self.video_buffer.pop(group, 0)
-                if not buffer_tasks:
-                    logging.debug(f'uploader {group} buffer tasks empty.')
-                    return
-
-                self.upload_queue.put(buffer_tasks)
+            
+            group = task['group']
+            realtime = task['upload_config']['realtime']
+            # 实时上传
+            if realtime:
                 if self.state_dict.get(group):
-                    self.state_dict[group].append(buffer_tasks)
+                    self.state_dict[group].append(task)
                 else:
-                    self.state_dict[group] = [buffer_tasks]
-                self.state_dict[group].append(task)
+                    self.state_dict[group] = [task]
+                if task['msg_type'] == 'upload':
+                    self.upload_queue.put(task)
+            # 普通上传
+            else:
+                uploader_name = task['uploader_name']
+                if task.get('msg_type') == 'end':
+                    buffer_tasks = self.video_buffer.pop(uploader_name, 0)
+                    if not buffer_tasks:
+                        logging.debug(f'uploader {uploader_name} buffer tasks empty.')
+                        return
 
-            elif task.get('msg_type') == 'upload':
-                if self.video_buffer.get(group):
-                    self.video_buffer[group].append(task)
-                else:
-                    self.video_buffer[group] = [task]
+                    self.upload_queue.put(buffer_tasks)
+                    if self.state_dict.get(group):
+                        self.state_dict[group].append(buffer_tasks)
+                    else:
+                        self.state_dict[group] = [buffer_tasks]
+                    self.state_dict[group].append(task)
+
+                elif task.get('msg_type') == 'upload':
+                    if self.video_buffer.get(uploader_name):
+                        self.video_buffer[uploader_name].append(task)
+                    else:
+                        self.video_buffer[uploader_name] = [task]
 
     def _gather(self, task, status, desc=''):
         with self._lock:
-            group = task[0].get('group')
+            if isinstance(task, dict):
+                group = task['group']
+                video_info=task['video_info']
+                self.state_dict[group] = list(filter(lambda x: x!=task, self.state_dict[group]))
+                files = [task['video']]
+            else:
+                group = task[0]['group']
+                video_info=task[0].get('video_info')
+                self.state_dict[group] = list(filter(lambda x: x!=task, self.state_dict[group]))
+                files = [item['video'] for item in task]
+            
+            self.pipeSend(files, type=status, desc=desc, group=group, video_info=video_info, task=task)
 
-            def filter_func(x) -> bool:
-                return x != task
-            self.state_dict[group] = list(filter(filter_func, self.state_dict[group]))
-            files = [item['video'] for item in task]
-            self.pipeSend(files, type=status, desc=desc, group=group, video_info=task[0].get('video_info'), task=task)
-
-            if self.state_dict[group] and isinstance(self.state_dict[group][0], dict) and self.state_dict[group][0]['msg_type'] == 'end':
-                self.state_dict[group].pop(0)
-                self.pipeSend(group, type='end', group=group)
+            if self.state_dict[group]:
+                # 普通上传
+                if isinstance(self.state_dict[group], list) and self.state_dict[group][0]['msg_type'] == 'end':
+                    self.state_dict[group].pop(0)
+                    self.pipeSend(group, type='end', group=group)
+                # 实时上传，需要发送结束信号
+                elif isinstance(self.state_dict[group], dict) and self.state_dict[group]['msg_type'] == 'end':
+                    self.state_dict[group].pop(0)
+                    self.pipeSend(group, type='end', group=group)
+                    uploader_name = self.state_dict[group]['uploader_name']
+                    uploader = self.uploaders[uploader_name]
+                    uploader.end_upload()
 
     def _uploader_subprocess(self):
         while not self.stoped:
@@ -89,23 +115,48 @@ class Uploader():
                 self.upload_queue.task_done()
                 return
 
-            logging.info(
-                f"正在上传: {task[0]['group']} 至 {task[0]['upload_config']['account']}")
-            logging.debug(f'uploading: {task}')
-            try:
-                task_config = task[0]['upload_config']
-                uploader_name = task_config['uploader_name']
-                uploader = self.uploaders[uploader_name]
-                ok, info = uploader.upload_batch(task, task_config.copy())
-                if ok:
-                    self._gather(task, 'info', desc=info)
-                else:
-                    self._gather(task, 'error', desc=info)
-            except KeyboardInterrupt:
-                self.stop()
-            except Exception as e:
-                logging.exception(e)
-                self._gather(task, 'error', desc=e)
+            # 使用实时上传
+            if isinstance(task, dict):
+                logging.info(
+                    f"正在上传: {task['group']}: {task['video']} 至 {task['upload_config']['account']}")
+                logging.debug(f'uploading: {task}')
+                try:
+                    task_config = task['upload_config']
+                    uploader_name = task['uploader_name']
+                    uploader = self.uploaders[uploader_name]
+                    ok, info = uploader.upload_one(
+                        video=task['video'], 
+                        video_info=task['video_info'],
+                        config=task_config.copy(),
+                    )
+                    if ok:
+                        self._gather(task, 'info', desc=info)
+                    else:
+                        self._gather(task, 'error', desc=info)
+                except KeyboardInterrupt:
+                    self.stop()
+                except Exception as e:
+                    logging.exception(e)
+                    self._gather(task, 'error', desc=e)
+            # 普通上传
+            else:
+                logging.info(
+                    f"正在上传: {task[0]['group']} 至 {task[0]['upload_config']['account']}")
+                logging.debug(f'uploading: {task}')
+                try:
+                    task_config = task[0]['upload_config']
+                    uploader_name = task[0]['uploader_name']
+                    uploader = self.uploaders[uploader_name]
+                    ok, info = uploader.upload_batch(task, task_config.copy())
+                    if ok:
+                        self._gather(task, 'info', desc=info)
+                    else:
+                        self._gather(task, 'error', desc=info)
+                except KeyboardInterrupt:
+                    self.stop()
+                except Exception as e:
+                    logging.exception(e)
+                    self._gather(task, 'error', desc=e)
 
             self.upload_queue.task_done()
 
@@ -118,13 +169,17 @@ class Uploader():
         return
 
     def add(self, video, group=None, video_info=None, upload_configs=None, **kwargs):
-        if video == 'end':
-            self._distribute({
-                'msg_type': 'end',
-                'group': group,
-            })
-        else:
-            for upload_config in upload_configs:
+        for upload_config in upload_configs:
+            if video == 'end':
+                self._distribute({
+                    'msg_type': 'end',
+                    'group': group,
+                    'video_info': video_info,
+                    'upload_config': upload_config,
+                    'uploader_name': upload_config['uploader_name'],
+                    'kwargs': kwargs,
+                })
+            else:
                 min_length = upload_config.get('min_length', 0)
                 if FFprobe.get_duration(video) > min_length:
                     self._distribute({
@@ -133,6 +188,7 @@ class Uploader():
                         'group': group,
                         'video_info': video_info,
                         'upload_config': upload_config,
+                        'uploader_name': upload_config['uploader_name'],
                         'kwargs': kwargs,
                     })
 

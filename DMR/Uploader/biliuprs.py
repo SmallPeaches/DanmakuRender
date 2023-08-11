@@ -3,9 +3,8 @@ import logging
 import os
 import queue
 import re
-import signal
+import threading
 import sys
-import json
 import tempfile
 import time
 import subprocess
@@ -25,7 +24,9 @@ class biliuprs():
         self.debug = debug
         self.base_args = [self.biliup, '-u', self.cookies]
         self.wait_queue = queue.Queue()
-        self.group2bvid = {}
+        self.task_info = {}
+        self.uploading = False
+        self._upload_lock = threading.Lock()
 
         if not self.islogin():
             self.login()
@@ -83,7 +84,7 @@ class biliuprs():
         logging.debug(f'biliuprs: {upload_args}')
         
         if not logfile:
-            logfile = tempfile.TemporaryFile()
+            logfile = sys.stdout
 
         if self.debug:
             self.upload_proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT, bufsize=10**8)
@@ -113,43 +114,8 @@ class biliuprs():
             proc.wait()
         
         print(f'将 {self.account} 的登录信息保存到 {self.cookies}.')
-
-    def upload_one(self, video, group=None, **kwargs):
-        bvid = self.group2bvid.get(group) if group else None
-
-        if kwargs.get('title'):
-            kwargs['title'] = replace_keywords(kwargs['title'], kwargs.get('video_info'))
-        if kwargs.get('desc'):
-            kwargs['desc'] = replace_keywords(kwargs['desc'], kwargs.get('video_info'))
-        if kwargs.get('dynamic'):
-            kwargs['dynamic'] = replace_keywords(kwargs['dynamic'], kwargs.get('video_info'))
-
-        logging.debug(f'Uploading {video}, {bvid}, {kwargs}')
-        self.upload_proc = self.upload_helper(video, bvid, **kwargs)
-
-        if self.upload_proc.stdout is None:
-            return self.upload_proc.wait()
-
-        for line in self.upload_proc.stdout.readlines():
-            line = line.decode('utf-8')
-            if line.startswith('Error'):
-                raise RuntimeError(f'上传错误, {line}')
-            try:
-                str_info = line.split(': ')[1]
-                info = json.loads(str_info)
-                bvid = info['data']['bvid']
-            except:
-                logging.debug(line)
-                continue
-
-        if bvid:
-            if group: 
-                self.group2bvid[group] = bvid
-            return True
-        else:
-            return False
         
-    def upload_batch(self, batch, config):
+    def upload_batch(self, batch, config, **kwargs):
         video_batch = [bat['video'] for bat in batch]
         video_info = batch[0]['video_info']
         config = config.copy()
@@ -180,6 +146,43 @@ class biliuprs():
             return True, 'bvid: '+bvid
         else:
             return False, log
+
+    def upload_one(self, video, config=None, video_info=None, **kwargs):
+        config = config.copy()
+        
+        if config.get('title'):
+            config['title'] = replace_keywords(config['title'], video_info)
+        if config.get('desc'):
+            config['desc'] = replace_keywords(config['desc'], video_info)
+        if config.get('dynamic'):
+            config['dynamic'] = replace_keywords(config['dynamic'], video_info)
+
+        if self._upload_lock.locked():
+            logging.warn('实时上传速度慢于录制速度，可能导致上传队列阻塞！')
+        
+        with self._upload_lock, tempfile.TemporaryFile() as logfile:
+            self.upload_proc = self.upload_helper(video=video, bvid=self.task_info.get('bvid'), logfile=logfile, **config)
+            if self.debug:
+                return True, ''
+        
+            bvid = None
+            log = ''
+            logfile.seek(0)
+            for line in logfile.readlines():
+                line = line.decode('utf-8', errors='ignore').strip()
+                log += line+'\n'
+                if '\"bvid\"' in line:
+                    res = re.search(r'(BV[0-9A-Za-z]{10})', line)
+                    if res:  bvid = res[0]
+
+            if bvid:
+                self.task_info['bvid'] = bvid
+                return True, 'bvid: '+bvid
+            else:
+                return False, log
+        
+    def end_upload(self):
+        self.task_info = {}
 
     def stop(self):
         try:

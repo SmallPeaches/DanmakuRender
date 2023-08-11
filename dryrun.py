@@ -57,7 +57,7 @@ if __name__ == '__main__':
     console_handler.setFormatter(logging.Formatter("[%(asctime)s][%(levelname)s]: %(message)s"))
     
     os.makedirs('logs', exist_ok=True)
-    log_file = f'logs/DMR-Dryrun-{datetime.now().strftime("%Y%m%d")}.log'
+    log_file = f'logs/DMR-dryrun-{datetime.now().strftime("%Y%m%d")}.log'
     num = 1
     while os.path.exists(log_file):
         log_file = f'logs/DMR-dryrun-{datetime.now().strftime("%Y%m%d")}-{num}.log'
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     logging.info('正在启动测试')
     dmr.start()
 
-    time.sleep(125)
+    time.sleep(180)
     for taskname, task in dmr.downloaders.items():
         try:
             task['class'].stop()

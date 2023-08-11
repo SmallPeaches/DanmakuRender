@@ -149,7 +149,8 @@ class FFmpegDownloader():
             line = ''
             try:
                 line = self.msg_queue.get_nowait()
-                log += line + '\n'
+                if not line.startswith('[hls'):
+                    log += line + '\n'
             except queue.Empty:
                 time.sleep(1)
             
@@ -161,7 +162,7 @@ class FFmpegDownloader():
                         speed = float(line[l:r][6:])
                         if speed < 0.8:
                             ffmpeg_low_speed += 1
-                            if ffmpeg_low_speed % 5 == 1:
+                            if ffmpeg_low_speed % 5 == 3:
                                 logging.warn(f'{self.taskname} 直播流下载速度过慢, 请保证网络带宽充足.')
                             if ffmpeg_low_speed >= 15:
                                 raise RuntimeError(f'{self.taskname} 下载速度过慢, 即将重试.')

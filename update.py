@@ -50,7 +50,8 @@ if __name__ == '__main__':
 
         main_dir = os.path.join('.temp/DMR-latest', os.listdir('.temp/DMR-latest')[0])
         for file in os.listdir(main_dir):
-            shutil.move(file, os.path.join('.oldfile',file))
+            if os.path.exists(file):
+                shutil.move(file, os.path.join('.oldfile',file))
 
         for file in os.listdir(main_dir):
             if file not in IGNORE_FILES:

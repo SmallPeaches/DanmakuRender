@@ -30,7 +30,12 @@ class DanmakuWriter():
         self.dm_format = dm_format
         self.dm_delay_fixed = dm_delay_fixed
         self.dm_auto_restart = dm_auto_restart
-        self.dm_filter = dm_filter
+        if not dm_filter:
+            self.dm_filter = []
+        elif isinstance(dm_filter, str):
+            self.dm_filter = [dm_filter]
+        else:
+            self.dm_filter = dm_filter
         self.kwargs = kwargs
 
         self.part = 0
@@ -86,8 +91,10 @@ class DanmakuWriter():
             return False
         if not dm.get('name'):
             return False
-        if self.dm_filter and re.search(self.dm_filter, dm.get('content','')):
-            return False
+        if self.dm_filter:
+            for dmf in self.dm_filter:
+                if re.search(dmf, dm.get('content','')):
+                    return False
         return True
     
     def start_dmc(self):

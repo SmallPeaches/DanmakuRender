@@ -57,6 +57,9 @@ class StreamgearsDownloader():
         pythonpath = sys.executable
         stream_url, header = self.extract_stream()
 
+        if '.m3u8' in stream_url:
+            raise RuntimeError('HLS流不支持使用streamgears下载，请下载引擎为ffmpeg')
+
         streamgears_args = [
             pythonpath, 
             'DMR/Downloader/streamgears_wrapper.py',
