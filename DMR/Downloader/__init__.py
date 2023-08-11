@@ -53,6 +53,7 @@ class Downloader():
             logging.debug(f'No video file {filename}')
             return 
         t0 = self.segment_start_time
+        video_duration = datetime.now().timestamp() - t0.timestamp()
         video_info = {
             'url': self.url,
             'taskname': self.taskname,
@@ -60,7 +61,7 @@ class Downloader():
             'title': self.segment_info[0],
             'time': t0,
             'has_danmu': '',
-            'duration': self.segment,
+            'duration': video_duration,
         }
         try:
             newfile = replace_keywords(self.output_name, video_info, replace_invalid=True)
@@ -203,6 +204,7 @@ class Downloader():
     def stop(self):
         self.loop = False
         self.stop_once()
+        self.pipeSend('','exit')
 
     def stop_once(self):
         self.stoped = True

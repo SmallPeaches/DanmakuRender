@@ -1,23 +1,43 @@
+# 配置文件编写请参考 https://github.com/SmallPeaches/DanmakuRender 
 
-# 录制配置文件规则：
-# 录制任务应该写在replay下，每个任务作为一个数组，
-# 每个任务至少包括一个url键值对，指定需要录制的链接，例如：
-# replay:
-#   - url: https://live.bilibili.com/13308358    #录制B站13308358直播间
-# 
-# 每个任务可以单独指定录制参数 (default.yml文件里下载参数都可以)，例如：
-# replay:
-# - url: https://live.bilibili.com/13308358     #录制B站13308358直播间
-#   segment: 1800                               #指定分段时间1800秒
-# 
-# 同样的，也可以同时录制多个直播间，例如：
-# replay:
-# - url: https://live.bilibili.com/13308358     #录制1：B站13308358直播间
-#   segment: 1800                               #指定此任务分段时间1800秒
-# - url: https://live.bilibili.com/23197314     #录制:2：B站23197314直播间
-#   segment: 3600                               #指定此任务分段时间3600秒
+render: 
+  # 硬件解码参数，默认自动，如果是CPU编码记得改为空
+  hwaccel_args: [-hwaccel,auto] 
+  # 使用NVIDIA H.264编码器，A卡用户设置为h264_amf，CPU渲染设置为libx264
+  vencoder: h264_nvenc   
+  # 指定编码器参数，默认15M码率         
+  vencoder_args: ['-b:v','15M'] 
+  # 输出重缩放，默认为空，可以设置为3840x2160绕过B站码率限制
+  output_resize: ~   
 
 replay:
-  - url: https://live.bilibili.com/55
+  # 第一个任务URL
+  - url: https://live.bilibili.com/15019349
+    # 录制输出文件夹
+    output_dir: ./直播回放
+    # 录制文件名称，效果：飞天狙想要努力变胖-2023年3月1日20点30分
+    output_name: '{STREAMER}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
+    # 分段时间3600秒
     segment: 3600
-      
+    # 弹幕占比
+    dmrate: 0.4
+    # 弹幕字体大小
+    fontsize: 36
+    # 弹幕字体透明度
+    opacity: 0.8
+
+  # 第二个任务
+  - url: https://live.bilibili.com/55
+    # 录制输出文件夹
+    output_dir: ./直播回放
+    # 录制文件名称，效果：飞天狙想要努力变胖-2023年3月1日20点30分
+    output_name: '{STREAMER}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
+    # 分段时间3600秒
+    segment: 3600
+    # 弹幕占比
+    dmrate: 0.4
+    # 弹幕字体大小
+    fontsize: 36
+    # 弹幕字体透明度
+    opacity: 0.8
+  

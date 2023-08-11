@@ -47,7 +47,7 @@ def check_pypi():
         return True
     except ImportError:
         input('Python 包未正确安装，回车自动安装:')
-        system("python -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple")
+        subprocess.Popen([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt', '-i', 'https://pypi.tuna.tsinghua.edu.cn/simple']).wait()
         print('Python 包安装完成.')
         return 
 
@@ -113,7 +113,7 @@ def check_biliup():
             input("Biliup未正确安装, 回车自动安装:")
 
             import requests
-            r = requests.get('https://github.com/ForgQi/biliup-rs/releases/download/v0.1.15/biliupR-v0.1.15-x86_64-windows.zip', stream=True)
+            r = requests.get('https://github.com/biliup/biliup-rs/releases/download/v0.1.19/biliupR-v0.1.19-x86_64-windows.zip', stream=True)
 
             # 下载
             content = b''
@@ -149,6 +149,13 @@ def check_biliup():
         ToolsList.set('biliup', "tools/biliup.exe")
         return True
     
+    elif sys.platform == 'linux':
+        if not os.path.exists("tools/biliup"):
+            print("biliup未正确安装，请参考教程安装biliup！")
+            exit(0)
+        ToolsList.set('biliup', "tools/biliup")
+        return True
+
     return 
 
 def check_update(version):

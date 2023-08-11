@@ -1,4 +1,4 @@
-from tools.check_env import check_pypi, check_ffmpeg, check_update, check_biliup
+from tools.check_env import check_pypi, check_update
 check_pypi()
 
 import time
@@ -11,10 +11,12 @@ import logging.handlers
 import yaml
 from os.path import exists
 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
-VERSION = '2023.7.10'
-VERSION_FULLNAME = 'DanmakuRender-4 2023.7.10.'
-VERSION_DEBUG = '4-2023.7.10'
+
+VERSION = '2023.8.11'
+VERSION_FULLNAME = 'DanmakuRender-4 2023.8.11.'
+VERSION_DEBUG = '4-2023.8.11'
 
 from DMR import DanmakuRender
 from DMR.Render import Render
@@ -61,9 +63,13 @@ if __name__ == '__main__':
     console_handler.setLevel(logging.INFO) 
     console_handler.setFormatter(logging.Formatter("[%(asctime)s][%(levelname)s]: %(message)s"))
     
-    os.makedirs('logs',exist_ok=True)
-    logname = f'logs/DMR-{datetime.now().strftime("%Y%m%d")}.log'
-    file_handler = logging.handlers.TimedRotatingFileHandler(logname, when='D', interval=1, backupCount=0, encoding='utf-8')
+    os.makedirs('logs', exist_ok=True)
+    log_file = f'logs/DMR-{datetime.now().strftime("%Y%m%d")}.log'
+    num = 1
+    while os.path.exists(log_file):
+        log_file = f'logs/DMR-{datetime.now().strftime("%Y%m%d")}-{num}.log'
+        num += 1
+    file_handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1, backupCount=0, encoding='utf-8')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter("[%(asctime)s][%(module)s][%(levelname)s]: %(message)s"))
     
@@ -76,10 +82,7 @@ if __name__ == '__main__':
     dmr = DanmakuRender(config, args.debug)
 
     if args.render_only:
-        logging.info('正在渲染..')
-        render = Render(pipe=None, debug=True, **config.render_config)
-        input_dir = args.input_dir if args.input_dir else config.default_conf['downloader']['output_dir']
-        render.render_only(input_dir)
+        logging.warn('此功能已不受支持，请运行 render_only.py 进行渲染.')
         exit(0)
     
     dmr.start()

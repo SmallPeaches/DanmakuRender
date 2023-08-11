@@ -2,9 +2,11 @@ from datetime import datetime
 import logging
 import os
 import queue
+import re
 import signal
 import sys
 import json
+import tempfile
 import time
 import subprocess
 
@@ -12,11 +14,11 @@ from tools import ToolsList
 from DMR.utils import replace_keywords
 
 class biliuprs():
-    def __init__(self, cookies:str, name:str, debug=False, biliup:str=None, **kwargs) -> None:
+    def __init__(self, cookies:str, account:str, debug=False, biliup:str=None, **kwargs) -> None:
         self.biliup = biliup if biliup else ToolsList.get('biliup')
-        self.name = name
+        self.account = account
         if cookies is None:
-            self.cookies = f'./.temp/{name}.json'
+            self.cookies = f'./.temp/{account}.json'
         else:
             self.cookies = cookies
         os.makedirs(os.path.dirname(self.cookies), exist_ok=True)
@@ -46,6 +48,7 @@ class biliuprs():
         tag:str='',
         tid:int=65,
         title:str='',
+        logfile=None,
         **kwargs
     ):
         if bvid:
@@ -79,11 +82,16 @@ class biliuprs():
         upload_args = [str(x) for x in upload_args]
         logging.debug(f'biliuprs: {upload_args}')
         
+        if not logfile:
+            logfile = tempfile.TemporaryFile()
+
         if self.debug:
-            proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT,bufsize=10**8)
+            self.upload_proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT, bufsize=10**8)
         else:
-            proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=10**8)
-        return proc
+            self.upload_proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT, bufsize=10**8)
+        
+        self.upload_proc.wait()
+        return logfile
     
     def islogin(self):
         renew_args = self.base_args + ['renew']
@@ -100,11 +108,11 @@ class biliuprs():
         login_args = self.base_args + ['login']
 
         while not self.islogin():
-            print(f'正在登录名称为 {self.name} 的账户:')
+            print(f'正在登录名称为 {self.account} 的账户:')
             proc = subprocess.Popen(login_args)
             proc.wait()
         
-        print(f'将 {self.name} 的登录信息保存到 {self.cookies}.')
+        print(f'将 {self.account} 的登录信息保存到 {self.cookies}.')
 
     def upload_one(self, video, group=None, **kwargs):
         bvid = self.group2bvid.get(group) if group else None
@@ -141,39 +149,43 @@ class biliuprs():
         else:
             return False
         
-    def upload_batch(self, batch):
+    def upload_batch(self, batch, config):
         video_batch = [bat['video'] for bat in batch]
-        kwargs = batch[0]['kwargs']
         video_info = batch[0]['video_info']
+        config = config.copy()
         
-        if kwargs.get('title'):
-            kwargs['title'] = replace_keywords(kwargs['title'], video_info)
-        if kwargs.get('desc'):
-            kwargs['desc'] = replace_keywords(kwargs['desc'], video_info)
-        if kwargs.get('dynamic'):
-            kwargs['dynamic'] = replace_keywords(kwargs['dynamic'], video_info)
+        if config.get('title'):
+            config['title'] = replace_keywords(config['title'], video_info)
+        if config.get('desc'):
+            config['desc'] = replace_keywords(config['desc'], video_info)
+        if config.get('dynamic'):
+            config['dynamic'] = replace_keywords(config['dynamic'], video_info)
         
-        self.upload_proc = self.upload_helper(video=video_batch, bvid=None, **kwargs)
+        with tempfile.TemporaryFile() as logfile:
+            self.upload_proc = self.upload_helper(video=video_batch, bvid=None, logfile=logfile, **config)
+            if self.debug:
+                return True, ''
+        
+            bvid = None
+            log = ''
+            logfile.seek(0)
+            for line in logfile.readlines():
+                line = line.decode('utf-8', errors='ignore').strip()
+                log += line+'\n'
+                if '\"bvid\"' in line:
+                    res = re.search(r'(BV[0-9A-Za-z]{10})', line)
+                    if res:  bvid = res[0]
 
-        if self.upload_proc.stdout is None:
-            return self.upload_proc.wait()
-
-        status = False
-        log = ''
-        for line in self.upload_proc.stdout.readlines():
-            line = line.decode('utf-8')
-            log += line+'\n'
-            if '上传成功' in line:
-                status = True
-        logging.debug(f'Upload {video_batch}: {log}')
-            
-        return status
+        if bvid:
+            return True, 'bvid: '+bvid
+        else:
+            return False, log
 
     def stop(self):
         try:
-            if self.upload_proc.poll() is None:
+            if hasattr(self, 'upload_proc') and self.upload_proc.poll() is None:
                 logging.warn('上传提前终止，可能需要重新上传.')
-            self.upload_proc.send_signal(signal.SIGINT)
+            self.upload_proc.kill()
             out, _ = self.upload_proc.communicate(timeout=2.0)
             out = out.decode('utf-8')
             logging.debug(out)

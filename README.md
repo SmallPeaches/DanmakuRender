@@ -6,7 +6,7 @@
 - 支持录播自动上传至B站。
 
 旧版本可以在分支v1-v3找到。     
-
+2023.8.11更新：优化程序执行逻辑，提供更多的配置文件选项，提供更多的说明文档，添加自动清理上传完成文件的功能     
 2023.7.10更新：优化弹幕录制和FFmpeg录制，修改部分参数名称，自动更新优化      
 2023.6.5更新：多任务并行渲染，抖音弹幕录制      
 2023.4.30更新：添加新的streamgears下载引擎，修改部分代码逻辑     
@@ -21,6 +21,11 @@
 
 ## 使用说明
 **如果你是纯萌新建议看我B站的专栏安装：https://www.bilibili.com/read/cv22343026**         
+
+### 文档列表    
+[**安装文档**](docs/installation.md)       
+[**使用文档**](docs/usage.md)
+
 ### 前置要求
 - Python 3.7+
 - Python库 aiohttp,requests,execjs,lxml,yaml
@@ -170,6 +175,10 @@ replay:
 {YEAR}年，{MONTH}月，{DAY}日，{HOUR}点，{MINUTE}分，{SECOND}秒       
 **注意：具体参数以default.yml为准.**
 ```yaml
+# ######################
+# 此文件非必要不用修改！
+# ######################
+
 # FFprobe 可执行程序地址，为空自动搜索
 ffprobe: ~
 # FFmpeg 可执行程序地址，为空自动搜索
@@ -294,20 +303,20 @@ render:
   # 特别提示：如果渲染一个CPU或者显卡占用都很高，调高这个反而有副作用！
   nrenders: 1
 
-  # 硬件解码参数，NVIDIA显卡默认使用cuda硬件解码器，AMD显卡或者CPU设为空
-  hwaccel_args: [-hwaccel,cuda,-noautorotate]
+  # 硬件解码参数，默认由FFmpeg自动判断，如果出现问题可以设为空
+  hwaccel_args: [-hwaccel, auto]
 
   # 视频编码器，NVIDIA设置为h264_nvenc，AMD设置为h264_amf，CPU设置为libx264
   vencoder: h264_nvenc
 
   # 视频编码器参数，默认恒定码率15Mbps
-  vencoder_args: [-b:v,15M]
+  vencoder_args: [-b:v, 15M]
 
   # 音频编码器
   aencoder: aac
 
   # 音频编码器参数，默认恒定码率320Kbps
-  aencoder_args: [-b:a,320K]
+  aencoder_args: [-b:a, 320K]
 
   # 输出重缩放，会把输出重缩放到指定分辨率，可以设置为'3840x2160'用于在B站传伪4K保证清晰度
   output_resize: ~
@@ -324,12 +333,25 @@ render:
 
 # 自动上传参数
 uploader:
+  # 最大并行任务数，在录制多个主播时允许同时上传的最大视频数量，设置为-1表示不限制，默认1
+  nuploaders: 1
+
   # 上传目标（目前只有B站）
   bilibili:
     # 上传引擎，目前只能选biliuprs
     engine: biliuprs
 
-    # 登录信息保存的cookies路径，默认<上传器名字>.json
+    # 上传账号名称，程序依靠这个来识别不同的账号，如果打算传不同账号就要设置不同的名称
+    account: bilibili
+
+    # （此功能暂不生效）重试次数，如果上传遇到错误将会重试，设置为0表示不重试
+    retry: 0
+
+    # （此功能暂不生效）实时上传，每录制一个分段上传一次，同一场直播的不同分P仍然会在一个视频下，默认关闭
+    realtime: False
+
+    # 登录信息保存的cookies路径，默认为空（由程序自动生成".temp/<上传账号名称>.json"的文件）
+    # 如果同时指定上传账号和cookies，那么程序会优先使用cookies路径
     cookies: ~
 
     # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认五分钟
@@ -351,7 +373,7 @@ uploader:
     # 分区号，分区参考 https://biliup.github.io/tid-ref.html
     tid: 65
 
-    # 封面
+    # 封面，指向本地文件地址
     cover: ''
 
     # 标题，可以使用关键字替换
@@ -360,10 +382,10 @@ uploader:
     title: '[{STREAMER}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU}'
 
     # 简介，可以使用关键字替换
-    desc: "{STREAMER}: {URL} \n直播回放 {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU} \nPowered by DanmakuRender \nhttps://github.com/SmallPeaches/DanmakuRender"
+    desc: "{STREAMER} 的直播回放{HAS_DANMU} \n直播地址：{URL} \n标题：{TITLE} \n时间：{YEAR}年{MONTH}月{DAY}日 \n\n————————————\n由DanmakuRender录制： \nhttps://github.com/SmallPeaches/DanmakuRender"
     
     # 动态内容，可以使用关键字替换
-    dynamic: ''
+    dynamic: '{STREAMER} 的直播回放，{YEAR}年{MONTH}月{DAY}日'
 
     # 互动视频
     interactive: 0
@@ -382,6 +404,48 @@ uploader:
 
     # 是否开启充电? 0-关闭 1-开启
     open_elec: 1
+
+# 自动清理参数
+cleaner:
+  # 移动文件
+  move:
+    # 目标文件夹，可以使用关键字替换，文件夹不存在会自动创建
+    # 如果设置为空或者"*TRASHBIN*"，那么文件将会被移动至回收站
+    dest: ~
+
+    # 清理延迟（秒），在上传完成后会过一段时间再清理
+    delay: 86400
+
+    # （此功能暂不生效）只清理此次运行中上传成功的文件
+    strict: True
+
+    # （此功能暂不生效）是否等待执行完成
+    wait: True
+
+  # 复制文件
+  copy:
+    # 目标文件夹，可以使用关键字替换，文件夹不存在会自动创建
+    dest: ~
+
+    # 复制延迟（秒），在上传完成后会过一段时间再复制
+    delay: 0
+
+    # （此功能暂不生效）只复制此次运行中上传成功的文件
+    strict: True
+
+    # （此功能暂不生效）是否等待执行完成
+    wait: True
+
+  # 删除文件
+  delete:
+    # 删除延迟（秒），在上传完成后会过一段时间再复制
+    delay: 172800
+
+    # （此功能暂不生效）只复制此次运行中上传成功的文件
+    strict: True
+
+    # （此功能暂不生效）是否等待执行完成
+    wait: True
 ```
 ### 可选参数
 程序运行时可以指定以下参数

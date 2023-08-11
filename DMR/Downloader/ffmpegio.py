@@ -115,7 +115,10 @@ class FFmpegDownloader():
             stream_info.pop(k, 0)
         CALC_FRAME_KEYS = ['r_frame_rate', 'avg_frame_rate']
         for k in CALC_FRAME_KEYS:
-            stream_info[k] = round(float(stream_info[k].split('/')[0]) / float(stream_info[k].split('/')[1]))
+            try:
+                stream_info[k] = round(float(stream_info[k].split('/')[0]) / float(stream_info[k].split('/')[1]))
+            except:
+                stream_info[k] = 0
         return stream_info
     
     def start_helper(self):
@@ -126,7 +129,8 @@ class FFmpegDownloader():
         self.thisfile = None
 
         stream_url, header = self.extract_stream()
-        latest_stream_info = self.get_livestream_info(stream_url, header)
+        if self.kwargs.get('check_stream_changes'):
+            latest_stream_info = self.get_livestream_info(stream_url, header)
         log = ''
         ffmpeg_low_speed = 0
 
@@ -157,9 +161,9 @@ class FFmpegDownloader():
                         speed = float(line[l:r][6:])
                         if speed < 0.8:
                             ffmpeg_low_speed += 1
-                            logging.warn(f'{self.taskname} 直播流下载速度过慢, 请保证网络带宽充足.')
-                            logging.debug(f'{self.taskname} FFmpeg output:\n{line}')
-                            if ffmpeg_low_speed >= 5:
+                            if ffmpeg_low_speed % 5 == 1:
+                                logging.warn(f'{self.taskname} 直播流下载速度过慢, 请保证网络带宽充足.')
+                            if ffmpeg_low_speed >= 15:
                                 raise RuntimeError(f'{self.taskname} 下载速度过慢, 即将重试.')
                         else:
                             ffmpeg_low_speed = 0
@@ -223,6 +227,7 @@ class FFmpegDownloader():
             self.ffmpeg_proc.kill()
             logging.debug(e)
         
-        time.sleep(1)
-        self.callback(self.thisfile)
+        if self.thisfile:
+            time.sleep(1)
+            self.callback(self.thisfile)
         logging.debug('ffmpeg downloader stoped.')
