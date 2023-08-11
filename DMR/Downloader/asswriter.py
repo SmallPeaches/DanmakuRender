@@ -118,8 +118,8 @@ class AssWriter():
         t0 = danmu.time
         t1 = t0 + self.dmduration
 
-        t0 = '%02d:%02d:%02.2f'%sec2hms(t0)
-        t1 = '%02d:%02d:%02.2f'%sec2hms(t1)
+        t0 = '%02d:%02d:%05.2f'%sec2hms(t0)
+        t1 = '%02d:%02d:%05.2f'%sec2hms(t1)
         
         # set ass Dialogue
         dm_info = f'Dialogue: 0,{t0},{t1},R2L,,0,0,0,,'

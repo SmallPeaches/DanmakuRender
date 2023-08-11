@@ -126,6 +126,9 @@ class Render():
                 'group': group,
             })
             return
+        
+        if not render_config:
+            render_config = self.kwargs
 
         if not danmaku:
             danmaku = os.path.splitext(video)[0] + '.ass'
