@@ -96,8 +96,7 @@ class Uploader():
                 task_config = task[0]['upload_config']
                 uploader_name = task_config['uploader_name']
                 uploader = self.uploaders[uploader_name]
-                ok, info = True, ''
-                # ok, info = uploader.upload_batch(task, task_config.copy())
+                ok, info = uploader.upload_batch(task, task_config.copy())
                 if ok:
                     self._gather(task, 'info', desc=info)
                 else:
