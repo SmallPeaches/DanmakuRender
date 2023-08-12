@@ -1,4 +1,3 @@
-from DMR.message import PipeMessage
 from tools.check_env import check_pypi, check_update
 check_pypi()
 
@@ -15,8 +14,8 @@ from os.path import exists
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
 
-VERSION = '2023.8.11'
-
+from main import load_config, VERSION
+from DMR.message import PipeMessage
 from DMR import DanmakuRender
 from DMR.Render import Render
 from DMR.Config import Config, new_config
@@ -27,23 +26,12 @@ requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS = 'ALL'
 if __name__ == '__main__':    
     parser = argparse.ArgumentParser()
     parser.add_argument('-c','--config',default='replay.yml')
-    parser.add_argument('--default_config',default='default.yml')
+    parser.add_argument('--default_config',default='configs/default.yml')
     parser.add_argument('--debug',action='store_true')
     args = parser.parse_args()
     
-    if not exists(args.default_config):
-        print(f'未检测到配置文件：{args.default_config}, 即将自动创建.')
-        new_config(args.default_config, 'default')
-    if not exists(args.config):
-        print(f'未检测到配置文件：{args.config}, 即将自动创建.')
-        new_config(args.config, 'replay')
-
-    with open(args.default_config,'r',encoding='utf-8') as f:
-        default_config = yaml.safe_load(f)
-    with open(args.config,'r',encoding='utf-8') as f:
-        replay_config = yaml.safe_load(f)
-
-    config = Config(default_config, replay_config)
+    config = load_config(args.default_config, args.config)
+    
     for name , rep_conf in config.config['replay'].items():
         config.config['replay'][name]['segment'] = 60
         for upd_type, upd_configs in rep_conf.get('upload', {}).items():

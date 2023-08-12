@@ -9,7 +9,8 @@ import sys
 import logging
 import logging.handlers
 import yaml
-from os.path import exists
+from glob import glob
+from os.path import exists, split
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
@@ -25,10 +26,42 @@ from DMR.Config import Config, new_config
 import requests.packages.urllib3.util.ssl_
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS = 'ALL'
 
+def load_config(default_config, replay_config, config_dir='configs'):
+    try:
+        if not exists(default_config):
+            print(f'未检测到配置文件：{default_config}, 即将自动创建.')
+            new_config(default_config, 'default')
+        if not exists(replay_config):
+            print(f'未检测到配置文件：{replay_config}, 即将自动创建.')
+            new_config(replay_config, 'replay')
+
+        with open(default_config,'r',encoding='utf-8') as f:
+            default_config = yaml.safe_load(f)
+        with open(replay_config,'r',encoding='utf-8') as f:
+            replay_config = yaml.safe_load(f)
+
+        if not replay_config.get('replay'):
+            replay_config['replay'] = {}
+            config_paths = sorted(glob(f'{config_dir}/replay-**.yml'))
+            print(f'即将添加以下配置文件：{config_paths}')
+            for path in config_paths:
+                taskname = split(path)[1][7:-4]
+                with open(path,'r',encoding='utf-8') as f:
+                    config = yaml.safe_load(f)
+                replay_config['replay'][taskname] = config
+        
+        config = Config(default_config, replay_config)
+    except Exception as e:
+        print(f'配置文件读取错误: {e}')
+        input('')
+        exit(1)
+    
+    return config
+
 if __name__ == '__main__':    
     parser = argparse.ArgumentParser()
     parser.add_argument('-c','--config',default='replay.yml')
-    parser.add_argument('--default_config',default='default.yml')
+    parser.add_argument('--default_config',default='configs/default.yml')
     parser.add_argument('--debug',action='store_true')
     parser.add_argument('--render_only',action='store_true')
     parser.add_argument('--input_dir',type=str)
@@ -44,19 +77,7 @@ if __name__ == '__main__':
     if not args.skip_update:
         check_update(VERSION)
     
-    if not exists(args.default_config):
-        print(f'未检测到配置文件：{args.default_config}, 即将自动创建.')
-        new_config(args.default_config, 'default')
-    if not exists(args.config):
-        print(f'未检测到配置文件：{args.config}, 即将自动创建.')
-        new_config(args.config, 'replay')
-
-    with open(args.default_config,'r',encoding='utf-8') as f:
-        default_config = yaml.safe_load(f)
-    with open(args.config,'r',encoding='utf-8') as f:
-        replay_config = yaml.safe_load(f)
-
-    config = Config(default_config, replay_config)
+    config = load_config(args.default_config, args.config)
     
     logging.getLogger().setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler(sys.stdout)

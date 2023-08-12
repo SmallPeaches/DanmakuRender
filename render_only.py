@@ -11,6 +11,7 @@ from os.path import exists, join
 sys.path.append('..')
 sys.path.append('.')
 
+from main import load_config
 from DMR.utils import FFprobe
 from DMR.Render import Render
 from DMR.Config import Config, new_config
@@ -25,26 +26,14 @@ def isvideo(path:str) -> bool:
 def main():    
     parser = argparse.ArgumentParser()
     parser.add_argument('-c','--config',default='replay.yml')
-    parser.add_argument('--default_config',default='default.yml')
+    parser.add_argument('--default_config',default='configs/default.yml')
     parser.add_argument('--debug',action='store_true')
     parser.add_argument('--render_only',action='store_true')
     parser.add_argument('--input_dir',type=str)
     parser.add_argument('--output_dir',type=str)
     args = parser.parse_args()
     
-    if not exists(args.default_config):
-        print(f'未检测到配置文件：{args.default_config}, 即将自动创建.')
-        new_config(args.default_config, 'default')
-    if not exists(args.config):
-        print(f'未检测到配置文件：{args.config}, 即将自动创建.')
-        new_config(args.config, 'replay')
-
-    with open(args.default_config,'r',encoding='utf-8') as f:
-        default_config = yaml.safe_load(f)
-    with open(args.config,'r',encoding='utf-8') as f:
-        replay_config = yaml.safe_load(f)
-
-    config = Config(default_config, replay_config)
+    config = load_config(args.default_config, args.config)
     
     logging.getLogger().setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler(sys.stdout)
