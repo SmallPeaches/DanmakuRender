@@ -87,8 +87,8 @@ class DanmakuRender():
             logging.info(msg.get('desc'))
             clean_configs = replay_config.get('clean')
             if clean_configs and clean_configs.get(vtype):
-                if vtype == 'dm_file':
-                    files = [os.path.splitext(f)[0]+'.ass' for f in files]
+                if vtype == 'src_video':
+                    files += [os.path.splitext(f)[0]+'.ass' for f in files]
                 logging.info(f'即将清理以下文件 {files}.')
                 self.cleaner.add(files, group, video_info=msg.get('video_info'), clean_configs=clean_configs[vtype])
 

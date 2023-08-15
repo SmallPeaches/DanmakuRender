@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 import re, asyncio, aiohttp
 
 # from .youtube import Youtube
@@ -50,7 +51,7 @@ class DanmakuClient:
 
     async def init_ws(self):
         ws_url, reg_datas = await self.__site_api.get_ws_info(self.__url)
-        self.__ws = await self.__hs.ws_connect(ws_url)
+        self.__ws = await self.__hs.ws_connect(ws_url, headers=self.__site_api.headers)
         for reg_data in reg_datas:
             if type(reg_data) == str:
                 await self.__ws.send_str(reg_data)
@@ -71,17 +72,24 @@ class DanmakuClient:
 
     async def fetch_danmaku(self):
         while self.__stop != True:
-            async for msg in self.__ws:
-                # self.__link_status = True
-                ms = self.__site_api.decode_msg(msg.data)
-                for m in ms:
-                    if not m.get('time',0):
-                        m['time'] = datetime.now()
-                    await self._dm_queue.put(m)
-            if self.__stop != True:
-                await asyncio.sleep(1)
-                await self.init_ws()
-                await asyncio.sleep(1)
+            msg = await self.__ws.receive()
+            if msg.type in [aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR]:
+                raise RuntimeError('Websocket Closed')
+            
+            result = self.__site_api.decode_msg(msg.data)
+            if isinstance(result, tuple):
+                ms, ack = result
+                if ack is not None:
+                    # 发送ack包
+                    if type(ack) == str:
+                        await self.__ws.send_str(ack)
+                    else:
+                        await self.__ws.send_bytes(ack)
+            else:
+                ms = result
+
+            for m in ms:
+                await self._dm_queue.put(m)
 
     async def start(self):
         if self.__site_api != None:

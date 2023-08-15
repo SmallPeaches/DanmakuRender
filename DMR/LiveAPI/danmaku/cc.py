@@ -5,8 +5,9 @@ import struct
 import time
 import uuid
 import zlib
-
 import aiohttp
+
+from .DMAPI import DMAPI
 
 
 class CC_Init:
@@ -246,7 +247,7 @@ class CC_Init:
         return d
 
 
-class CC:
+class CC(DMAPI):
     """
     cc直播，代码参考 https://github.com/wbt5/real-url
     """

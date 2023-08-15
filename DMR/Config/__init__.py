@@ -112,6 +112,9 @@ class Config():
 
             for vtype, clean_configs in clean_conf.items():
                 if isinstance(clean_configs, dict):
+                    if not clean_configs.get('method'):
+                        clean_configs = None
+                        continue
                     clean_configs = [clean_configs]
                 for cid, conf in enumerate(clean_configs):
                     method = conf.get('method')
