@@ -33,6 +33,14 @@ class Config():
         if self.replay_conf.get('render'):
             self.config['render'].update(self.replay_conf.get('render'))
 
+        # 处理 uploader 配置
+        if self.replay_conf.get('uploader'):
+            for k, v in self.replay_conf['uploader'].items():
+                if isinstance(v, dict) and self.config['uploader'].get(k):
+                    self.config['uploader'][k].update(v)
+                else:
+                    self.config['uploader'][k] = v
+
         # 处理 replay 配置
         if self.replay_conf.get('replay'):
             self.config['replay'] = {}

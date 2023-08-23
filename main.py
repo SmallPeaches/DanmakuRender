@@ -1,3 +1,4 @@
+import json
 from tools.check_env import check_pypi, check_update
 check_pypi()
 
@@ -16,7 +17,6 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
 
 VERSION = '2023.8.11'
-VERSION_FULLNAME = 'DanmakuRender-4 2023.8.11.'
 VERSION_DEBUG = '4-2023.8.11'
 
 from DMR import DanmakuRender
@@ -64,7 +64,6 @@ if __name__ == '__main__':
     parser.add_argument('--default_config',default='configs/default.yml')
     parser.add_argument('--debug',action='store_true')
     parser.add_argument('--render_only',action='store_true')
-    parser.add_argument('--input_dir',type=str)
     parser.add_argument('--version',action='store_true')
     parser.add_argument('--skip_update',action='store_true')
     args = parser.parse_args()
@@ -99,7 +98,7 @@ if __name__ == '__main__':
 
     logging.debug(f'DEBUG VERSION: {VERSION_DEBUG}')
     logging.debug(f'args: {args}')
-    logging.debug(f'Full config: {config.config}')
+    logging.debug(f'Full config: {json.dumps(config.replay_config, indent=4, ensure_ascii=False)}')
     dmr = DanmakuRender(config, args.debug)
 
     if args.render_only:

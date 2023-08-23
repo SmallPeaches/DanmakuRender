@@ -163,7 +163,7 @@ def check_update(version):
         import requests
         resp = requests.get('https://api.github.com/repos/SmallPeaches/DanmakuRender/releases/latest', timeout=5).json()
         lastest_version = resp["tag_name"]
-        if compare_version(lastest_version, version) >= 0:
+        if compare_version(lastest_version, version) > 0:
             print('存在可用更新：')
             print(f"版本：{lastest_version}")
             print(f"发行时间：{resp['published_at']}")

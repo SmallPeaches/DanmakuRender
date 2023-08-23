@@ -76,6 +76,17 @@ class DanmakuRender():
                 self.process_render_message(msg)
             elif msg.get('src') == 'uploader':
                 self.process_uploader_message(msg)
+            elif msg.get('src') == 'cleaner':
+                self.process_cleaner_message(msg)
+
+    def process_cleaner_message(self, msg):
+        type = msg['type']
+        file = msg['msg']
+        if type == 'info':
+            logging.info(f"文件 {file} 清理完成: {msg.get('desc')}")
+        elif type == 'error':
+            logging.error(f'文件 {file} 清理错误.')
+            logging.error(msg.get('desc'))
 
     def process_uploader_message(self, msg):
         type = msg['type']
@@ -89,7 +100,7 @@ class DanmakuRender():
             if clean_configs and clean_configs.get(vtype):
                 if vtype == 'src_video':
                     files += [os.path.splitext(f)[0]+'.ass' for f in files]
-                logging.info(f'即将清理以下文件 {files}.')
+                logging.info(f'添加以下文件到清理队列： {files}.')
                 self.cleaner.add(files, group, video_info=msg.get('video_info'), clean_configs=clean_configs[vtype])
 
         elif type == 'error':
