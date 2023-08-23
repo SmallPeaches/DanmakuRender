@@ -128,6 +128,7 @@ class DanmakuWriter():
                             color=dm['color'],
                             content=dm['content']
                         )
+                        retry = 0
                         if self.dmwriter.add(danmu):
                             last_dm_time = datetime.now().timestamp()
                     continue
@@ -143,16 +144,14 @@ class DanmakuWriter():
                     task.cancel()
                     retry += 1
                     last_dm_time = datetime.now().timestamp()
-                    await asyncio.sleep(min(15*retry,120))
+                    await asyncio.sleep(min(15*retry,60))
                     task = asyncio.create_task(dmc_task())
                     continue
 
                 if self.dm_auto_restart and datetime.now().timestamp()-last_dm_time>self.dm_auto_restart:
                     logging.error('获取弹幕超时，正在重试...')
                     task.cancel()
-                    retry += 1
                     last_dm_time = datetime.now().timestamp()
-                    await asyncio.sleep(min(15*retry,120))
                     task = asyncio.create_task(dmc_task())
                     continue
                 

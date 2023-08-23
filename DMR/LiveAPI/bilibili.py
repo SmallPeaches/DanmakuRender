@@ -10,8 +10,8 @@ class bilibili(BaseAPI):
     def __init__(self,rid) -> None:
         self.rid = rid
         self.header = {
-            'referer': 'https://live.bilibili.com',
-            'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.54',
+            'Referer': 'https://live.bilibili.com',
+            'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.54',
         }
 
     def _get_response(self):
@@ -93,5 +93,5 @@ class bilibili(BaseAPI):
         return self.header
 
 if __name__ == '__main__':
-    api = bilibili('55')    
-    print(api.get_info()) 
+    api = bilibili('23197314')    
+    print(api.get_stream_url()) 
