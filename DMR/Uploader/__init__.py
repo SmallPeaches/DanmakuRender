@@ -95,18 +95,15 @@ class Uploader():
             
             self.pipeSend(files, type=status, desc=desc, group=group, video_info=video_info, task=task)
 
-            if self.state_dict[group]:
-                # 普通上传
-                if isinstance(self.state_dict[group], list) and self.state_dict[group][0]['msg_type'] == 'end':
-                    self.state_dict[group].pop(0)
-                    self.pipeSend(group, type='end', group=group)
+            if self.state_dict[group] and isinstance(self.state_dict[group][0], dict) and self.state_dict[group][0]['msg_type'] == 'end':
                 # 实时上传，需要发送结束信号
-                elif isinstance(self.state_dict[group], dict) and self.state_dict[group]['msg_type'] == 'end':
-                    self.state_dict[group].pop(0)
-                    self.pipeSend(group, type='end', group=group)
-                    uploader_name = self.state_dict[group]['uploader_name']
+                if isinstance(task, dict):
+                    uploader_name = self.state_dict[group][0]['uploader_name']
                     uploader = self.uploaders[uploader_name]
                     uploader.end_upload()
+                
+                self.state_dict[group].pop(0)
+                self.pipeSend(group, type='end', group=group)
 
     def _uploader_subprocess(self):
         while not self.stoped:
@@ -191,6 +188,8 @@ class Uploader():
                         'uploader_name': upload_config['uploader_name'],
                         'kwargs': kwargs,
                     })
+                else:
+                    logging.info(f'视频 {video} 过短，跳过上传.')
 
     def stop(self):
         self.stoped = True

@@ -183,6 +183,7 @@ class biliuprs():
         
     def end_upload(self):
         self.task_info = {}
+        logging.debug('realtime upload end.')
 
     def stop(self):
         try:
