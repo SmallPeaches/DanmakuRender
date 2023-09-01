@@ -16,8 +16,8 @@ from os.path import exists, split
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
 
-VERSION = '2023.8.11'
-VERSION_DEBUG = '4-2023.8.11'
+VERSION = '2023.9.1'
+VERSION_DEBUG = '4-2023.9.1'
 
 from DMR import DanmakuRender
 from DMR.Render import Render
@@ -63,7 +63,6 @@ if __name__ == '__main__':
     parser.add_argument('-c','--config',default='replay.yml')
     parser.add_argument('--default_config',default='configs/default.yml')
     parser.add_argument('--debug',action='store_true')
-    parser.add_argument('--render_only',action='store_true')
     parser.add_argument('--version',action='store_true')
     parser.add_argument('--skip_update',action='store_true')
     args = parser.parse_args()
@@ -89,7 +88,7 @@ if __name__ == '__main__':
     while os.path.exists(log_file):
         log_file = f'logs/DMR-{datetime.now().strftime("%Y%m%d")}-{num}.log'
         num += 1
-    file_handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1, backupCount=0, encoding='utf-8')
+    file_handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1, backupCount=7, encoding='utf-8')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter("[%(asctime)s][%(module)s][%(levelname)s]: %(message)s"))
     
@@ -100,11 +99,6 @@ if __name__ == '__main__':
     logging.debug(f'args: {args}')
     logging.debug(f'Full config: {json.dumps(config.replay_config, indent=4, ensure_ascii=False)}')
     dmr = DanmakuRender(config, args.debug)
-
-    if args.render_only:
-        logging.warn('此功能已不受支持，请运行 render_only.py 进行渲染.')
-        exit(0)
-    
     dmr.start()
     
     try:

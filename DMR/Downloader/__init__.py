@@ -167,10 +167,10 @@ class Downloader():
                 if live_end:
                     time.sleep(60)
                 else:
-                    time.sleep(15)
+                    time.sleep(30)
                 restart_cnt = 0
                 end_cnt += 1
-                if end_cnt > self.end_cnt and not live_end:
+                if end_cnt > self.end_cnt*2 and not live_end:
                     live_end = True
                     self.pipeSend('end')
                 continue
@@ -194,6 +194,7 @@ class Downloader():
                 else:
                     logging.debug(e)
             
+            logging.debug(f'{self.taskname} stop once.')
             self.stop_once()
 
     def start(self):

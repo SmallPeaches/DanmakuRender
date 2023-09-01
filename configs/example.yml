@@ -104,7 +104,7 @@ dm_auto_restart: 300
 # 弹幕过滤规则，一个正则表达式数组（也可以直接输入关键字），满足其中任意条件的弹幕将被过滤，默认为空（不过滤弹幕）
 dm_filter: []
 
-# 上传参数
+# 上传参数，如果不需要上传就把下面的都删了
 upload:
   # 原视频
   src_video: 
@@ -145,7 +145,15 @@ upload:
     title: '[{STREAMER}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU}'
 
     # 简介，可以使用关键字替换
-    desc: "{STREAMER} 的直播回放{HAS_DANMU} \n标题：{TITLE} \n时间：{YEAR}年{MONTH}月{DAY}日 \n直播地址：{URL} \n\n————————————\n由DanmakuRender录制： \nhttps://github.com/SmallPeaches/DanmakuRender"
+    desc: |
+      {STREAMER} 的直播回放{HAS_DANMU} 
+      标题：{TITLE} 
+      时间：{YEAR}年{MONTH}月{DAY}日 
+      直播地址：{URL} 
+
+      ————————————
+      由DanmakuRender录制：
+      https://github.com/SmallPeaches/DanmakuRender
     
     # 动态内容，可以使用关键字替换
     dynamic: '{STREAMER} 的直播回放，{YEAR}年{MONTH}月{DAY}日'
@@ -205,7 +213,15 @@ upload:
     title: '[{STREAMER}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日 {HAS_DANMU}'
 
     # 简介，可以使用关键字替换
-    desc: "{STREAMER} 的直播回放{HAS_DANMU} \n标题：{TITLE} \n时间：{YEAR}年{MONTH}月{DAY}日 \n直播地址：{URL} \n\n————————————\n由DanmakuRender录制： \nhttps://github.com/SmallPeaches/DanmakuRender"
+    desc: |
+      {STREAMER} 的直播回放{HAS_DANMU} 
+      标题：{TITLE} 
+      时间：{YEAR}年{MONTH}月{DAY}日 
+      直播地址：{URL} 
+
+      ————————————
+      由DanmakuRender录制：
+      https://github.com/SmallPeaches/DanmakuRender
     
     # 动态内容，可以使用关键字替换
     dynamic: '{STREAMER} 的直播回放，{YEAR}年{MONTH}月{DAY}日'
