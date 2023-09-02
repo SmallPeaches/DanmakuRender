@@ -176,17 +176,26 @@ class FFmpegDownloader():
                         self.callback(self.thisfile)
                     self.thisfile = fname
 
-            if 'dropping it' in line:
+            if 'dropping it' in line or 'Invalid NAL unit size' in line:
                 raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
 
             if self.duration > self._timer_cnt*15:
                 if len(log) == 0:
                     raise RuntimeError(f'{self.taskname} 管道读取错误, 即将重试.')
                 
+                ok = False
+                output_log = False
                 for li in log.split('\n'):
+                    if li and li.startswith('frame='):
+                        ok = True
                     if li and not li.startswith('frame='):
-                        logging.debug(f'{self.taskname} FFmpeg output:\n{log}')
-                        break
+                        output_log = True
+                
+                if output_log:
+                    logging.debug(f'{self.taskname} FFmpeg output:\n{log}')
+                
+                if not ok:
+                    raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试.')
 
                 if self._timer_cnt%3 == 0:
                     if self.kwargs.get('check_stream_changes'):
