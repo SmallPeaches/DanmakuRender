@@ -46,7 +46,7 @@ class Bilibili(DMAPI):
                         pack('>i', 7) + pack('>i', 1) + data)
                 reg_datas.append(data)
 
-                return 'wss://broadcastlv.chat.bilibili.com/sub', reg_datas
+        return 'wss://broadcastlv.chat.bilibili.com/sub', reg_datas
     
     @staticmethod
     def decode_msg(data):
