@@ -137,7 +137,7 @@ class Config():
         TOOLS = ['ffmpeg']
         if 'upload' in str(self.config['replay']):
             TOOLS.append('biliup')
-        for k, v in self.default_conf.items():
+        for k, v in self.config.items():
             if isinstance(v, str):
                 ToolsList.set(k, v)
         for tool in TOOLS:

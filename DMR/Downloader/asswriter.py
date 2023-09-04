@@ -111,7 +111,7 @@ class AssWriter():
             return False
         
         dm_length = self._get_length(danmu.content)
-        x0 = self.width + dm_length
+        x0 = self.width
         x1 = -dm_length
         y = self.fontsize + (self.fontsize + self.margin_h) * tid
 
