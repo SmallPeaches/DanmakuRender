@@ -6,6 +6,8 @@
 
 /replay.yml
 /test**
+
+replay-**.yml
 **.exe
 **.pyc
 **.mp4

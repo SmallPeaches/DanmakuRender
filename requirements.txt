@@ -4,5 +4,6 @@ pyexecjs
 lxml
 pyyaml
 stream-gears
-protobuf==4.23.2
+protobuf>=4.23.2
 websocket-client
+brotli

@@ -30,11 +30,17 @@ class DanmakuWriter():
         self.dm_format = dm_format
         self.dm_delay_fixed = dm_delay_fixed
         self.dm_auto_restart = dm_auto_restart
-        if not dm_filter:
+        try:
+            if not dm_filter:
+                self.dm_filter = []
+            elif isinstance(dm_filter, str):
+                self.dm_filter = [dm_filter]
+            else:
+                self.dm_filter = dm_filter
+            self.dm_filter = [re.compile(str(x)) for x in self.dm_filter]
+        except Exception as e:
+            logging.warn(f'弹幕屏蔽词{dm_filter}设置错误:{e}，此功能将不会生效.')
             self.dm_filter = []
-        elif isinstance(dm_filter, str):
-            self.dm_filter = [dm_filter]
-        self.dm_filter = [re.compile(str(x)) for x in self.dm_filter]
         self.kwargs = kwargs
 
         self.part = 0

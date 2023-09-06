@@ -11,7 +11,7 @@ import requests
 import urllib
 import json
 import logging
-
+import random
 import websocket
 from google.protobuf import json_format
 
@@ -21,6 +21,7 @@ from .dy_pb2 import PushFrame, Response, ChatMessage
 class Douyin:
     headers = {
         'authority': 'live.douyin.com',
+        'Referer': "https://live.douyin.com/",
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.81 Safari/537.36 Edg/104.0.1293.54',
     }
     def __init__(self, rid, q):
@@ -45,22 +46,28 @@ class Douyin:
         else:
             try:
                 resp = self._get_response_douyin()
-                self.real_rid = resp['app']['initialState']['roomStore']['roomInfo']['roomId']
+                self.real_rid = resp['data'][0]['id_str']
             except:
-                raise Exception('房间号错误.')
+                raise Exception(f'解析抖音房间号{rid}错误.')
             
     def _get_response_douyin(self):
-        text = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5).text
-        render_data = re.findall(r"<script id=\"RENDER_DATA\" type=\"application/json\">.*?</script>",text)[0]
-        data = urllib.parse.unquote(render_data)
-        data = re.sub(r'(<script.*?>|</script>)','',data)
-        data = json.loads(data)
-
+        url = 'https://live.douyin.com/webcast/room/web/enter/'
+        params = {
+            'web_rid': self.web_rid,
+            'aid': '6383',
+            'device_platform': 'web',
+            'browser_language': 'zh-CN',
+            'browser_platform': 'Win32',
+            'browser_name': 'Edge',
+            'browser_version': '104.0.1293.54',
+        }
+        text = requests.get(url, headers=self.headers, params=params, timeout=5).text
+        data = json.loads(text)['data']
         return data
     
     def get_danmu_ws_url(self):
-        resp = self._get_response_douyin()
-        user_unique_id = resp['app']['odin']['user_unique_id']
+        # resp = self._get_response_douyin()
+        user_unique_id = random.randint(1e19, 1e20)
         return f"wss://webcast3-ws-web-lf.douyin.com/webcast/im/push/v2/?app_name=douyin_web&version_code=180800&webcast_sdk_version=1.3.0&update_version_code=1.3.0&compress=gzip&internal_ext=internal_src:dim|wss_push_room_id:{self.real_rid}|wss_push_did:{user_unique_id}|dim_log_id:2023011316221327ACACF0E44A2C0E8200|fetch_time:${int(time.time())}123|seq:1|wss_info:0-1673598133900-0-0|wrds_kvs:WebcastRoomRankMessage-1673597852921055645_WebcastRoomStatsMessage-1673598128993068211&cursor=u-1_h-1_t-1672732684536_r-1_d-1&host=https://live.douyin.com&aid=6383&live_id=1&did_rule=3&debug=false&endpoint=live_pc&support_wrds=1&im_path=/webcast/im/fetch/&device_platform=web&cookie_enabled=true&screen_width=1228&screen_height=691&browser_language=zh-CN&browser_platform=Mozilla&browser_name=Mozilla&browser_version=5.0%20(Windows%20NT%2010.0;%20Win64;%20x64)%20AppleWebKit/537.36%20(KHTML,%20like%20Gecko)%20Chrome/100.0.4896.75%20Safari/537.36&browser_online=true&tz_name=Asia/Shanghai&identity=audience&room_id={self.real_rid}&heartbeatDuration=0&signature=00000000"
 
     async def start(self):

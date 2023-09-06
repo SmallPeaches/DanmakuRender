@@ -44,6 +44,7 @@ def check_pypi():
         import stream_gears
         import google.protobuf 
         import websocket
+        import brotli
         return True
     except ImportError:
         input('Python 包未正确安装，回车自动安装:')
