@@ -123,28 +123,32 @@ class huya(BaseAPI):
     def get_stream_url(self, flow_cdn=None, **kwargs) -> str:
         data = self._get_api_response()
 
-        urls = []
+        urls = {}
         baseSteamInfoList = data['data']['stream']['baseSteamInfoList']
         for streamInfo in baseSteamInfoList:
-            url = f"{streamInfo['sFlvUrl']}/{streamInfo['sStreamName']}.{streamInfo['sFlvUrlSuffix']}?{self._parse_anti_code(streamInfo['sFlvAntiCode'], streamInfo['sStreamName'])}"
-            urls.append(url)
-        # for i in range(len(multiLine)):
-        #     obj = multiLine[i]
-        #     if obj['url'] is not None:
-        #         # liveline = live(obj['url'])
-        #         # urls.append(liveline)
-        #         urls.append(obj['url'])
-        url = urls[0]
-        if flow_cdn:
-            url = url.replace('al.flv.huya.com', f'{flow_cdn}.flv.huya.com')
-            if requests.get(url, stream=True, headers=self.header).status_code != 200:
-                e = RuntimeError(f'虎牙CDN {flow_cdn} 不可用, 可能导致录制失败. URL: {url}')
-                logging.exception(e)
-                raise e
+            url_query = urllib.parse.parse_qs(streamInfo["sFlvAntiCode"])
+            uid = random.randint(1400000000000, 1499999999999)
+            ws_time = hex(int(time.time() + 21600))[2:]
+            seq_id = round(time.time() * 1000) + uid
+            ws_secret_prefix = base64.b64decode(urllib.parse.unquote(url_query['fm'][0]).encode()).decode().split("_")[0]
+            ws_secret_hash = hashlib.md5(
+                f'{seq_id}|{url_query["ctype"][0]}|{url_query["t"][0]}'.encode()).hexdigest()
+            ws_secret = hashlib.md5(
+                f'{ws_secret_prefix}_{uid}_{streamInfo["sStreamName"]}_{ws_secret_hash}_{ws_time}'.encode()).hexdigest()
+            
+            url = f'{streamInfo["sFlvUrl"]}/{streamInfo["sStreamName"]}.{streamInfo["sFlvUrlSuffix"]}?wsSecret={ws_secret}&wsTime={ws_time}&seqid={seq_id}&ctype={url_query["ctype"][0]}&ver=1&fs={url_query["fs"][0]}&t={url_query["t"][0]}&uid={uid}&ratio=0'
+            # url = f"{streamInfo['sFlvUrl']}/{streamInfo['sStreamName']}.{streamInfo['sFlvUrlSuffix']}?{self._parse_anti_code(streamInfo['sFlvAntiCode'], streamInfo['sStreamName'])}"
+            urls[streamInfo['sCdnType']] = url
+        
+        url = list(urls.values())[0]
+        if flow_cdn and urls.get(flow_cdn.upper()):
+            url = urls.get(flow_cdn.upper())
+        else:
+            logging.warn(f'虎牙CDN {flow_cdn} 不可用.')
 
         return url
 
 
 if __name__ == '__main__':
-    api = huya('19558978')
+    api = huya('101584')
     print(api.get_stream_url())

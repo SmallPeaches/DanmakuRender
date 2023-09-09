@@ -54,6 +54,11 @@ class Uploader():
             if realtime:
                 if self.state_dict.get(group):
                     self.state_dict[group].append(task)
+                elif task['msg_type'] == 'end':
+                    uploader_name = task['uploader_name']
+                    uploader = self.uploaders[uploader_name]
+                    uploader.end_upload()
+                    self.pipeSend(group, type='end', group=group)
                 else:
                     self.state_dict[group] = [task]
                 if task['msg_type'] == 'upload':
