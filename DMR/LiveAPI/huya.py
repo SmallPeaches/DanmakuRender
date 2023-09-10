@@ -141,10 +141,11 @@ class huya(BaseAPI):
             urls[streamInfo['sCdnType']] = url
         
         url = list(urls.values())[0]
-        if flow_cdn and urls.get(flow_cdn.upper()):
-            url = urls.get(flow_cdn.upper())
-        else:
-            logging.warn(f'虎牙CDN {flow_cdn} 不可用.')
+        if flow_cdn:
+            if urls.get(flow_cdn.upper()):
+                url = urls.get(flow_cdn.upper())
+            else:
+                logging.warn(f'虎牙CDN {flow_cdn} 不可用.')
 
         return url
 
