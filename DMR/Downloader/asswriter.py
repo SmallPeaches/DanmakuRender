@@ -30,13 +30,13 @@ class AssWriter():
         self.width = width
         self.dmrate = dmrate
         if auto_fontsize:
-            self.fontsize = int(width / 1920 * fontsize)
+            self.fontsize = int(height / 1080 * fontsize)
         else:
             self.fontsize = int(fontsize)
         self.font = font
 
-        self.margin_h = margin_h if margin_h > 1 else margin_h*self.height
-        self.margin_w = margin_w if margin_w > 1 else margin_w*self.width
+        self.margin_h = margin_h if margin_h > 1 else margin_h * self.height
+        self.margin_w = margin_w if margin_w > 1 else margin_w * self.width
         self.dst = dst
         self.dmduration = dmduration
         self.opacity = hex(255-int(opacity*255))[2:].zfill(2)
