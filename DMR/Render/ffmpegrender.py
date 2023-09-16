@@ -41,8 +41,7 @@ class FFmpegRender(BaseRender):
 
         try:
             # solve bili dash
-            fps = eval(FFprobe.run_ffprobe(video)[
-                       'streams'][0]['avg_frame_rate'])
+            fps = eval(FFprobe.run_ffprobe(video)['streams'][0]['avg_frame_rate'])
             gop = 5  # set GOP=5s
             dash_args = [
                 '-keyint_min', int(fps * gop),
@@ -52,7 +51,16 @@ class FFmpegRender(BaseRender):
             dash_args = []
 
         if self.output_resize:
-            scale_args = ['-s', self.output_resize]
+            if 'x' in str(self.output_resize):
+                scale_args = ['-s', self.output_resize]
+            else:
+                w, h = FFprobe.get_resolution(video)
+                if not (h and w):
+                    logging.warn(f'获取视频 {video} 分辨率失败, 将使用默认分辨率 1920x1080.')
+                    w, h = 1920, 1080
+                scale = float(self.output_resize)
+                w, h = int(w*scale), int(h*scale)
+                scale_args = ['-s', f'{w}x{h}']
         else:
             scale_args = []
 

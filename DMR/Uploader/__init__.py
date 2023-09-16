@@ -1,6 +1,7 @@
 import logging
 import threading
 import queue
+import time
 
 from DMR.message import PipeMessage
 from DMR.utils import FFprobe
@@ -119,46 +120,53 @@ class Uploader():
 
             # 使用实时上传
             if isinstance(task, dict):
-                logging.info(
-                    f"正在上传: {task['group']}: {task['video']} 至 {task['upload_config']['account']}")
-                logging.debug(f'uploading: {task}')
-                try:
-                    task_config = task['upload_config']
-                    uploader_name = task['uploader_name']
-                    uploader = self.uploaders[uploader_name]
-                    ok, info = uploader.upload_one(
-                        video=task['video'], 
-                        video_info=task['video_info'],
-                        config=task_config.copy(),
-                    )
-                    if ok:
-                        self._gather(task, 'info', desc=info)
-                    else:
-                        self._gather(task, 'error', desc=info)
-                except KeyboardInterrupt:
-                    self.stop()
-                except Exception as e:
-                    logging.exception(e)
-                    self._gather(task, 'error', desc=e)
-            # 普通上传
+                task_config = task['upload_config']
+                uploader_name = task['uploader_name']
+                uploader = self.uploaders[uploader_name]
+                video = task['video']
+                video_info = task['video_info']
+                upload_func = uploader.upload_one
+            # 使用普通上传
             else:
-                logging.info(
-                    f"正在上传: {task[0]['group']} 至 {task[0]['upload_config']['account']}")
-                logging.debug(f'uploading: {task}')
+                task_config = task[0]['upload_config']
+                uploader_name = task[0]['uploader_name']
+                uploader = self.uploaders[uploader_name]
+                video = [t['video'] for t in task]
+                video_info = [t['video_info'] for t in task]
+                upload_func = uploader.upload_batch
+            
+            retry = task_config.get('retry', 0)
+            status = info = None
+            while retry >= 0:
                 try:
-                    task_config = task[0]['upload_config']
-                    uploader_name = task[0]['uploader_name']
-                    uploader = self.uploaders[uploader_name]
-                    ok, info = uploader.upload_batch(task, task_config.copy())
-                    if ok:
-                        self._gather(task, 'info', desc=info)
-                    else:
-                        self._gather(task, 'error', desc=info)
+                    logging.info(
+                        f"正在上传 {video} 至 {task_config['account']}")
+                    logging.debug(task)
+
+                    status, info = upload_func(
+                        video=video, 
+                        video_info=video_info,
+                        config=task_config,
+                    )
                 except KeyboardInterrupt:
                     self.stop()
+                    return
                 except Exception as e:
+                    status, info = False, e
                     logging.exception(e)
-                    self._gather(task, 'error', desc=e)
+                
+                if status:
+                    break
+                else:
+                    logging.warn(f'上传 {video} 时出现错误，即将重传.')
+                    logging.debug(info)
+                    time.sleep(60)
+                    retry -= 1
+            
+            if status:
+                self._gather(task, 'info', desc=info)
+            else:
+                self._gather(task, 'error', desc=info)
 
             self.upload_queue.task_done()
 
@@ -183,7 +191,10 @@ class Uploader():
                 })
             else:
                 min_length = upload_config.get('min_length', 0)
-                if FFprobe.get_duration(video) > min_length:
+                duration = FFprobe.get_duration(video)
+                if duration <= 0:
+                    duration = video_info.get('duration', duration)
+                if duration > min_length:
                     self._distribute({
                         'msg_type': 'upload',
                         'video': video,
@@ -194,7 +205,7 @@ class Uploader():
                         'kwargs': kwargs,
                     })
                 else:
-                    logging.info(f'视频 {video} 过短，跳过上传.')
+                    logging.info(f'视频 {video} 过短，设置 {min_length}s，实际 {duration}s，跳过上传.')
 
     def stop(self):
         self.stoped = True

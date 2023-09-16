@@ -20,11 +20,14 @@
   修改下载引擎为streamgears，具体方法见下文示例.
 
 ## 使用说明
-**如果你是纯萌新建议看我B站的专栏安装：https://www.bilibili.com/read/cv22343026**         
+**如果你是纯萌新建议看我B站的专栏安装：https://www.bilibili.com/read/cv26348023**         
 
-### 文档列表    
+### 安装与使用文档      
 [**安装文档**](docs/installation.md)       
 [**使用文档**](docs/usage.md)
+
+<details>
+  <summary> 以下折叠内容为旧版文档，仅供特殊情况下参考 </summary>
 
 ### 前置要求
 - Python 3.7+
@@ -447,12 +450,17 @@ cleaner:
     # （此功能暂不生效）是否等待执行完成
     wait: True
 ```
+</details>
+
 ### 可选参数
 程序运行时可以指定以下参数
 - `-c` 指定录制配置文件位置，默认replay.yml
 - `--default_config` 指定默认配置文件位置，默认default_config.yml
 - `--version` 查看版本号
+- `--skip_update` 跳过版本检查
 
 ## 更多
-感谢 THMonster/danmaku, wbt5/real-url, ForgQi/biliup,ForgQi/stream-gears      
-出现问题了可以把日志文件发给我，我会尽量帮忙修复
+感谢 THMonster/danmaku, wbt5/real-url, ForgQi/biliup, ForgQi/stream-gears 的工作。     
+出现问题欢迎大家提issue讨论。       
+
+**本程序仅供研究学习使用！**
