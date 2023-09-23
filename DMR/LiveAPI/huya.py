@@ -142,7 +142,7 @@ class huya(BaseAPI):
         
         url = ''
         for uri in urls.values():
-            if 'direct' not in url:
+            if 'direct' not in uri:
                 url = uri
                 break
         if not url: url = list(urls.values())[0]
