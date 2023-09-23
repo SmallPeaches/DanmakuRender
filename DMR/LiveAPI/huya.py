@@ -140,8 +140,13 @@ class huya(BaseAPI):
             # url = f"{streamInfo['sFlvUrl']}/{streamInfo['sStreamName']}.{streamInfo['sFlvUrlSuffix']}?{self._parse_anti_code(streamInfo['sFlvAntiCode'], streamInfo['sStreamName'])}"
             urls[streamInfo['sCdnType']] = url
         
-        url = list(urls.values())[0]
-        url = urls.get('TX', url)
+        url = ''
+        for uri in urls.values():
+            if 'direct' not in url:
+                url = uri
+                break
+        if not url: url = list(urls.values())[0]
+        
         if flow_cdn:
             if urls.get(flow_cdn.upper()):
                 url = urls.get(flow_cdn.upper())
