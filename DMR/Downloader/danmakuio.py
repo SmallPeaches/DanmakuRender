@@ -54,9 +54,19 @@ class DanmakuWriter():
         else:
             raise NotImplementedError(f"unsupported danmaku format {dm_format}")
 
+    def time_fix(self, video_start_time, downloaded_duration, speed): # time_error 时间误差
+        self.start_time = video_start_time
+        # 1. 当前时间减去开始录制的时间 datetime.now().timestamp() - self.start_time
+        # 2. 已经下载了的时间 downloaded_duration（正数）
+        # 3. FFmpeg 2x以内视为稳定，即1s下载2s的内容，因此补偿 (speed - 1)秒
+        # 4. 通用补偿 6s（写入 default.yml & example.yml)
+        # 5. 正数表示提前，负数表示延后
+        calc_time_error = downloaded_duration - datetime.now().timestamp() + self.start_time + (speed - 1)
+        self.part_start_time -= calc_time_error
+
     def start(self, self_segment=False):
-        self.starttime = datetime.now().timestamp()
-        self.part_start_time = self.duration
+        self.start_time = datetime.now().timestamp()
+        self.part_start_time = self.start_time
         self.dm_file = self.output.replace(f'%03d','%03d'%self.part)
         self.dmwriter.open(self.dm_file)
 
@@ -70,14 +80,10 @@ class DanmakuWriter():
             self.monitor.start()
         
         return self.start_dmc()
-  
-    @property
-    def duration(self):
-        return datetime.now().timestamp() - self.starttime
     
-    def split(self, filename=None):
+    def split(self, part_start_time, filename=None):
         self.part += 1
-        self.part_start_time = self.duration
+        self.part_start_time = part_start_time
         self.dmwriter.close()
         if filename:
             try:
@@ -124,7 +130,7 @@ class DanmakuWriter():
             while not self.stoped:
                 try:
                     dm = q.get_nowait()
-                    dm['time'] = self.duration - self.part_start_time - self.dm_delay_fixed
+                    dm['time'] = datetime.now().timestamp() - self.part_start_time - self.dm_delay_fixed
                     if dm['time'] > 0 and self.dm_available(dm):
                         danmu = SimpleDanmaku(
                             time=dm['time'],
@@ -174,7 +180,7 @@ class DanmakuWriter():
     def stop(self):
         self.stoped = True
         logging.debug('danmaku writer stoped.')
-        if self.duration < 10:
+        if datetime.now().timestamp() - self.part_start_time < 10: # duration < 10s
             try:
                 os.remove(self.dm_file)
             except Exception as e:

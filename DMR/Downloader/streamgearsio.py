@@ -25,7 +25,8 @@ class StreamgearsDownloader():
                  taskname:str,
                  debug=False,
                  header:dict=None,
-                 callback=None,
+                 segment_callback=None,
+                 stable_callback=None,
                  **kwargs):
         self.stream_url = stream_url
         self.header = header if header else self.default_header
@@ -34,7 +35,8 @@ class StreamgearsDownloader():
         self.debug = debug
         self.taskname = taskname
         self.url = url
-        self.callback = callback
+        self.segment_callback = segment_callback
+        self.stable_callback = stable_callback
         self.kwargs = kwargs
 
         if isinstance(self.stream_url, str):
@@ -100,7 +102,7 @@ class StreamgearsDownloader():
                     fname = fname[:-5]
                 if self.thisfile and self.thisfile != fname:
                     time.sleep(5)
-                    self.callback(self.thisfile)
+                    self.segment_callback(self.thisfile)
                 self.thisfile = fname
             logging.debug(f'{self.taskname} streamgears: {line}')
 
@@ -123,7 +125,7 @@ class StreamgearsDownloader():
                 logging.debug(f'{self.taskname} streamgears: {out}')
 
         if exists(self.thisfile+'.part'):
-            self.callback(self.thisfile+'.part')
+            self.segment_callback(self.thisfile+'.part')
         else:
-            self.callback(self.thisfile)
+            self.segment_callback(self.thisfile)
         logging.debug('Stream-gears downloader stoped.')

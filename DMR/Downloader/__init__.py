@@ -48,6 +48,9 @@ class Downloader():
         else:
             print(PipeMessage('downloader',msg=msg,type=type,group=self.taskname,**kwargs))
 
+    def stable_callback(self, video_start_time, downloaded_duration, speed):  # time_error 误差补偿（正数）
+        self.dmw.time_fix(video_start_time, downloaded_duration, speed)
+
     def segment_callback(self, filename:str):
         if self.segment_info is None or not exists(filename):
             logging.debug(f'No video file {filename}')
@@ -68,14 +71,14 @@ class Downloader():
             os.rename(filename, newfile)
             if self.danmaku:
                 newdmfile = splitext(newfile)[0]+'.ass'
-                self.dmw.split(newdmfile)
+                self.dmw.split(datetime.now().timestamp(), newdmfile) # t0 = self.segment_start_time
         except Exception as e:
             logging.error(e)
             logging.error(f'视频 {newfile} 分段失败，将使用默认名称 {filename}.')
             newfile = filename
             if self.danmaku:
                 newdmfile = splitext(newfile)[0]+'.ass'
-                self.dmw.split(newdmfile)
+                self.dmw.split(datetime.now().timestamp(), newdmfile)
         self.pipeSend(newfile,'split',video_info=video_info)
         new_segment_info = self.liveapi.GetStreamerInfo()
         if new_segment_info:
@@ -130,7 +133,8 @@ class Downloader():
                 segment=self.segment,
                 url=self.url,
                 taskname=self.taskname,
-                callback=self.segment_callback,
+                segment_callback=self.segment_callback,
+                stable_callback=self.stable_callback,
                 debug=self.debug,
                 **self.kwargs
             )

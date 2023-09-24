@@ -29,7 +29,8 @@ class FFmpegDownloader():
                  ffmpeg:str=None,
                  debug=False,
                  header:dict=None,
-                 callback=None,
+                 segment_callback=None,
+                 stable_callback=None,
                  **kwargs):
         self.stream_url = stream_url
         self.header = header if header else self.default_header
@@ -39,7 +40,8 @@ class FFmpegDownloader():
         self.output = output
         self.taskname = taskname
         self.url = url
-        self.callback = callback
+        self.segment_callback = segment_callback
+        self.stable_callback = stable_callback
         self.kwargs = kwargs
         self.ffmpeg = ffmpeg if ffmpeg else ToolsList.get('ffmpeg')
         self.stream_type = 'm3u8' if isinstance(self.stream_url, str) and '.m3u8' in self.stream_url else 'flv'
@@ -52,7 +54,7 @@ class FFmpegDownloader():
     
     @property
     def duration(self):
-        return datetime.now().timestamp() - self.starttime
+        return datetime.now().timestamp() - self.start_time
     
     def extract_stream(self) -> tuple:
         if self.stable:
@@ -124,7 +126,7 @@ class FFmpegDownloader():
     def start_helper(self):
         self.stoped = False
         self.raw_name = join(split(self.output)[0], f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d{splitext(self.output)[1]}')
-        self.starttime = datetime.now().timestamp()
+        self.start_time = datetime.now().timestamp()
         self._timer_cnt = 1
         self.thisfile = None
 
@@ -136,6 +138,7 @@ class FFmpegDownloader():
 
         self.start_ffmpeg()
         
+        self.download_stable = False # stable ffmpeg speed < 2
         while not self.stoped:
             if self.ffmpeg_proc.poll() is not None:
                 logging.debug('FFmpeg exit.')
@@ -168,18 +171,32 @@ class FFmpegDownloader():
                                 raise RuntimeError(f'{self.taskname} 下载速度过慢, 即将重试.')
                         else:
                             ffmpeg_low_speed = 0
+
+                        if not self.download_stable:
+                            if speed and speed < 2:
+                                l = line.find('time=')
+                                r = line.find('bitrate') - 1
+                                if l > 0 and r > 0:
+                                    downloaded_duration = line[l+5:r]
+                                try:
+                                    h, m, s = int(downloaded_duration.split(':')[0]), int(downloaded_duration.split(':')[0]), float(downloaded_duration.split(':')[2])
+                                    self.stable_callback(self.start_time, h * 3600 + m * 60 + s, speed)
+                                    self.download_stable = True
+                                except Exception as e:
+                                    print(e)
+                                    self.download_stable = False
             
             if 'Opening' in line:
                 fname = line.split('\'')[1]
                 if not fname.startswith('http'):
                     if self.thisfile:
-                        self.callback(self.thisfile)
+                        self.segment_callback(self.thisfile)
                     self.thisfile = fname
 
             if 'dropping it' in line or 'Invalid NAL unit size' in line:
                 raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试, 如果此问题多次出现请反馈.')
 
-            if self.duration > self._timer_cnt*15:
+            if self.start_time is not None and self.duration > self._timer_cnt*15:
                 if len(log) == 0:
                     raise RuntimeError(f'{self.taskname} 管道读取错误, 即将重试.')
                 
@@ -239,5 +256,5 @@ class FFmpegDownloader():
         
         if self.thisfile:
             time.sleep(1)
-            self.callback(self.thisfile)
+            self.segment_callback(self.thisfile)
         logging.debug('ffmpeg downloader stoped.')
