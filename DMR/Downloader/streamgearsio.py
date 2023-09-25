@@ -55,7 +55,7 @@ class StreamgearsDownloader():
         return stream_url, header
     
     def start_helper(self):
-        raw_name = join(split(self.output)[0], f'{self.taskname}-%Y%m%d%H%M%S')
+        raw_name = join(split(self.output)[0], f'[正在录制] {self.taskname}-%Y%m%d%H%M%S')
         pythonpath = sys.executable
         stream_url, header = self.extract_stream()
 
