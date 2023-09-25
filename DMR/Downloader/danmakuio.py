@@ -54,7 +54,7 @@ class DanmakuWriter():
         else:
             raise NotImplementedError(f"unsupported danmaku format {dm_format}")
 
-    def time_fix(self, video_start_time, downloaded_duration, speed): # time_error 时间误差
+    def time_fix(self, video_start_time, downloaded_duration, speed):
         self.start_time = video_start_time
         # 1. 当前时间减去开始录制的时间 datetime.now().timestamp() - self.start_time
         # 2. 已经下载了的时间 downloaded_duration（正数）

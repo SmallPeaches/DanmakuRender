@@ -125,7 +125,7 @@ class FFmpegDownloader():
     
     def start_helper(self):
         self.stoped = False
-        self.raw_name = join(split(self.output)[0], f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d{splitext(self.output)[1]}')
+        self.raw_name = join(split(self.output)[0], f'[正在录制] {self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d{splitext(self.output)[1]}')
         self.start_time = datetime.now().timestamp()
         self._timer_cnt = 1
         self.thisfile = None

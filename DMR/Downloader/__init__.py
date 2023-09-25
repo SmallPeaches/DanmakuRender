@@ -48,7 +48,7 @@ class Downloader():
         else:
             print(PipeMessage('downloader',msg=msg,type=type,group=self.taskname,**kwargs))
 
-    def stable_callback(self, video_start_time, downloaded_duration, speed):  # time_error 误差补偿（正数）
+    def stable_callback(self, video_start_time, downloaded_duration, speed):
         self.dmw.time_fix(video_start_time, downloaded_duration, speed)
 
     def segment_callback(self, filename:str):
@@ -71,7 +71,7 @@ class Downloader():
             os.rename(filename, newfile)
             if self.danmaku:
                 newdmfile = splitext(newfile)[0]+'.ass'
-                self.dmw.split(datetime.now().timestamp(), newdmfile) # t0 = self.segment_start_time
+                self.dmw.split(datetime.now().timestamp(), newdmfile)
         except Exception as e:
             logging.error(e)
             logging.error(f'视频 {newfile} 分段失败，将使用默认名称 {filename}.')
@@ -115,7 +115,7 @@ class Downloader():
 
         def danmaku_thread():
             description = f'{self.output_name}的弹幕文件, {self.url}, Powered by DanmakuRender: https://github.com/SmallPeaches/DanmakuRender.'
-            danmu_output = join(self.output_dir, f'{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d.ass')
+            danmu_output = join(self.output_dir, f'[正在录制] {self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d.ass')
             self.dmw = DanmakuWriter(self.url,
                                      danmu_output,
                                      self.segment,
