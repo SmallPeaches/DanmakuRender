@@ -31,6 +31,9 @@ render:
   # 也可以指定为当前视频的大小倍数，例如'1.5'，这样1080P视频将会被放大到2880x1620（这个也符合了B站的4K视频标准）
   output_resize: ~
 
+  # 高级渲染参数，具体可用选项请参考文档
+  advanced_render_args: ~
+
 # 上传参数
 uploader:
   nuploaders: 1

@@ -9,7 +9,7 @@ from .cc import CC
 from .douyu import Douyu
 from .huya import Huya
 from .douyin import Douyin
-from ..utils import *
+from DMR.LiveAPI.utils import *
 
 __all__ = ["DanmakuClient"]
 

@@ -21,6 +21,7 @@ class FFmpegRender(BaseRender):
                  aencoder: str,
                  aencoder_args: list,
                  output_resize: str,
+                 advanced_render_args: dict=None,
                  ffmpeg: str = None,
                  debug=False,
                  **kwargs
@@ -32,6 +33,7 @@ class FFmpegRender(BaseRender):
         self.aencoder = aencoder
         self.aencoder_args = aencoder_args
         self.output_resize = output_resize
+        self.advanced_render_args = advanced_render_args if isinstance(advanced_render_args, dict) else {}
         self.ffmpeg = ffmpeg if ffmpeg else ToolsList.get('ffmpeg')
         self.debug = debug
 
@@ -39,15 +41,20 @@ class FFmpegRender(BaseRender):
         ffmpeg_args = [self.ffmpeg, '-y']
         ffmpeg_args += self.hwaccel_args
 
-        try:
-            # solve bili dash
-            fps = eval(FFprobe.run_ffprobe(video)['streams'][0]['avg_frame_rate'])
-            gop = 5  # set GOP=5s
-            dash_args = [
-                '-keyint_min', int(fps * gop),
-                '-g', int(fps * gop)
-            ]
-        except:
+        # solve bili dash
+        gop = self.advanced_render_args.get('gop', 5)
+        if gop:
+            try:
+                fps = eval(FFprobe.run_ffprobe(video)['streams'][0]['avg_frame_rate'])
+                gop = int(gop)
+                dash_args = [
+                    '-keyint_min', int(fps * gop),
+                    '-g', int(fps * gop)
+                ]
+            except Exception as e:
+                logging.warn(f'GOP 设置失败：{e}')
+                dash_args = []
+        else:
             dash_args = []
 
         if self.output_resize:
@@ -66,11 +73,24 @@ class FFmpegRender(BaseRender):
 
         if platform.system().lower() == 'windows':
             danmaku = danmaku.replace("\\", "/").replace(":/", "\\:/")
+        
+        # 自定义video filter
+        if self.advanced_render_args.get('filter_complex'):
+            filter_name = '-filter_complex'
+            filter_str = self.advanced_render_args.get('filter_complex')
+            filter_str = replace_keywords(filter_str, {'DANMAKU': danmaku})
+        else:
+            filter_name = '-vf'
+            filter_str = 'subtitles=filename=%s' % danmaku
+            fps = self.advanced_render_args.get('fps')
+            if fps:
+                filter_str += ',fps=fps=%i' % int(fps)
+        
         ffmpeg_args += [
             '-fflags', '+discardcorrupt',
             '-i', video,
             *dash_args,
-            '-vf', 'subtitles=filename=%s' % danmaku,
+            filter_name, filter_str,
 
             '-c:v', self.vencoder,
             *self.vencoder_args,

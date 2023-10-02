@@ -94,7 +94,7 @@ class Bilibili(DMAPI):
                         'DANMU_MSG': 'danmaku',
                         'WELCOME': 'enter',
                         'NOTICE_MSG': 'broadcast',
-                        'LIVE_INTERACTIVE_GAME': 'interactive_danmaku'  # 新增互动弹幕，经测试与弹幕内容一致
+                        # 'LIVE_INTERACTIVE_GAME': 'interactive_danmaku'  # 互动弹幕，与普通弹幕重复，已被弃用(#121)
                     }.get(j.get('cmd'), 'other')
 
                     if 'DANMU_MSG' in j.get('cmd'):

@@ -1,6 +1,6 @@
 import logging
 import re
-from urllib.parse import urlparse, parse_qs, urlunparse, urlencode
+import os
 import requests
 import urllib
 import json
@@ -9,26 +9,47 @@ try:
 except ImportError:
     from BaseAPI import BaseAPI
 
-class douyin(BaseAPI):
-    headers = {
+class douyin_cache():
+    base_headers = {
         'authority': 'live.douyin.com',
         'Referer': "https://live.douyin.com/",
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.81 Safari/537.36 Edg/104.0.1293.54',
     }
+    cookies = {}
+
+    @classmethod
+    def refresh_cookies(cls):
+        try:
+            response = requests.get(f'https://live.douyin.com/462574904325',headers=cls.base_headers,timeout=5)
+            assert response.cookies.get('__ac_nonce')
+            cls.cookies['__ac_nonce'] = response.cookies.get('__ac_nonce')
+        except Exception as e:
+            logging.exception(f'获取抖音cookies错误: {e}')
+        
+        try:
+            response = requests.get(f'https://live.douyin.com',headers=cls.base_headers,timeout=5)
+            assert response.cookies.get('ttwid')
+            cls.cookies['ttwid'] = response.cookies.get('ttwid')
+        except Exception as e:
+            logging.exception(f'获取抖音cookies错误: {e}')
+
+    @classmethod
+    def get_cookies(cls) -> dict:
+        if not cls.cookies:
+            cls.refresh_cookies()
+        return cls.cookies
+
+    @classmethod
+    def get_headers(cls) -> dict:
+        headers = cls.base_headers.copy()
+        headers['cookie'] = '; '.join(f'{k}={v}' for k,v in cls.get_cookies().items())
+        return headers
+
+
+class douyin(BaseAPI):
+    headers = douyin_cache.get_headers()
     def __init__(self,rid:str) -> None:
         self.web_rid = rid
-        
-        if not self.headers.get('cookie'):
-            try:
-                response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
-                self.headers.update({'cookie': '__ac_nonce='+response.cookies.get('__ac_nonce')})
-
-                response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
-                self.headers['cookie'] += '; ttwid=' + response.cookies.get('ttwid')
-            except Exception as e:
-                logging.exception(e)
-                raise Exception('获取抖音cookies错误.')
-        
         if len(rid) == 19:
             self.real_rid = rid
         else:
@@ -67,9 +88,12 @@ class douyin(BaseAPI):
         try:
             extra_data = stream_info['live_core_sdk_data']['pull_data']['stream_data']
             extra_data = json.loads(urllib.parse.unquote(extra_data))
+            qualities = stream_info['live_core_sdk_data']['pull_data']['options']['qualities']
+            this_quality = qualities[-1]['sdk_key']
             url_dict = extra_data['data']
-            url = url_dict['origin']['main']['flv']
-        except:
+            url = url_dict[this_quality]['main']['flv']
+        except Exception as e:
+            logging.debug(e)
             urls = list(stream_info['flv_pull_url'].values())
             url = urls[0]
         return url
@@ -83,5 +107,5 @@ class douyin(BaseAPI):
         return title, uname, face_url, keyframe_url
 
 if __name__ == '__main__':
-    api = douyin('941912339860')
+    api = douyin('739453887773')
     print(api.get_stream_url())

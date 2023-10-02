@@ -42,12 +42,12 @@ class Cleaner():
                 method = task['method']
                 src = abspath(task['video'])
                 dst = task['config'].get('dest')
-                if dst and not dst.startwith('*'):
+                if dst and not dst.startswith('*'):
                     dst = abspath(replace_keywords(dst, task.get('video_info'), replace_invalid=True))
-                    if isdir(dst) and not exists(dst):
+                    if not exists(dst):
+                        logging.info(f'目标文件夹 {dst} 不存在，即将自动创建.')
                         os.makedirs(dst)
-                    elif isfile(dst) and not exists(dirname(dst)):
-                        os.makedirs(dirname(dst))
+                
                 if method == 'move':
                     from .move import move
                     move.move(src, dst)
@@ -58,6 +58,7 @@ class Cleaner():
                     from .delete import delete
                     delete.delete(src)
                 self.pipeSend(src, 'info', desc=f'{method} {src} -> {dst}.')
+                
             except Exception as e:
                 logging.exception(e)
                 self.pipeSend(src, 'error', desc=e)

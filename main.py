@@ -16,8 +16,8 @@ from os.path import exists, split
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
 
-VERSION = '2023.9.15'
-VERSION_DEBUG = '4-2023.9.15'
+VERSION = '2023.10.2'
+VERSION_DEBUG = '4-2023.10.2'
 
 from DMR import DanmakuRender
 from DMR.Render import Render

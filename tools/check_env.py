@@ -175,5 +175,6 @@ def check_update(version):
             print(f"发行说明：{resp.get('name')}")
             print(f"{resp.get('body','')}\n")
             print("如果需要更新可以直接运行 update.py 或者前往 https://github.com/SmallPeaches/DanmakuRender 更新.")
+            print('')
     except Exception as e:
         print(f'检查更新失败, {e}')

@@ -14,32 +14,19 @@ import logging
 import random
 import websocket
 from google.protobuf import json_format
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from DMR.LiveAPI.douyin import douyin_cache
 from .dy_pb2 import PushFrame, Response, ChatMessage
 
 
 class Douyin:
-    headers = {
-        'authority': 'live.douyin.com',
-        'Referer': "https://live.douyin.com/",
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.81 Safari/537.36 Edg/104.0.1293.54',
-    }
+    headers = douyin_cache.get_headers()
     def __init__(self, rid, q):
         self.ws = None
         self.stop_signal = False
         self.web_rid = rid
         self.q: asyncio.Queue = q
-
-        if not self.headers.get('cookie'):
-            try:
-                response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
-                self.headers.update({'cookie': '__ac_nonce='+response.cookies.get('__ac_nonce')})
-
-                response = requests.get(f'https://live.douyin.com/{self.web_rid}',headers=self.headers,timeout=5)
-                self.headers['cookie'] += '; ttwid=' + response.cookies.get('ttwid')
-            except Exception as e:
-                logging.exception(e)
-                raise Exception('获取抖音cookies错误.')
 
         if len(rid) == 19:
             self.real_rid = rid
@@ -79,10 +66,14 @@ class Douyin:
             on_error=self._onError,
             on_open=self._onOpen,
         )
-        t = threading.Thread(target=self.ws.run_forever, daemon=True)
-        t.start()
-        while not self.stop_signal:
-            await asyncio.sleep(10)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            task = executor.submit(self.ws.run_forever)
+            while not self.stop_signal:
+                if task.done():
+                    res = task.result()
+                    raise RuntimeError(f'弹幕下载线程异常退出: {res}')
+                
+                await asyncio.sleep(5)
 
     async def stop(self):
         self.stop_signal = True

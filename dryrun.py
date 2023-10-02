@@ -1,6 +1,7 @@
 from tools.check_env import check_pypi, check_update
 check_pypi()
 
+import json
 import time
 import argparse
 from datetime import datetime
@@ -59,7 +60,7 @@ if __name__ == '__main__':
 
     logging.debug(f'VERSION: 4-{VERSION}')
     logging.debug(f'args: {args}')
-    logging.debug(f'Full config: {config.config}')
+    logging.debug(f'Full config: {json.dumps(config.replay_config, indent=4, ensure_ascii=False)}')
 
     dmr = DanmakuRender(config, args.debug)
 
