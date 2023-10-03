@@ -98,7 +98,7 @@ outlinecolor: 000000
 outlinesize: 1.0
 
 # 弹幕延迟补偿（秒），一般情况下弹幕比视频慢，设置这个强行把弹幕提前
-dm_delay_fixed: 3.0
+dm_delay_fixed: 6.0
 
 # 弹幕录制程序自动重启间隔（在没人发弹幕的时候会定时重启，保证录制正常，默认300秒，0关闭）
 dm_auto_restart: 300

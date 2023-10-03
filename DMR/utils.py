@@ -34,7 +34,7 @@ def replace_keywords(string:str, kw_info:dict=None, replace_invalid:bool=False):
     return string
 
 def replace_invalid_chars(string:str) -> str:
-    return re.sub(r"[\\/:*?\"<>|]", "", str(string))
+    return re.sub(r"[\\/:;.*?\"<>|]", "", str(string))
 
 def sec2hms(sec:float):
     sec = float(sec)
