@@ -180,10 +180,12 @@ class FFmpegDownloader():
                                     downloaded_duration = line[l+5:r]
                                 try:
                                     h, m, s = int(downloaded_duration.split(':')[0]), int(downloaded_duration.split(':')[0]), float(downloaded_duration.split(':')[2])
-                                    self.stable_callback(self.start_time, h * 3600 + m * 60 + s, speed)
+                                    downloaded_duration_ms = h * 3600 + m * 60 + s
+                                    time_error = downloaded_duration_ms - datetime.now().timestamp() + self.start_time + (speed - 1)
+                                    self.stable_callback(time_error)
                                     self.download_stable = True
                                 except Exception as e:
-                                    print(e)
+                                    logging.debug(e)
                                     self.download_stable = False
             
             if 'Opening' in line:

@@ -48,8 +48,8 @@ class Downloader():
         else:
             print(PipeMessage('downloader',msg=msg,type=type,group=self.taskname,**kwargs))
 
-    def stable_callback(self, video_start_time, downloaded_duration, speed):
-        self.dmw.time_fix(video_start_time, downloaded_duration, speed)
+    def stable_callback(self, time_error):
+        self.dmw.time_fix(time_error)
 
     def segment_callback(self, filename:str):
         if self.segment_info is None or not exists(filename):
