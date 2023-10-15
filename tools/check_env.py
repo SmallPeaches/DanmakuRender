@@ -128,33 +128,37 @@ def check_biliup():
             print('')
 
             # 写入文件
-            with open('./tools/biliupR-v0.1.15-x86_64-windows.zip', 'wb') as f:
+            os.makedirs('.temp', exist_ok=True)
+            with open('.temp/biliuprs.zip', 'wb') as f:
                 f.write(content)
             
-            # 检测 biliupR-v0.1.15-x86_64-windows.zip 完整性
+            # 检测文件完整性
             try:
-                f = zipfile.ZipFile('./tools/biliupR-v0.1.15-x86_64-windows.zip', 'r')
+                f = zipfile.ZipFile('.temp/biliuprs.zip', 'r')
             except Exception as e:
-                print("Biliup 安装过程出错，请检查网络连接.")
+                print("Biliup 安装过程出错，请检查网络连接或参考教程自行下载！")
                 exit(0)
 
             # 解压
             for file in f.namelist():
-                f.extract(file, './tools')
+                f.extract(file, '.temp')
             f.close()
 
+            file_dir = [f for f in os.listdir('.temp') if 'biliupR-' in f]
+            file_dir = sorted(file_dir)[-1]
+
             # 文件归位
-            shutil.move(f'./tools/biliupR-v0.1.15-x86_64-windows/biliup.exe', './tools/biliup.exe')
+            shutil.move(f'.temp/{file_dir}/biliup.exe', './tools/biliup.exe')
 
             # 删除下载文件
-            shutil.rmtree(f'./tools/biliupR-v0.1.15-x86_64-windows')
-            os.remove("./tools/biliupR-v0.1.15-x86_64-windows.zip")
+            shutil.rmtree(f'.temp/{file_dir}')
+            os.remove('.temp/biliuprs.zip')
 
             print("Biliup 安装完成.")
         ToolsList.set('biliup', "tools/biliup.exe")
         return True
     
-    elif sys.platform == 'linux':
+    else:
         if not os.path.exists("tools/biliup"):
             print("biliup未正确安装，请参考教程安装biliup！")
             exit(0)
