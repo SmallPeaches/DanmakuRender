@@ -17,7 +17,7 @@ class bilibili(BaseAPI):
     def _get_response(self):
         r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
         with requests.Session() as s:
-            res = s.get(r_url,timeout=5).json()
+            res = s.get(r_url, timeout=5, headers=self.header).json()
         return res
 
     def is_available(self) -> bool:
