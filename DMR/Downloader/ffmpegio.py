@@ -31,6 +31,7 @@ class FFmpegDownloader():
                  header:dict=None,
                  segment_callback=None,
                  stable_callback=None,
+                 advanced_video_args:dict=None,
                  **kwargs):
         self.stream_url = stream_url
         self.header = header if header else self.default_header
@@ -42,6 +43,7 @@ class FFmpegDownloader():
         self.url = url
         self.segment_callback = segment_callback
         self.stable_callback = stable_callback
+        self.advanced_video_args = advanced_video_args if advanced_video_args else {}
         self.kwargs = kwargs
         self.ffmpeg = ffmpeg if ffmpeg else ToolsList.get('ffmpeg')
         self.stream_type = 'm3u8' if isinstance(self.stream_url, str) and '.m3u8' in self.stream_url else 'flv'
@@ -67,22 +69,30 @@ class FFmpegDownloader():
         
     def start_ffmpeg(self):
         stream_url, header = self.extract_stream()
+
+        ffmpeg_stream_args = self.advanced_video_args.get('ffmpeg_stream_args', 
+                                                          [ '-rw_timeout','10000000',
+                                                            '-analyzeduration','15000000',
+                                                            '-probesize','50000000',
+                                                            '-thread_queue_size', '16'])
         ffmpeg_args = [
             self.ffmpeg, '-y',
             '-headers', ''.join('%s: %s\r\n' % x for x in header.items()),
-            *self.ffmpeg_stream_args,
+            *ffmpeg_stream_args,
             '-i', stream_url,
             '-c', 'copy'
         ]
-        
+
+        ffmpeg_output_args = self.advanced_video_args.get('ffmpeg_output_args', 
+                                                          [ '-movflags','faststart+frag_keyframe+empty_moov'])
         if self.segment:
             ffmpeg_args += ['-f','segment',
                             '-segment_time',str(self.segment),
                             '-reset_timestamps','1',
-                            '-movflags','faststart+frag_keyframe+empty_moov',
+                            *ffmpeg_output_args,
                             self.raw_name]
         else:
-            ffmpeg_args += ['-movflags','faststart+frag_keyframe+empty_moov',
+            ffmpeg_args += [*ffmpeg_output_args,
                             self.raw_name]
 
         
@@ -131,12 +141,15 @@ class FFmpegDownloader():
         self.thisfile = None
 
         stream_url, header = self.extract_stream()
-        if self.kwargs.get('check_stream_changes'):
+        if self.advanced_video_args.get('check_stream_changes'):
             latest_stream_info = self.get_livestream_info(stream_url, header)
         log = ''
         ffmpeg_low_speed = 0
 
         self.start_ffmpeg()
+
+        def is_info_line(line:str):
+            return bool(line.startswith('frame=') or line.startswith('size=') or 'time=' in line)
         
         self.download_stable = False # stable ffmpeg speed < 2
         while not self.stoped:
@@ -157,8 +170,8 @@ class FFmpegDownloader():
             except queue.Empty:
                 time.sleep(1)
             
-            if line.startswith('frame='):
-                if not self.kwargs.get('disable_lowspeed_interrupt'):
+            if is_info_line(line):
+                if not self.advanced_video_args.get('disable_lowspeed_interrupt'):
                     l = line.find('speed=')
                     r = line.find('x', l)
                     if l > 0 and r > 0:
@@ -205,9 +218,9 @@ class FFmpegDownloader():
                 ok = False
                 output_log = False
                 for li in log.split('\n'):
-                    if li and li.startswith('frame='):
+                    if li and is_info_line(li):
                         ok = True
-                    if li and not li.startswith('frame='):
+                    if li and not is_info_line(li):
                         output_log = True
                 
                 if output_log:
@@ -217,7 +230,7 @@ class FFmpegDownloader():
                     raise RuntimeError(f'{self.taskname} 直播流读取错误, 即将重试.')
 
                 if self._timer_cnt%3 == 0:
-                    if self.kwargs.get('check_stream_changes'):
+                    if self.advanced_video_args.get('check_stream_changes'):
                         try:
                             new_info = self.get_livestream_info(stream_url, header)
                         except Exception as e:

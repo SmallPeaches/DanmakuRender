@@ -36,8 +36,8 @@ downloader:
   # 延迟下播计时（分钟）
   end_cnt: 1
 
-  # 默认分辨率，如果程序无法正常判断流的分辨率可以使用以下参数强行指定
-  resolution: [1920,1080]
+  # 默认分辨率，此功能暂不可用
+  resolution: ~
 
   # 录制视频的格式，默认flv
   # 使用streamgears作为录制引擎应该使用flv
@@ -49,20 +49,8 @@ downloader:
   # 斗鱼和抖音暂时没用
   flow_cdn: ~
 
-  # ffmpeg http参数
-  # 使用streamgears作为录制引擎时不生效
-  ffmpeg_stream_args: [-fflags,+discardcorrupt,-reconnect,'1',-rw_timeout,'10000000',
-                        '-analyzeduration','15000000',
-                        '-probesize','50000000',
-                        '-thread_queue_size', '16']
-  
-  # 关闭下载过慢自动重启功能，默认false
-  # 使用streamgears作为录制引擎时不生效
-  disable_lowspeed_interrupt: False
-
-  # 检测流变化，在推流信息变化时立即分段，建议录制手机直播时开启，PC直播时关闭，默认false
-  # 使用streamgears作为录制引擎时不生效
-  check_stream_changes: False
+  # 高级视频录制参数，具体可用选项请参考文档
+  advanced_video_args: ~
   
   # 以下是弹幕录制参数
 
@@ -102,14 +90,12 @@ downloader:
   # 弹幕描边宽度
   outlinesize: 1.0
   
-  # 弹幕延迟补偿（秒），一般情况下弹幕比视频慢，设置这个强行把弹幕提前，不同直播间不一样
-  dm_delay_fixed: 6.0
+  # 弹幕过滤规则，一个正则表达式数组（也可以直接输入关键字），满足其中任意条件的弹幕将被过滤，默认为空（不过滤弹幕）
+  # 例如：[菜, fw]
+  dm_filter: []
 
-  # 弹幕录制程序自动重启间隔（在没人发弹幕的时候会定时重启，保证录制正常，默认300秒，0关闭）
-  dm_auto_restart: 300
-
-  # 弹幕过滤规则，一个正则表达式，符合此条件的弹幕将被过滤，默认为空（不过滤弹幕）
-  dm_filter: ~
+  # 高级弹幕录制参数，具体可用选项请参考文档
+  advanced_dm_args: ~
 
 # 渲染参数
 render:

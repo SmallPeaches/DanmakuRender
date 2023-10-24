@@ -67,6 +67,11 @@ class Cleaner():
         for clean_config in clean_configs:
             if isinstance(videos, str):
                 videos = [videos]
+            
+            if len(videos) == 1 and clean_config['strict'] == False:
+                extra = [video_info.get('src_file'), video_info.get('dm_file')]
+                logging.info(f'即将清理额外的原视频：{extra}')
+                videos += [x for x in extra if x]
 
             for video in videos:
                 if not exists(video):

@@ -142,7 +142,7 @@ class huya(BaseAPI):
         
         url = ''
         for uri in urls.values():
-            if 'direct' not in uri:
+            if 'direct' not in uri and requests.get(url=uri, headers=self.header_mobile, stream=True, timeout=3).status_code == 200:
                 url = uri
                 break
         if not url: url = list(urls.values())[0]

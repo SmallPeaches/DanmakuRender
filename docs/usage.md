@@ -7,7 +7,7 @@
 [高阶使用](#高阶使用)      
 [常见问题](#常见问题)      
 
-更新日期：2023.10.2。     
+更新日期：2023.10.24。     
 
 ## 简介     
 **本程序的主要功能包括：**
@@ -143,15 +143,17 @@ clean:
 
 录制参数的可选内容如下：
 ```yaml
+# 直播间链接
+url: ''
+
 # 录制输出文件夹，设置为空则使用主播名称作为文件夹
 output_dir: ./直播回放
 
 # 录制文件名称格式，可使用关键字替换，默认效果：飞天狙想要努力变胖-2023年3月1日20点30分，注意这里不能含有冒号，斜杠等非法字符！！
 output_name: '{STREAMER}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
 
-# 录制程序引擎，可选ffmpeg或者streamgears
-# 建议主播直播比较稳定时使用ffmpeg录制（例如用PC推流的游戏主播），主播经常掉线或者参加PK等活动时使用streamgears录制（例如户外主播或颜值主播）。
-# 在使用streamgears作为录制引擎时，录制视频格式只能是flv，并且暂时不支持B站的hls流录制。
+# 录制程序引擎，可选ffmpeg（由ffmpeg提供拉流服务）或者streamgears（使用streamgears提供拉流服务，此功能正在测试）
+# 在使用streamgears作为录制引擎时，录制视频格式只能是flv
 engine: ffmpeg
 
 # 录播分段时间（秒），默认一个小时
@@ -167,35 +169,26 @@ video: True
 auto_render: True
 
 # 延迟下播计时（分钟）
-end_cnt: 1
+# 使用这个功能可以把主播短暂下播又开播认定为同一场直播
+end_cnt: 5
 
-# 默认分辨率，如果程序无法正常判断流的分辨率可以使用以下参数强行指定
-resolution: [1920,1080]
+# 默认分辨率，此功能暂不可用
+resolution: ~
 
 # 录制视频的格式，默认flv
 # 使用streamgears作为录制引擎应该使用flv
 vid_format: flv
 
 # 直播流CDN选项
-# 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认al
+# 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认tx
 # 对于B站，此项可选0-n表示不同的cdn服务器，默认为0，也可以输入特定的CDN域名前缀，例如 c1--cn-gotcha208
 # 斗鱼和抖音暂时没用
 flow_cdn: ~
 
-# ffmpeg http参数
-# 使用streamgears作为录制引擎时不生效
-ffmpeg_stream_args: [-fflags,+discardcorrupt,-reconnect,'1',-rw_timeout,'10000000',
-                      '-analyzeduration','15000000',
-                      '-probesize','50000000',
-                      '-thread_queue_size', '16']
+# 高级视频录制参数，具体可用选项请参考文档
+advanced_video_args: ~
 
-# 关闭下载过慢自动重启功能，默认false
-# 使用streamgears作为录制引擎时不生效
-disable_lowspeed_interrupt: False
-
-# 检测流变化，在推流信息变化时立即分段，建议录制手机直播时开启，PC直播时关闭，默认false
-# 使用streamgears作为录制引擎时不生效
-check_stream_changes: False
+# 以下是弹幕录制参数
 
 # 弹幕录制格式，只能选择ass
 dm_format: ass 
@@ -204,7 +197,7 @@ dm_format: ass
 margin_h: 6
 
 # 弹幕左右间距，设置为-1表示允许弹幕叠加，设置为0-1的表示间距为视频宽度的倍数，设置为大于1的数表示像素，默认0.05
-# 这个选项可以用来控制弹幕密度（控制弹幕的左右间距就是在控制密度）。
+# 实际上这个东西就是弹幕密度，弹幕左右间距越大密度越小
 margin_w: 0.05
 
 # 指定弹幕占屏幕的最大比例（即屏幕上半部分有多少可以用来显示弹幕），默认为0.4
@@ -234,15 +227,43 @@ outlinecolor: 000000
 # 弹幕描边宽度
 outlinesize: 1.0
 
-# 弹幕延迟补偿（秒），一般情况下弹幕比视频慢，设置这个强行把弹幕提前
-dm_delay_fixed: 3.0
+# 弹幕过滤规则，一个正则表达式数组（也可以直接输入关键字），满足其中任意条件的弹幕将被过滤，默认为空（不过滤弹幕）
+# 例如：[菜, fw]
+dm_filter: []
 
-# 弹幕录制程序自动重启间隔（在没人发弹幕的时候会定时重启，保证录制正常，默认300秒，0关闭）
-dm_auto_restart: 300
+# 高级弹幕录制参数，具体可用选项请参考文档
+advanced_dm_args: ~
+```
 
-# 弹幕过滤规则，一个正则表达式，符合此条件的弹幕将被过滤，默认为空（不过滤弹幕）
-# 可以设置为一个数组表示多种过滤规则
-dm_filter: ~
+其中，高级视频录制参数、高级弹幕录制参数应该被指定为一个键值对。它可以用来调整一些特殊的功能，例如ffmpeg请求流时的http参数、弹幕录制的延迟补偿时间等。默认情况下这些参数都由程序内部决定，这里的值只用于参考。你可以单独设置其中的一个或者多个。具体可选参数如下。      
+
+```yaml
+advanced_video_args:
+  # 默认分辨率，此选项用于在程序无法获取流分辨率时指定默认分辨率用于弹幕录制
+  default_resolution: [1920, 1080]
+  # 开播检测间隔，每隔这样一段时间检测一次是否开播
+  start_check_interval: 60
+  # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
+  stop_check_interval: 30
+  # ffmpeg取流参数(仅ffmpeg下载引擎生效)
+  ffmpeg_stream_args: [ '-rw_timeout','10000000',
+                        '-analyzeduration','15000000',
+                        '-probesize','50000000',
+                        '-thread_queue_size', '16']
+  # ffmpeg输出参数(仅ffmpeg下载引擎生效)
+  ffmpeg_output_args: [ '-movflags','faststart+frag_keyframe+empty_moov']
+  # 检测流变化(仅ffmpeg下载引擎生效)
+  check_stream_changes: false
+  # 禁用下载速度慢时自动重启(仅ffmpeg下载引擎生效)
+  disable_lowspeed_interrupt: false
+```
+
+```yaml
+advanced_dm_args:
+  # 弹幕延迟补偿(秒)，将弹幕强行提前
+  dm_delay_fixed: 6
+  # 弹幕超时自动重启（秒），超过一段时间无弹幕会自动重启弹幕录制，0表示关闭
+  dm_auto_restart: 300
 ```
 
 **自动上传的配置格式说明**      
@@ -360,7 +381,7 @@ output_resize: ~
 advanced_render_args: ~
 ```
 
-（2023.10.2版本新功能）其中，高级渲染参数应该被指定为一个键值对（Python字典）。它可以用来指定帧率、GOP等，甚至可以直接控制调用FFmpeg的参数。默认情况下这些参数都由程序内部决定，你可以单独设置其中的一个或者多个。具体可选参数如下。
+其中，高级渲染参数应该被指定为一个键值对（Python字典）。它可以用来指定帧率、GOP等，甚至可以直接控制调用FFmpeg的参数。默认情况下这些参数都由程序内部决定，你可以单独设置其中的一个或者多个。具体可选参数如下。
 ```yaml
 advanced_render_args:
   # 指定输出帧率。此选项不同于'-r'，这里的帧率将直接作用在video filter上，默认保持原视频帧率

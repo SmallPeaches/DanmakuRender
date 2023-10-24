@@ -99,7 +99,10 @@ class Render():
             try:
                 status, info = target_render.render_one(**task.copy())
                 if status:
-                    task['video_info']['has_danmu'] = '（带弹幕版）'
+                    if task.get('video_info'):
+                        task['video_info']['has_danmu'] = '（带弹幕版）'
+                        task['video_info']['src_file'] = task['video']
+                        task['video_info']['dm_file'] = task['danmaku']
                     self._gather(task, 'info', desc=info)
                 else:
                     self._gather(task, 'error', desc=info)

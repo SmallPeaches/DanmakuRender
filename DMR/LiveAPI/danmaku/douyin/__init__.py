@@ -69,14 +69,15 @@ class Douyin:
         with ThreadPoolExecutor(max_workers=1) as executor:
             task = executor.submit(self.ws.run_forever)
             while not self.stop_signal:
-                if task.done():
+                if task.done() or self.ws.has_errored:
                     res = task.result()
                     raise RuntimeError(f'弹幕下载线程异常退出: {res}')
                 
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
 
     async def stop(self):
         self.stop_signal = True
+        logging.debug(f'Douyin {self.web_rid} danmaku client exit.')
         self.ws.close()
 
     def _onOpen(self, ws):
@@ -122,6 +123,7 @@ class Douyin:
             data = obj.SerializeToString()
             ws.send(data, websocket.ABNF.OPCODE_BINARY)
             time.sleep(10)
+            ws.has_errored
 
     def _onError(self, ws, error):
         raise error

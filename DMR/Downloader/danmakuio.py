@@ -18,9 +18,8 @@ class DanmakuWriter():
                  output:str,
                  segment:float,
                  dm_format:str,
-                 dm_delay_fixed:int,
-                 dm_auto_restart:bool,
                  dm_filter:str,
+                 advanced_dm_args:dict={},
                  **kwargs) -> None:
         self.stoped = False
 
@@ -28,8 +27,9 @@ class DanmakuWriter():
         self.output = output
         self.segment = segment
         self.dm_format = dm_format
-        self.dm_delay_fixed = dm_delay_fixed
-        self.dm_auto_restart = dm_auto_restart
+        self.advanced_dm_args = advanced_dm_args
+        self.dm_delay_fixed = self.advanced_dm_args.get('dm_delay_fixed', 6)
+        self.dm_auto_restart = self.advanced_dm_args.get('dm_auto_restart', 300)
         try:
             if not dm_filter:
                 self.dm_filter = []

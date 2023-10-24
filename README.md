@@ -455,7 +455,6 @@ cleaner:
 ### 可选参数
 程序运行时可以指定以下参数
 - `-c` 指定录制配置文件位置，默认replay.yml
-- `--default_config` 指定默认配置文件位置，默认default_config.yml
 - `--version` 查看版本号
 - `--skip_update` 跳过版本检查
 

@@ -148,6 +148,7 @@ class Uploader():
                         video_info=video_info,
                         config=task_config,
                     )
+                    # status, info = True, 'ok'
                 except KeyboardInterrupt:
                     self.stop()
                     return

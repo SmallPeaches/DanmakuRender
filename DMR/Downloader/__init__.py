@@ -13,7 +13,24 @@ from DMR.LiveAPI import *
 from DMR.utils import *
 
 class Downloader():
-    def __init__(self, url, output_dir, pipe, segment:int, output_name=None, taskname=None, danmaku=True, video=True, end_cnt=0, vid_format='flv', flow_cdn=None, engine='ffmpeg', debug=False, **kwargs) -> None:
+    def __init__(self, 
+                 url, 
+                 output_dir, 
+                 pipe, 
+                 segment:int, 
+                 output_name=None, 
+                 taskname=None, 
+                 danmaku=True, 
+                 video=True, 
+                 end_cnt=0, 
+                 vid_format='flv', 
+                 flow_cdn=None, 
+                 advanced_video_args:dict=None,
+                 advanced_dm_args:dict=None,
+                 engine='ffmpeg', 
+                 debug=False, 
+                 **kwargs
+        ) -> None:
         self.taskname = taskname
         self.url = url
         self.plat, self.rid = split_url(url)
@@ -28,6 +45,8 @@ class Downloader():
         self.video = video
         self.flow_cdn = flow_cdn
         self.end_cnt = end_cnt
+        self.advanced_video_args = advanced_video_args if advanced_video_args else {}
+        self.advanced_dm_args = advanced_dm_args if advanced_dm_args else {}
         self.output_name = join(output_dir, output_name+f'.{vid_format}')
 
         self.engine = engine
@@ -49,7 +68,8 @@ class Downloader():
             print(PipeMessage('downloader',msg=msg,type=type,group=self.taskname,**kwargs))
 
     def stable_callback(self, time_error):
-        self.dmw.time_fix(time_error)
+        if hasattr(self, 'dmw'):
+            self.dmw.time_fix(time_error)
 
     def segment_callback(self, filename:str):
         if self.segment_info is None or not exists(filename):
@@ -105,8 +125,9 @@ class Downloader():
             width, height = FFprobe.get_resolution(stream_url(),stream_request_header())
 
         if not (width and height):
-            logging.warn(f'无法获取视频大小，使用默认值{self.kwargs.get("resolution")}.')
-            width, height = self.kwargs.get("resolution")
+            default_resolution = self.advanced_video_args.get('default_resolution', (1920, 1080))
+            logging.warn(f'无法获取视频大小，使用默认值 {default_resolution}.')
+            width, height = default_resolution
         
         self.width,self.height = width, height
 
@@ -122,6 +143,7 @@ class Downloader():
                                      description=description,
                                      width=self.width,
                                      height=self.height,
+                                     advanced_dm_args=self.advanced_dm_args,
                                      **self.kwargs)
             self.dmw.start(self_segment=not self.video)
         
@@ -133,6 +155,7 @@ class Downloader():
                 segment=self.segment,
                 url=self.url,
                 taskname=self.taskname,
+                advanced_video_args=self.advanced_video_args,
                 segment_callback=self.segment_callback,
                 stable_callback=self.stable_callback,
                 debug=self.debug,
@@ -158,29 +181,35 @@ class Downloader():
 
     def start_helper(self):
         self.loop = True
-        end_cnt = 0
+        stop_waited = 0  # 已经等待的时间（下播但是还没停止）
+        stop_wait_time = self.end_cnt*60    # 设定的等待时间
         live_end = False
-        restart_cnt = 0
+        restart_cnt = 0     # 出错重启次数
+        start_check_interval = self.advanced_video_args.get('start_check_interval', 60)  # 开播检测时间
+        stop_check_interval = self.advanced_video_args.get('stop_check_interval', 30)   # 下播检测间隔
+
         if not self.liveapi.Onair():
             self.pipeSend('end')
             live_end = True
-            time.sleep(60)
+            time.sleep(start_check_interval)
 
         while self.loop:
             if not self.liveapi.Onair():
-                if live_end:
-                    time.sleep(60)
-                else:
-                    time.sleep(30)
                 restart_cnt = 0
-                end_cnt += 1
-                if end_cnt > self.end_cnt*2 and not live_end:
+                if live_end:
+                    time.sleep(start_check_interval)
+                    stop_waited += start_check_interval
+                else:
+                    time.sleep(stop_check_interval)
+                    stop_waited += stop_check_interval
+                
+                if stop_waited > stop_wait_time and not live_end:
                     live_end = True
                     self.pipeSend('end')
                 continue
 
             try:
-                end_cnt = 0
+                stop_waited = 0
                 live_end = False
                 self.pipeSend('start')
                 self.start_once()
