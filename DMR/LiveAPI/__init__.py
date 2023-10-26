@@ -33,9 +33,9 @@ class LiveAPI():
         except Exception as e:
             logging.debug(e)
 
-    def GetStreamURL(self, flow_cdn=None):
+    def GetStreamURL(self, **kwargs):
         try:
-            return self.api_class.get_stream_url(flow_cdn=flow_cdn)
+            return self.api_class.get_stream_url(**kwargs)
         except Exception as e:
             logging.debug(e)
 
@@ -78,12 +78,12 @@ def GetStreamerInfo(plat,rid=None) -> tuple:
     except:
         return None
 
-def GetStreamURL(plat,rid=None,flow_cdn=None) -> dict:
+def GetStreamURL(plat,rid=None,**kwargs) -> dict:
     if rid is None:
         plat,rid = split_url(plat)
     api = LiveAPI(plat,rid)
     try:
-        return api.get_stream_url(flow_cdn=flow_cdn)
+        return api.get_stream_url(**kwargs)
     except:
         return None
 

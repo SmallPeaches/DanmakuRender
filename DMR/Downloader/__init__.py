@@ -91,14 +91,14 @@ class Downloader():
             os.rename(filename, newfile)
             if self.danmaku:
                 newdmfile = splitext(newfile)[0]+'.ass'
-                self.dmw.split(datetime.now().timestamp(), newdmfile)
+                self.dmw.split(newdmfile)
         except Exception as e:
             logging.error(e)
             logging.error(f'视频 {newfile} 分段失败，将使用默认名称 {filename}.')
             newfile = filename
             if self.danmaku:
                 newdmfile = splitext(newfile)[0]+'.ass'
-                self.dmw.split(datetime.now().timestamp(), newdmfile)
+                self.dmw.split(newdmfile)
         self.pipeSend(newfile,'split',video_info=video_info)
         new_segment_info = self.liveapi.GetStreamerInfo()
         if new_segment_info:
@@ -116,11 +116,11 @@ class Downloader():
         os.makedirs(self.output_dir,exist_ok=True)
         
         if self.liveapi.IsStable():
-            stream_url = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn)
+            stream_url = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn, **self.advanced_video_args)
             stream_request_header = self.liveapi.GetStreamHeader()
             width, height = FFprobe.get_resolution(stream_url,stream_request_header)
         else:
-            stream_url = partial(self.liveapi.GetStreamURL, flow_cdn=self.flow_cdn)
+            stream_url = partial(self.liveapi.GetStreamURL, flow_cdn=self.flow_cdn, **self.advanced_video_args)
             stream_request_header = self.liveapi.GetStreamHeader
             width, height = FFprobe.get_resolution(stream_url(),stream_request_header())
 

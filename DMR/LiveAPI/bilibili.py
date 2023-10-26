@@ -1,6 +1,7 @@
 import json
 import logging
 import requests
+import json
 try:
     from .BaseAPI import BaseAPI
 except ImportError:
@@ -37,13 +38,27 @@ class bilibili(BaseAPI):
             else:
                 return False
 
-    def get_stream_url(self, flow_cdn=None, **kwargs) -> str:
+    def get_stream_url(self, 
+                       flow_cdn=None, 
+                       bili_watch_cookies=None,
+                       bili_force_origin=('_1500',''), 
+                       **kwargs,
+        ) -> str:
+        watch_cookies = {}
+        if bili_watch_cookies:
+            try:
+                with open(bili_watch_cookies, 'r') as f:
+                    cookies = json.load(f)
+                watch_cookies = {c['name']: c['value'] for c in cookies['cookie_info']['cookies']}
+            except Exception as e:
+                logging.warn(f'B站观看cookies设置错误:{e}，即将使用无登录模式')
+
         res = self._get_response()
         room_id = res['data']['room_id']
         f_url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo'
         params = {
             'room_id': room_id,
-            'platform': 'web',
+            'platform': 'html5',
             'protocol': '0,1',
             'format': '0,1,2',
             'codec': '0',
@@ -52,7 +67,7 @@ class bilibili(BaseAPI):
             'dolby': 5,
             'panorama': 1
         }
-        resp = requests.get(f_url, params=params, headers=self.header,timeout=5).json()
+        resp = requests.get(f_url, params=params, headers=self.header, cookies=watch_cookies, timeout=5).json()
         try:
             stream = resp['data']['playurl_info']['playurl']['stream']
             http_info = stream[0]['format'][0]['codec'][0]
@@ -76,6 +91,12 @@ class bilibili(BaseAPI):
                         break
         except:
             raise RuntimeError('bilibili直播流获取错误.')
+        
+        if http_info['current_qn'] != max(http_info['accept_qn']) and bili_force_origin:
+            logging.warn('未登录B站账号，无法使用传统方法录制原画，即将启用强制原画功能.')
+            src, tgt = bili_force_origin
+            real_url = real_url.replace(src, tgt)
+        
         return real_url
 
     def get_info(self) -> tuple:
@@ -93,5 +114,5 @@ class bilibili(BaseAPI):
         return self.header
 
 if __name__ == '__main__':
-    api = bilibili('23197314')    
+    api = bilibili('15019349')    
     print(api.get_stream_url()) 

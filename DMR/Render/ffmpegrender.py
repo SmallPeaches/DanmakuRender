@@ -81,7 +81,7 @@ class FFmpegRender(BaseRender):
             filter_str = replace_keywords(filter_str, {'DANMAKU': danmaku})
         else:
             filter_name = '-vf'
-            filter_str = 'subtitles=filename=%s' % danmaku
+            filter_str = 'subtitles=filename=\'%s\'' % danmaku
             fps = self.advanced_render_args.get('fps')
             if fps:
                 filter_str += ',fps=fps=%i' % int(fps)

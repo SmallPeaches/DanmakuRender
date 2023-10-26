@@ -74,9 +74,9 @@ class DanmakuWriter():
         
         return self.start_dmc()
     
-    def split(self, part_start_time, filename=None):
+    def split(self, filename=None):
         self.part += 1
-        self.part_start_time = part_start_time
+        self.part_start_time = datetime.now().timestamp()
         self.dmwriter.close()
         if filename:
             try:
