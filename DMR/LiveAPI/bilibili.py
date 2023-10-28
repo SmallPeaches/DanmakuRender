@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import requests
 import json
 try:
@@ -40,18 +41,27 @@ class bilibili(BaseAPI):
 
     def get_stream_url(self, 
                        flow_cdn=None, 
-                       bili_watch_cookies=None,
-                       bili_force_origin=('_1500',''), 
+                       bili_watch_cookies='.temp/.bili_watch_cookies.json',
+                       bili_force_origin=None, 
                        **kwargs,
         ) -> str:
         watch_cookies = {}
         if bili_watch_cookies:
             try:
+                if not os.path.exists(bili_watch_cookies) and os.path.exists('.temp/bilibili.json'):
+                    bili_watch_cookies = '.temp/bilibili.json'
+                elif not os.path.exists(bili_watch_cookies):
+                    from DMR.Uploader.biliuprs import biliuprs
+                    logging.info(f'即将登录用于B站获取直播流的账号，如果不想登录请设置bili_watch_cookies为空.')
+                    biliuprs(cookies=bili_watch_cookies, account=None)
+                
                 with open(bili_watch_cookies, 'r') as f:
                     cookies = json.load(f)
                 watch_cookies = {c['name']: c['value'] for c in cookies['cookie_info']['cookies']}
+                logging.info(f'正在使用 {bili_watch_cookies} 的cookies登录B站.')
+                
             except Exception as e:
-                logging.warn(f'B站观看cookies设置错误:{e}，即将使用无登录模式')
+                logging.warn(f'B站观看cookies设置错误:{e}，即将使用无登录模式.')
 
         res = self._get_response()
         room_id = res['data']['room_id']
@@ -92,10 +102,13 @@ class bilibili(BaseAPI):
         except:
             raise RuntimeError('bilibili直播流获取错误.')
         
-        if http_info['current_qn'] != max(http_info['accept_qn']) and bili_force_origin:
-            logging.warn('未登录B站账号，无法使用传统方法录制原画，即将启用强制原画功能.')
-            src, tgt = bili_force_origin
-            real_url = real_url.replace(src, tgt)
+        if http_info['current_qn'] != max(http_info['accept_qn']):
+            if bili_force_origin:
+                logging.warn('未登录B站账号，无法使用传统方法录制原画，即将启用强制原画功能.')
+                src, tgt = bili_force_origin
+                real_url = real_url.replace(src, tgt)
+            else:
+                logging.warn('未登录B站账号，无法录制原画，将录制最低画质直播（480P）.')
         
         return real_url
 

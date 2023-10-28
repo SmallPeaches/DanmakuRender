@@ -256,8 +256,9 @@ advanced_video_args:
   check_stream_changes: false
   # 禁用下载速度慢时自动重启(仅ffmpeg下载引擎生效)
   disable_lowspeed_interrupt: false
-  # 设置用于获取B站直播流的cookies地址（类似上传参数的cookies地址）
-  bili_watch_cookies: ~
+  # 设置用于获取B站直播流的cookies路径，默认为.temp/.bili_watch_cookies.json或者.temp/bilibili.json
+  # 如果不想登录到B站，请设置为空
+  bili_watch_cookies: .temp/.bili_watch_cookies.json
   # 设置用于未登录情况下强制生成原画直播流的参数，表示为[src, tgt]，将特定的画质字符串替换掉，设置为空表示不启用这个功能
   # 注意：此功能不一定生效，具体效果视直播间而定
   bili_force_origin: ['_1500', '']

@@ -136,7 +136,7 @@ class Downloader():
 
         def danmaku_thread():
             description = f'{self.output_name}的弹幕文件, {self.url}, Powered by DanmakuRender: https://github.com/SmallPeaches/DanmakuRender.'
-            danmu_output = join(self.output_dir, f'[正在录制] {self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d.ass')
+            danmu_output = join(self.output_dir, f'[正在录制]{self.taskname}-{time.strftime("%Y%m%d-%H%M%S",time.localtime())}-Part%03d.ass')
             self.dmw = DanmakuWriter(self.url,
                                      danmu_output,
                                      self.segment,
