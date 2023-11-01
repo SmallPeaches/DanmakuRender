@@ -396,7 +396,7 @@ advanced_render_args:
   gop: 5
   # 直接定义video filter，这里的{DANMAKU}代表弹幕文件路径
   # 注意设置filter_complex之后将会禁用fps等其他有关filter的选项
-  filter_complex: 'subtitles=filename={DANMAKU}'
+  filter_complex: subtitles=filename='{DANMAKU}'
 ```
 
 ### 上传参数说明      
