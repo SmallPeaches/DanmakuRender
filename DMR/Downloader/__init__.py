@@ -13,22 +13,22 @@ from DMR.LiveAPI import *
 from DMR.utils import *
 
 class Downloader():
-    def __init__(self, 
-                 url, 
-                 output_dir, 
-                 pipe, 
-                 segment:int, 
-                 output_name=None, 
-                 taskname=None, 
-                 danmaku=True, 
-                 video=True, 
-                 end_cnt=0, 
-                 vid_format='flv', 
-                 flow_cdn=None, 
+    def __init__(self,
+                 url,
+                 output_dir,
+                 pipe,
+                 segment:int,
+                 output_name=None,
+                 taskname=None,
+                 danmaku=True,
+                 video=True,
+                 end_cnt=0,
+                 vid_format='flv',
+                 flow_cdn=None,
                  advanced_video_args:dict=None,
                  advanced_dm_args:dict=None,
-                 engine='ffmpeg', 
-                 debug=False, 
+                 engine='ffmpeg',
+                 debug=False,
                  **kwargs
         ) -> None:
         self.taskname = taskname
@@ -56,11 +56,11 @@ class Downloader():
         elif self.engine == 'streamgears':
             from .streamgearsio import StreamgearsDownloader
             self.download_class = StreamgearsDownloader
-        else: 
+        else:
             raise NotImplementedError(f'No Downloader Named {self.engine}.')
 
         os.makedirs(self.output_dir,exist_ok=True)
-    
+
     def pipeSend(self,msg,type='info',**kwargs):
         if self.sender:
             self.sender.put(PipeMessage('downloader',msg=msg,type=type,group=self.taskname,**kwargs))
@@ -74,7 +74,7 @@ class Downloader():
     def segment_callback(self, filename:str):
         if self.segment_info is None or not exists(filename):
             logging.debug(f'No video file {filename}')
-            return 
+            return
         t0 = self.segment_start_time
         video_duration = datetime.now().timestamp() - t0.timestamp()
         video_info = {
@@ -107,14 +107,14 @@ class Downloader():
 
     def start_once(self):
         self.stoped = False
-        
+
         # init stream info
         self.segment_info = None
         while not self.segment_info:
             self.segment_info = self.liveapi.GetStreamerInfo()
         self.segment_start_time = datetime.now()
         os.makedirs(self.output_dir,exist_ok=True)
-        
+
         if self.liveapi.IsStable():
             stream_url = self.liveapi.GetStreamURL(flow_cdn=self.flow_cdn, **self.advanced_video_args)
             stream_request_header = self.liveapi.GetStreamHeader()
@@ -128,7 +128,7 @@ class Downloader():
             default_resolution = self.advanced_video_args.get('default_resolution', (1920, 1080))
             logging.warn(f'无法获取视频大小，使用默认值 {default_resolution}.')
             width, height = default_resolution
-        
+
         self.width,self.height = width, height
 
         self.downloader = None
@@ -146,7 +146,7 @@ class Downloader():
                                      advanced_dm_args=self.advanced_dm_args,
                                      **self.kwargs)
             self.dmw.start(self_segment=not self.video)
-        
+
         def video_thread():
             self.downloader = self.download_class(
                 stream_url=stream_url,
@@ -169,7 +169,7 @@ class Downloader():
             futures.append(self.executor.submit(danmaku_thread))
         if self.video:
             futures.append(self.executor.submit(video_thread))
-        
+
         while not self.stoped:
             try:
                 for future in as_completed(futures, timeout=60):
@@ -202,7 +202,7 @@ class Downloader():
                 else:
                     time.sleep(stop_check_interval)
                     stop_waited += stop_check_interval
-                
+
                 if stop_waited > stop_wait_time and not live_end:
                     live_end = True
                     self.pipeSend('end')
@@ -226,7 +226,7 @@ class Downloader():
                     continue
                 else:
                     logging.debug(e)
-            
+
             logging.debug(f'{self.taskname} stop once.')
             self.stop_once()
 
@@ -234,7 +234,7 @@ class Downloader():
         thread = threading.Thread(target=self.start_helper,daemon=True)
         thread.start()
         return thread
-    
+
     def stop(self):
         self.loop = False
         self.stop_once()
