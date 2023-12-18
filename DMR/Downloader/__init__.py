@@ -35,7 +35,7 @@ class Downloader():
         self.url = url
         self.plat, self.rid = split_url(url)
         self.liveapi = LiveAPI(self.plat, self.rid)
-        self.output_dir = output_dir
+        self.output_dir = output_dir or './' + self.taskname
         self.sender = pipe
         self.kwargs = kwargs
         self.debug = debug
@@ -47,7 +47,7 @@ class Downloader():
         self.end_cnt = end_cnt
         self.advanced_video_args = advanced_video_args if advanced_video_args else {}
         self.advanced_dm_args = advanced_dm_args if advanced_dm_args else {}
-        self.output_name = join(output_dir, output_name+f'.{vid_format}')
+        self.output_name = join(self.output_dir, output_name+f'.{vid_format}')
 
         self.engine = engine
         if self.engine == 'ffmpeg':
