@@ -58,6 +58,9 @@ class biliuprs():
             upload_args = self.base_args + ['upload']
 
         dtime = dtime + int(time.time()) if dtime else 0
+
+        if isinstance(tag, list):
+            tag = ','.join(tag)
         upload_args += [
             '--copyright', copyright,
             '--cover', cover,
