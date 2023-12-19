@@ -31,8 +31,8 @@ class biliuprs():
         if not self.islogin():
             self.login()
 
-    def call_biliuprs(self, 
-        video:str, 
+    def call_biliuprs(self,
+        video:str,
         bvid:str=None,
         copyright:int=1,
         cover:str='',
@@ -58,6 +58,9 @@ class biliuprs():
             upload_args = self.base_args + ['upload']
 
         dtime = dtime + int(time.time()) if dtime else 0
+
+        if isinstance(tag, list):
+            tag = ','.join(tag)
         upload_args += [
             '--copyright', copyright,
             '--cover', cover,
@@ -82,7 +85,7 @@ class biliuprs():
 
         upload_args = [str(x) for x in upload_args]
         logging.debug(f'biliuprs: {upload_args}')
-        
+
         if not logfile:
             logfile = sys.stdout
 
@@ -90,10 +93,10 @@ class biliuprs():
             self.upload_proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT, bufsize=10**8)
         else:
             self.upload_proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT, bufsize=10**8)
-        
+
         self.upload_proc.wait()
         return logfile
-    
+
     def islogin(self):
         renew_args = self.base_args + ['renew']
         proc = subprocess.Popen(renew_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=10**8)
@@ -112,7 +115,7 @@ class biliuprs():
             print(f'正在登录名称为 {self.account} 的账户:')
             proc = subprocess.Popen(login_args)
             proc.wait()
-        
+
         print(f'将 {self.account} 的登录信息保存到 {self.cookies}.')
 
     def upload_once(self, video, bvid=None, **config):
@@ -120,7 +123,7 @@ class biliuprs():
             self.upload_proc = self.call_biliuprs(video=video, bvid=bvid, logfile=logfile, **config)
             if self.debug:
                 return True, ''
-        
+
             out_bvid = None
             log = ''
             logfile.seek(0)
@@ -130,45 +133,45 @@ class biliuprs():
                 if '\"bvid\"' in line:
                     res = re.search(r'(BV[0-9A-Za-z]{10})', line)
                     if res:  out_bvid = res[0]
-        
+
         if out_bvid:
             return True, out_bvid
         else:
             return False, log
-        
+
     def upload_batch(self, video:list, video_info:list=None, config=None, **kwargs):
         video_info = video_info[0]
         config = config.copy()
-        
+
         if config.get('title'):
             config['title'] = replace_keywords(config['title'], video_info)
         if config.get('desc'):
             config['desc'] = replace_keywords(config['desc'], video_info)
         if config.get('dynamic'):
             config['dynamic'] = replace_keywords(config['dynamic'], video_info)
-        
+
         return self.upload_once(video, bvid=None, **config)
 
     def upload_one(self, video:str, video_info:str=None, config=None, **kwargs):
         config = config.copy()
-        
+
         if config.get('title'):
             config['title'] = replace_keywords(config['title'], video_info)
         if config.get('desc'):
             config['desc'] = replace_keywords(config['desc'], video_info)
         if config.get('dynamic'):
             config['dynamic'] = replace_keywords(config['dynamic'], video_info)
-        
+
         if self._upload_lock.locked():
             logging.warn('实时上传速度慢于录制速度，可能导致上传队列阻塞！')
-        
+
         with self._upload_lock:
             status, info = self.upload_once(video=video, bvid=self.task_info.get('bvid'), **config)
             if status:
                 self.task_info['bvid'] = info
-            
+
         return status, info
-        
+
     def end_upload(self):
         self.task_info = {}
         logging.debug('realtime upload end.')
@@ -184,5 +187,5 @@ class biliuprs():
         except Exception as e:
             logging.debug(e)
 
-        
+
 
