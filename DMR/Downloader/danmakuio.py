@@ -77,18 +77,19 @@ class DanmakuWriter():
     def split(self, filename=None):
         self.part += 1
         self.part_start_time = datetime.now().timestamp()
-        self.dmwriter.close()
+        # self.dmwriter.close()
+        old_dm_file = self.dm_file
+        if not self.stoped:
+            new_dm_file = self.output.replace(f'%03d','%03d'%self.part)
+            logging.debug(f'New DMfile: {new_dm_file}')
+            self.dmwriter.open(new_dm_file)
+            self.dm_file = new_dm_file
         if filename:
             try:
-                os.rename(self.dm_file, filename)
+                os.rename(old_dm_file, filename)
             except Exception as e:
                 logging.error(e)
-                logging.error(f'弹幕 {self.dm_file} 分段失败.')
-        if not self.stoped:
-            dm_file = self.output.replace(f'%03d','%03d'%self.part)
-            logging.debug(f'New DMfile: {dm_file}')
-            self.dmwriter.open(dm_file)
-            self.dm_file = dm_file
+                logging.error(f'弹幕 {old_dm_file} 分段失败.')
 
     def dm_available(self,dm) -> bool:
         if not (dm.get('msg_type') == 'danmaku'):
