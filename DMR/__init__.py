@@ -70,14 +70,17 @@ class DanmakuRender():
             if self.stoped or msg == 'exit':
                 return
             logging.debug(f'PIPE MESSAGE: {msg}')
-            if msg.get('src') == 'downloader':
-                self.process_downloader_message(msg)
-            elif msg.get('src') == 'render':
-                self.process_render_message(msg)
-            elif msg.get('src') == 'uploader':
-                self.process_uploader_message(msg)
-            elif msg.get('src') == 'cleaner':
-                self.process_cleaner_message(msg)
+            try:
+                if msg.get('src') == 'downloader':
+                    self.process_downloader_message(msg)
+                elif msg.get('src') == 'render':
+                    self.process_render_message(msg)
+                elif msg.get('src') == 'uploader':
+                    self.process_uploader_message(msg)
+                elif msg.get('src') == 'cleaner':
+                    self.process_cleaner_message(msg)
+            except Exception as e:
+                logging.exception(e)
 
     def process_cleaner_message(self, msg):
         type = msg['type']
@@ -101,7 +104,13 @@ class DanmakuRender():
                 if vtype == 'src_video':
                     files += [os.path.splitext(f)[0]+'.ass' for f in files]
                 logging.info(f'添加以下文件到清理队列： {files}.')
-                self.cleaner.add(files, group, video_info=msg.get('video_info'), clean_configs=clean_configs[vtype])
+                video_info = msg.get('video_info')
+                self.cleaner.add(files, group, video_info=video_info, clean_configs=clean_configs[vtype])
+                # 上传弹幕视频后同时清理普通视频
+                if len(files) == 1 and clean_configs[vtype][0]['strict'] == False and clean_configs.get('src_video'):
+                    extra = [video_info.get('src_file'), video_info.get('dm_file')]
+                    logging.info(f'即将清理额外的原视频：{extra}')
+                    self.cleaner.add(extra, group, video_info=video_info, clean_configs=clean_configs['src_video'])
 
         elif type == 'error':
             files = msg['msg']

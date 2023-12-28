@@ -48,6 +48,9 @@ class Render():
             group = task.get('group')
             if self.state_dict.get(group):
                 self.state_dict[group].append(task)
+            elif task['msg_type'] == 'end':
+                group = task['group']
+                self.pipeSend(group, type='end', group=group)
             else:
                 self.state_dict[group] = [task]
 
