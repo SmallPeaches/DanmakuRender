@@ -18,12 +18,12 @@ site_class = {
     'bilibili': Bilibili,
     'douyu': Douyu, 
     'huya': Huya,
-    'cc': CC
+    'cc': CC,
+    'douyin': Douyin,
 }
 
 # 使用自建API，DMC会实例化这个类然后调用start方法启动
 site_class_v2 = {
-    'douyin': Douyin,
 }
 
 class DanmakuClient:
