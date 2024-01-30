@@ -1,0 +1,266 @@
+# ######################
+# 此文件非必要不修改！
+# ######################
+
+# 第三方工具路径，设置为空将会自动选择
+executable_tools_path: 
+  ffmpeg: ~
+  ffprobe: ~
+  biliup: ~
+
+# DMR引擎参数
+dmr_engine_args: 
+  # 选择组件
+  enabled_plugins: ['downloader', 'render', 'uploader', 'cleaner']
+  # 是否动态更新配置文件
+  dynamic_config: False
+  # 动态更新的配置文件路径
+  dynmaic_config_path: ./configs
+
+# 下载器核心参数
+downloader_kernel_args:
+  test: ~
+
+# 默认下载参数
+download_args:
+  # 直播间链接
+  url: 'https://live.bilibili.com/29332'
+  # 录制输出文件夹，设置为空则使用主播名称作为文件夹
+  output_dir: ./直播回放
+  # 录制文件名称格式，可使用关键字替换，默认效果：飞天狙想要努力变胖-2023年3月1日20点30分，注意这里不能含有冒号，斜杠等非法字符！！
+  output_name: '{STREAMER.NAME}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
+  # 录播分段时间（秒），默认一个小时
+  segment: 3600
+  # 录制程序引擎，可选ffmpeg或者streamgears
+  # 在使用streamgears作为录制引擎时，录制视频格式可能会根据直播流的不同而不同
+  # 建议PC推流的直播使用ffmpeg录制，手机推流的直播使用streamgears录制
+  engine: ffmpeg
+  # 是否录制弹幕
+  danmaku: True
+  # 是否录制直播流
+  video: True
+  # 延迟下播计时（分钟）
+  # 使用这个功能可以把主播短暂下播又开播认定为同一场直播
+  stop_wait_time: 5
+  # 录制视频的格式，默认flv
+  vid_format: flv
+  # 直播流选项
+  stream_option:
+    # 直播流CDN
+    # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认tx
+    # 对于B站，可选特定的CDN域名前缀，例如 c1--cn-gotcha208
+    stream_cdn: ~
+    # 直播流类型，可选flv, hls，默认flv
+    # 暂时只对B站生效（部分情况下B站的flv流是不可用的，只能用hls）
+    stream_type: flv 
+    # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
+    # 如果希望不登录录制最低画质，请设置为'None'
+    bili_watch_cookies: .login_info/bili_watch_cookies.json
+  # 高级视频录制参数，具体可用选项请参考文档
+  advanced_video_args: ~
+
+  # 以下是弹幕录制参数
+  # 弹幕录制格式，只能选择ass
+  dm_format: ass 
+  # 弹幕上下间距（行距），设置为0-1的表示为视频宽度的倍数，设置为大于1的数表示像素，默认6
+  margin_h: 6
+  # 弹幕左右间距，设置为-1表示允许弹幕叠加，设置为0-1的表示间距为视频宽度的倍数，设置为大于1的数表示像素，默认0.05
+  # 实际上这个东西就是弹幕密度，弹幕左右间距越大密度越小
+  margin_w: 0.05
+  # 指定弹幕占屏幕的最大比例（即屏幕上半部分有多少可以用来显示弹幕），默认为0.4
+  dmrate: 0.4
+  # 指定弹幕字体，默认为微软雅黑字体(Microsoft YaHei)
+  font: Microsoft YaHei
+  # 指定弹幕字体大小，默认为36
+  fontsize: 36
+  # Distance from Screen Top 弹幕距离屏幕顶端的距离（像素，例如20，表示距离屏幕顶端20px）
+  dst: 20
+  # 指定单条弹幕持续时间（秒），默认为16
+  dmduration: 16
+  # 指定弹幕不透明度，默认为0.8
+  opacity: 0.8
+  # 使用自适应弹幕大小（会让把设置的弹幕大小按1080P标准缩放）
+  auto_fontsize: True
+  # 弹幕描边颜色(6位十六进制)
+  outlinecolor: 000000
+  # 弹幕描边宽度
+  outlinesize: 1.0
+  # 弹幕过滤规则，满足其中任意条件的弹幕将被过滤
+  dm_filter:
+    # 关键字过滤，只要有关键字的弹幕都会被过滤
+    # 例如：[菜, fw]
+    keywords: ~
+    # 用户名称过滤，只有用户名称完全与发弹幕的用户名相同才会过滤
+    # 此功能暂不生效
+    username: ~
+  # 高级弹幕录制参数，具体可用选项请参考文档
+  advanced_dm_args: ~
+
+# 渲染器核心参数
+render_kernel_args:
+  # 指定同时执行的渲染任务数，默认1
+  # 一般情况下此值不应该超过5（最好是不修改）
+  nrenders: 1
+
+# 渲染器默认参数
+render_args:
+  # 弹幕渲染
+  dmrender:
+    # 渲染输出文件夹，默认为在录制输出文件夹后面加上“带弹幕版”
+    output_dir: ~
+    # 渲染文件名称，默认在录制文件后面加上“带弹幕版”
+    output_name: ~
+    # 生成的视频文件格式，默认mp4
+    format: mp4
+    # 硬件解码参数，默认由FFmpeg自动判断，如果出现问题可以设为空
+    hwaccel_args: [-hwaccel, auto]
+    # 视频编码器，NVIDIA设置为h264_nvenc，AMD设置为h264_amf，CPU设置为libx264
+    vencoder: h264_nvenc
+    # 视频编码器参数，默认恒定码率15Mbps
+    vencoder_args: [-b:v, 15M]
+    # 音频编码器
+    aencoder: aac
+    # 音频编码器参数，默认恒定码率320Kbps
+    aencoder_args: [-b:a, 320K]
+    # 输出重缩放，会把输出重缩放到指定分辨率，可以设置为'WxH'直接指定输出分辨率，例如'3840x2160'（4K）
+    # 也可以指定为当前视频的大小倍数，例如'1.5'，这样1080P视频将会被放大到2880x1620（这个也符合了B站的4K视频标准）
+    output_resize: ~
+    # 高级渲染参数，具体可用选项请参考文档
+    advanced_render_args: ~
+  # 原视频转码
+  transcode:
+    # 渲染输出文件夹，默认为在录制输出文件夹后面加上“带弹幕版”
+    output_dir: ~
+    # 渲染文件名称，默认在录制文件后面加上“带弹幕版”
+    output_name: ~
+    # 生成的视频文件格式，默认mp4
+    format: mp4
+    # 硬件解码参数，默认由FFmpeg自动判断，如果出现问题可以设为空
+    hwaccel_args: [-hwaccel, auto]
+    # 视频编码器，NVIDIA设置为h264_nvenc，AMD设置为h264_amf，CPU设置为libx264
+    vencoder: h264_nvenc
+    # 视频编码器参数，默认恒定码率15Mbps
+    vencoder_args: [-b:v, 15M]
+    # 音频编码器
+    aencoder: aac
+    # 音频编码器参数，默认恒定码率320Kbps
+    aencoder_args: [-b:a, 320K]
+    # 输出重缩放，会把输出重缩放到指定分辨率，可以设置为'WxH'直接指定输出分辨率，例如'3840x2160'（4K）
+    # 也可以指定为当前视频的大小倍数，例如'1.5'，这样1080P视频将会被放大到2880x1620（这个也符合了B站的4K视频标准）
+    output_resize: 1.5
+    # 高级渲染参数，具体可用选项请参考文档
+    advanced_render_args: ~
+  # 自定义ffmpeg调用
+  rawffmpeg:
+    # 输出文件类型，可选src_video或者dm_video
+    output_dtype: ~
+    # 命令行参数，可以使用关键字替换
+    # 为保证安全调用，请使用参数列表的形式，例如：['{FFMPEG}', '-i', '{SRC_VIDEO}', '-c', 'copy', '{OUTPUT}']
+    cmds: ~
+
+# 上传器核心参数
+uploader_kernel_args:
+  # 指定同时执行的上传任务数，默认1
+  nuploaders: 1
+
+# 上传器默认参数
+upload_args:
+  bilibili:
+    # 上传引擎，目前只支持biliuprs
+    engine: biliuprs
+    # 上传账号名称，程序依靠这个来识别不同的账号，如果打算传不同账号就要设置不同的名称
+    account: bilibili
+    # 上传cookies路径，如果设置为空将会保存到./login_info/{ACCOUNT}.json
+    cookies: ~
+    # 重试次数，如果上传遇到错误将会重试，设置为0表示不重试
+    # 注意：重试会整个视频重传，并且阻塞后面视频的上传，不应该设置太大
+    retry: 0
+    # 实时上传（边录边传），每录制一个分段上传一次，同一场直播的不同分P仍然会在一个视频下，默认开启
+    # 注意：实时上传可能无法上传很短的视频，尤其是在网速较快的情况下（B站对修改稿件的间隔有限制）
+    realtime: True
+    # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认120s
+    min_length: 120
+    # 以下参数来自biliuprs，详细内容可以参考 https://biliup.github.io/biliup-rs/index.html
+    # 上传线路
+    line: bda2
+    # 上传线程数
+    limit: 3
+    # 是否为转载视频 1-自制 2-转载
+    copyright: 1
+    # 转载来源，转载视频必填
+    source: ''
+    # 分区号，分区参考 https://biliup.github.io/tid-ref.html
+    tid: 65
+    # 封面，指向本地文件地址
+    cover: ''
+    # 标题，可以使用关键字替换
+    # 默认的例子：[飞天狙想要努力变胖/直播回放] 晚上七点半比赛 2023年2月24日 （带弹幕版）
+    title: '(录制测试)[{STREAMER.NAME}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日'
+    # 简介，可以使用关键字替换
+    desc: |
+      {STREAMER.NAME} 的直播回放
+      标题：{TITLE} 
+      时间：{YEAR}年{MONTH}月{DAY}日 
+      直播地址：{STREAMER.URL} 
+
+      ————————————
+      由DanmakuRender录制：
+      https://github.com/SmallPeaches/DanmakuRender
+    # 动态内容，可以使用关键字替换
+    dynamic: '{STREAMER.NAME} 的直播回放，{YEAR}年{MONTH}月{DAY}日'
+    # 标签（一定要有！多个标签逗号分割）
+    tag: '直播回放'
+    # 延迟发布，单位秒，如果需要的话至少设置14400秒（4个小时）
+    dtime: 0
+    # 是否开启杜比音效? 0-关闭 1-开启
+    dolby: 0
+    # 允许转载? 0-允许转载，1-禁止转载
+    no_reprint: 1
+    # 是否开启充电? 0-关闭 1-开启
+    open_elec: 1
+
+# 清理器核心参数
+cleaner_kernel_args:
+  test: True
+
+# 清理器默认参数
+clean_args:
+  # 移动文件
+  move:
+    # 目标文件夹，可以使用关键字替换，文件夹不存在会自动创建
+    # 如果设置为"*TRASHBIN*"，那么文件将会被移动至回收站（需要操作系统支持）
+    dest: ~
+    # 清理延迟（秒），在上传完成后会过一段时间再清理，下同
+    # 如果指定多个清理任务，不同清理任务的延迟并不顺延，均会在上传完成后的指定时间后清理
+    delay: 86400
+    # 清理弹幕视频时同时清理原文件，默认false，下同
+    # 特别注意：应该只在不上传原文件的情况下使用此选项，否则可能会导致原视频上传失败
+    w_srcfile: False
+    # 清理原文件时同时清理转码前文件（如果有的话），默认true，下同
+    w_srcpre: True
+  # 复制文件
+  copy:
+    dest: ~
+    delay: 0
+    w_srcfile: False
+    w_srcpre: True
+  # 删除文件
+  delete:
+    delay: 172800
+    w_srcfile: False
+    w_srcpre: True
+  # 自定义命令
+  custom: 
+    # 命令行参数，可以使用关键字替换
+    # 为保证安全调用，请使用参数列表的形式，例如：['rm', '-rf', '{PATH}']
+    command: ~
+    # 是否等待命令执行完成
+    # 如果设置为false，那么程序会立即执行下一个清理任务，不会等待命令执行完成
+    # 注意：程序自带的其他清理方式均为同步执行(wait=True)
+    wait: True
+    delay: 0
+    w_srcfile: False
+    w_srcpre: True
+
+webserver_args:
+  enable: False

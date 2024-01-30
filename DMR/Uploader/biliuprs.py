@@ -1,4 +1,3 @@
-from datetime import datetime
 import logging
 import os
 import queue
@@ -9,30 +8,31 @@ import tempfile
 import time
 import subprocess
 
-from tools import ToolsList
-from DMR.utils import replace_keywords
+from DMR.utils import replace_keywords, ToolsList
 
 class biliuprs():
-    def __init__(self, cookies:str, account:str, debug=False, biliup:str=None, **kwargs) -> None:
+    def __init__(self, cookies:str=None, account:str=None, debug=False, biliup:str=None, **kwargs) -> None:
         self.biliup = biliup if biliup else ToolsList.get('biliup')
-        self.account = account
+        if not (cookies or account):
+            raise ValueError('cookies or account must be set.')
         if cookies is None:
-            self.cookies = f'./.temp/{account}.json'
+            self.account = account
+            self.cookies = f'.login_info/{account}.json'
         else:
+            self.account = os.path.basename(cookies).split('.')[0]
             self.cookies = cookies
         os.makedirs(os.path.dirname(self.cookies), exist_ok=True)
         self.debug = debug
         self.base_args = [self.biliup, '-u', self.cookies]
-        self.wait_queue = queue.Queue()
         self.task_info = {}
-        self.uploading = False
         self._upload_lock = threading.Lock()
+        self.logger = logging.getLogger(__name__)
 
         if not self.islogin():
             self.login()
 
     def call_biliuprs(self, 
-        video:str, 
+        video, 
         bvid:str=None,
         copyright:int=1,
         cover:str='',
@@ -81,7 +81,7 @@ class biliuprs():
             upload_args += video
 
         upload_args = [str(x) for x in upload_args]
-        logging.debug(f'biliuprs: {upload_args}')
+        self.logger.debug(f'biliuprs: {upload_args}')
         
         if not logfile:
             logfile = sys.stdout
@@ -160,7 +160,7 @@ class biliuprs():
             config['dynamic'] = replace_keywords(config['dynamic'], video_info)
         
         if self._upload_lock.locked():
-            logging.warn('实时上传速度慢于录制速度，可能导致上传队列阻塞！')
+            self.logger.warn('实时上传速度慢于录制速度，可能导致上传队列阻塞！')
         
         with self._upload_lock:
             status, info = self.upload_once(video=video, bvid=self.task_info.get('bvid'), **config)
@@ -168,21 +168,42 @@ class biliuprs():
                 self.task_info['bvid'] = info
             
         return status, info
+    
+    def upload(self, files:list, upload_group=None, **kwargs):
+        config = kwargs.copy()
+        
+        if config.get('title'):
+            config['title'] = replace_keywords(config['title'], files[0])
+        if config.get('desc'):
+            config['desc'] = replace_keywords(config['desc'], files[0])
+        if config.get('dynamic'):
+            config['dynamic'] = replace_keywords(config['dynamic'], files[0])
+        
+        if self._upload_lock.locked():
+            self.logger.warn('上传速度慢于录制速度，可能导致上传队列阻塞！')
+        
+        with self._upload_lock:
+            status, bvid = True, 'BV0000000000'
+            # status, bvid = self.upload_once(video=files, bvid=self.task_info.get('bvid'), **config)
+            if status:
+                self.task_info['bvid'] = bvid
+            
+        return status, bvid
         
     def end_upload(self):
         self.task_info = {}
-        logging.debug('realtime upload end.')
+        self.logger.debug('realtime upload end.')
 
     def stop(self):
         try:
             if hasattr(self, 'upload_proc') and self.upload_proc.poll() is None:
-                logging.warn('上传提前终止，可能需要重新上传.')
+                self.logger.warn('上传提前终止，可能需要重新上传.')
             self.upload_proc.kill()
             out, _ = self.upload_proc.communicate(timeout=2.0)
             out = out.decode('utf-8')
-            logging.debug(out)
+            self.logger.debug(out)
         except Exception as e:
-            logging.debug(e)
+            self.logger.debug(e)
 
         
 

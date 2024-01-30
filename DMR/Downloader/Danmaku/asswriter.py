@@ -1,6 +1,5 @@
 from datetime import datetime
 import threading
-from DMR.danmaku import SimpleDanmaku
 from DMR.utils import *
 
 __all__ = ['AssWriter']
@@ -75,9 +74,9 @@ class AssWriter():
         return int(length)
 
     def open(self, filename):
-        self._filename = filename
-        self._track_tails = [None for _ in range(self._ntracks)]
-        with self._lock, open(self._filename,'w',encoding='utf-8') as f:
+        with self._lock, open(filename,'w',encoding='utf-8') as f:
+            self._filename = filename
+            self._track_tails = [None for _ in range(self._ntracks)]
             for info in self.meta_info:
                 f.write(info+'\n')
     

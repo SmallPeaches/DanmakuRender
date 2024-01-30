@@ -1,7 +1,6 @@
-from tools.check_env import check_pypi, check_update
+from tools import check_pypi
 check_pypi()
 
-import json
 import time
 import argparse
 from datetime import datetime
@@ -9,73 +8,67 @@ import os
 import sys
 import logging
 import logging.handlers
-import yaml
-from os.path import exists
+from os.path import exists, splitext
+from glob import glob
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
 
-from main import load_config, VERSION
-from DMR.message import PipeMessage
+from DMR.utils import *
 from DMR import DanmakuRender
-from DMR.Render import Render
-from DMR.Config import Config, new_config
-
-import requests.packages.urllib3.util.ssl_
-requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS = 'ALL'
+from DMR.Config import Config
 
 if __name__ == '__main__':    
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c','--config',default='replay.yml')
-    parser.add_argument('--default_config',default='configs/default.yml')
-    parser.add_argument('--debug',action='store_true')
+    parser.add_argument('--config', default='configs')
+    parser.add_argument('--global_config',default='configs/global.yml')
+    parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     
-    config = load_config(args.default_config, args.config)
+    config = Config(args.global_config, args.config)
     
-    for name , rep_conf in config.config['replay'].items():
-        config.config['replay'][name]['segment'] = 60
-        for upd_type, upd_configs in rep_conf.get('upload', {}).items():
+    for name, rep_conf in config.replay_config.items():
+        config.replay_config[name]['download_args']['segment'] = 30
+        for upd_type, upd_configs in rep_conf.get('upload_args', {}).items():
             for upid, upd_conf in enumerate(upd_configs):
-                config.config['replay'][name]['upload'][upd_type][upid]['dtime'] = 86400
-                config.config['replay'][name]['upload'][upd_type][upid]['min_length'] = 0
+                config.replay_config[name]['upload_args'][upd_type][upid]['dtime'] = 86400
+                config.replay_config[name]['upload_args'][upd_type][upid]['min_length'] = 0
     
-    logging.getLogger().setLevel(logging.DEBUG)
+    logger = logging.getLogger('DMR')
+    logger.setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO) 
     console_handler.setFormatter(logging.Formatter("[%(asctime)s][%(levelname)s]: %(message)s"))
     
     os.makedirs('logs', exist_ok=True)
     log_file = f'logs/DMR-dryrun-{datetime.now().strftime("%Y%m%d")}.log'
-    num = 1
-    while os.path.exists(log_file):
-        log_file = f'logs/DMR-dryrun-{datetime.now().strftime("%Y%m%d")}-{num}.log'
-        num += 1
+    if exists(log_file):
+        _cnt = len(glob(splitext(log_file)[0] + '*'))
+        log_file = splitext(log_file)[0] + f'({_cnt})' + splitext(log_file)[1]
     file_handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1, backupCount=0, encoding='utf-8')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter("[%(asctime)s][%(module)s][%(levelname)s]: %(message)s"))
     
-    logging.getLogger().addHandler(console_handler)
-    logging.getLogger().addHandler(file_handler)
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
 
-    logging.debug(f'VERSION: 4-{VERSION}')
-    logging.debug(f'args: {args}')
-    logging.debug(f'Full config: {json.dumps(config.replay_config, indent=4, ensure_ascii=False)}')
+    dmr = DanmakuRender(config, debug=args.debug)
 
-    dmr = DanmakuRender(config, args.debug)
-
-    logging.info('正在启动测试')
+    logger.info('正在启动测试...')
     dmr.start()
 
-    time.sleep(180)
-    for taskname, task in dmr.downloaders.items():
-        try:
-            task['class'].stop()
-            dmr.signal_queue.put(PipeMessage('downloader',msg='end',type='info',group=taskname))
-        except Exception as e:
-            logging.exception(e)
+    time.sleep(60)
+    for taskname, task in dmr.engine.task_dict.items():
+        msg = PipeMessage(
+            source='dryrun',
+            target='downloader',
+            event='stoptask',
+            dtype='str',
+            data=taskname,
+        )
+        dmr.engine.pipeSend(msg)
     
-    logging.info('录制完成，请检查录制文件')
+    # logging.info('录制完成，请检查录制文件')
     while 1:
         time.sleep(60)
 

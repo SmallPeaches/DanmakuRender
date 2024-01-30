@@ -2,7 +2,7 @@ import json, re, select, random
 from struct import pack, unpack
 
 import aiohttp
-from ..utils import *
+from DMR.utils import split_url
 from .DMAPI import DMAPI
 
 # RGB Color

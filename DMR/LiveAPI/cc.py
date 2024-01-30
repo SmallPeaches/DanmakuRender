@@ -12,10 +12,14 @@ except ImportError:
 class cc(BaseAPI):
     def __init__(self, rid):
         self.rid = rid
+        self.sess = requests.Session()
+    
+    def __del__(self):
+        self.sess.close()
 
     def _get_info(self):
         room_url = f'https://cc.163.com/{self.rid}/'
-        response = requests.get(url=room_url).text
+        response = self.sess.get(url=room_url).text
         data = re.findall(r'<script id="__NEXT_DATA__" type="application/json" crossorigin="anonymous">(.*?)</script>',
                           response)[0]
         data = json.loads(data)
@@ -44,9 +48,10 @@ class cc(BaseAPI):
         keyframe_url = None
         return title, uname, face_url, keyframe_url
 
-    def get_stream_url(self, **kwargs):
-        res = requests.get(
-            f"https://vapi.cc.163.com/video_play_url/{self.rid}?vbrmode=1&secure=1&vbrname=original&vbr=")
+    def get_stream_urls(self, **kwargs):
+        res = self.sess.get(f"https://vapi.cc.163.com/video_play_url/{self.rid}?vbrmode=1&secure=1&vbrname=original&vbr=")
         if res.status_code == 200:
-            return res.json()['videourl']
-        raise RuntimeError("视频流获取失败");
+            return [{
+                'stream_url': res.json()['videourl'],
+            }]
+        raise RuntimeError("CC直播视频流获取失败")

@@ -1,4 +1,5 @@
-from abc import ABC,abstractmethod
+from abc import ABC, abstractmethod
+import random
 
 class BaseAPI(ABC):
     _default_header = {
@@ -22,12 +23,12 @@ class BaseAPI(ABC):
         """
         pass
     
-    @abstractmethod
     def get_stream_url(self, **kwargs) -> str:
-        pass
+        return random.choice(self.get_stream_urls(**kwargs))
 
-    def is_stable(self) -> bool:
-        return True
+    @abstractmethod
+    def get_stream_urls(self, **kwargs) -> list:
+        pass
 
     def get_stream_header(self) -> dict:
         """

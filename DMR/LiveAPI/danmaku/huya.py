@@ -4,7 +4,7 @@ from struct import pack, unpack
 
 import asyncio, aiohttp
 
-from DMR.LiveAPI.utils import split_url
+from DMR.utils import split_url
 from .tars import tarscore
 from .huya_utils import WebSocketCommand, EWebSocketCommandType, WSPushMessage, MessageNotice, WSPushMessage_V2
 from .DMAPI import DMAPI

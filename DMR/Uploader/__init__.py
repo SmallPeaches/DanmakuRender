@@ -2,165 +2,154 @@ import logging
 import threading
 import queue
 import time
-
-from DMR.message import PipeMessage
-from DMR.utils import FFprobe
-
+from concurrent.futures import ThreadPoolExecutor
+from os.path import join, exists
+from DMR.LiveAPI import *
+from DMR.utils import *
 
 class Uploader():
-    def __init__(self, pipe, replay_config: dict, nuploaders: int, debug=False, **kwargs):
-        self.nuploaders = nuploaders
-        self.replay_config = replay_config
-        self.debug = debug
-        self.sender = pipe
+    def __init__(self,
+                 pipe:Tuple[queue.Queue, queue.Queue],
+                 nuploaders:int=1,
+                 **kwargs,
+                 ) -> None:
+        
+        self.nuploaders = int(nuploaders)
+        self.send_queue, self.recv_queue = pipe
+        self.logger = logging.getLogger(__name__)
         self.kwargs = kwargs
 
+        self.stoped = True
+        self._piperecvprocess = None
+        self._uploader_pool = {}
+        self.upload_tasks = {}
+        self.upload_executors = ThreadPoolExecutor(max_workers=self.nuploaders)
         self._lock = threading.Lock()
-        self.upload_queue = queue.Queue()
-        self.video_buffer = {}
-        self.uploaders = {}
-        self.state_dict = {}
 
-        for taskname, rep_conf in replay_config.items():
-            for upd_type, upd_configs in rep_conf.get('upload', {}).items():
-                for upid, upd_conf in enumerate(upd_configs):
-                    uploader_name = upd_conf['uploader_name']
-                    engine = upd_conf['engine']
-                    account = upd_conf['account']
-                    if engine.lower() == 'biliuprs':
-                        from .biliuprs import biliuprs
-                        uploader = biliuprs(debug=self.debug, **upd_conf)
-                        self.uploaders[uploader_name] = uploader
+    def _pipeSend(self, event, msg, target='engine', request_id=None, dtype=None, data=None, **kwargs):
+        if self.send_queue:
+            msg = PipeMessage(
+                source='uploader',
+                target=target,
+                event=event,
+                request_id=request_id,
+                msg=msg,
+                dtype=dtype,
+                data=data,
+                **kwargs,
+            )
+            self.send_queue.put(msg)
 
-        if self.nuploaders <= 0:
-            self.nuploaders = len(self.uploaders)
+    def _pipeRecvMonitor(self):
+        while self.stoped == False and self.recv_queue is not None:
+            message:PipeMessage = self.recv_queue.get()
+            try:
+                if message.target == 'uploader':
+                    if message.event == 'newtask':
+                        self.add_task(message)
+            except Exception as e:
+                self.logger.error(f'Message:{message} raise an error.')
+                self.logger.exception(e)
 
-    def pipeSend(self, msg, type='info', group=None, **kwargs):
-        if self.sender:
-            self.sender.put(PipeMessage(
-                'uploader', msg=msg, type=type, group=group, **kwargs))
-        else:
-            print(PipeMessage('uploader', msg=msg, type=type, group=group, **kwargs))
+    def start(self):
+        self.stoped = False
+        self._piperecvprocess = threading.Thread(target=self._pipeRecvMonitor, daemon=True)
+        self._piperecvprocess.start()
 
-    def _distribute(self, task):
+    def _free_uploader_pool(self):
         with self._lock:
-            if task == 'exit':
-                for _ in range(len(self.uploaders)):
-                    self.upload_queue.put(task)
-                return
-            
-            group = task['group']
-            realtime = task['upload_config']['realtime']
-            # 实时上传
-            if realtime:
-                if self.state_dict.get(group):
-                    self.state_dict[group].append(task)
-                elif task['msg_type'] == 'end':
-                    uploader_name = task['uploader_name']
-                    uploader = self.uploaders[uploader_name]
-                    uploader.end_upload()
-                    self.pipeSend(group, type='end', group=group)
-                else:
-                    self.state_dict[group] = [task]
-                if task['msg_type'] == 'upload':
-                    self.upload_queue.put(task)
-            # 普通上传
-            else:
-                uploader_name = task['uploader_name']
-                if task.get('msg_type') == 'end':
-                    buffer_tasks = self.video_buffer.pop(uploader_name, 0)
-                    if not buffer_tasks:
-                        logging.debug(f'uploader {uploader_name} buffer tasks empty.')
-                        return
+            for upload_group in list(self._uploader_pool.keys()):
+                expire = self._uploader_pool[upload_group]['expire']
+                if expire > 0 and time.time() - self._uploader_pool[upload_group]['ctime'] > expire:
+                    self._uploader_pool[upload_group].stop()
+                    self._uploader_pool.pop(upload_group)
 
-                    self.upload_queue.put(buffer_tasks)
-                    if self.state_dict.get(group):
-                        self.state_dict[group].append(buffer_tasks)
-                    else:
-                        self.state_dict[group] = [buffer_tasks]
-                    self.state_dict[group].append(task)
-
-                elif task.get('msg_type') == 'upload':
-                    if self.video_buffer.get(uploader_name):
-                        self.video_buffer[uploader_name].append(task)
-                    else:
-                        self.video_buffer[uploader_name] = [task]
+    def add_task(self, msg:PipeMessage):
+        with self._lock:
+            config = msg.data
+            task = {
+                'uuid': uuid(),
+                'source': msg.source,
+                'request_id': msg.request_id,
+                'stateless': config.get('stateless', True),
+                'upload_group': config.get('upload_group'),
+                'engine': config.get('engine', 'biliuprs'),
+                'args': config.get('args', {}),
+                'files': config.get('files'),
+                'config': config,
+            }
+            self.upload_tasks[task['uuid']] = task
+            self.upload_executors.submit(self._upload_subprocess, task)
 
     def _gather(self, task, status, desc=''):
         with self._lock:
-            if isinstance(task, dict):
-                group = task['group']
-                video_info=task['video_info']
-                self.state_dict[group] = list(filter(lambda x: x!=task, self.state_dict[group]))
-                files = [task['video']]
+            self.upload_tasks.pop(task['uuid'])
+            if status == 'error':
+                self._pipeSend(
+                    event='error',
+                    msg=f"上传视频 {[f.path for f in task['files']]} 时出现错误:{desc}",
+                    target=task['source'],
+                    request_id=task['request_id'],
+                    dtype=str(type(desc)),
+                    data=desc,
+                )
             else:
-                group = task[0]['group']
-                video_info=task[0].get('video_info')
-                self.state_dict[group] = list(filter(lambda x: x!=task, self.state_dict[group]))
-                files = [item['video'] for item in task]
-            
-            self.pipeSend(files, type=status, desc=desc, group=group, video_info=video_info, task=task)
+                self._pipeSend(
+                    event='end',
+                    msg=f"视频 {[f.path for f in task['files']]} 上传完成: {desc}",
+                    target=task['source'],
+                    request_id=task['request_id'],
+                    dtype='dict',
+                    data={
+                        'config': task['config'],
+                    },
+                )
 
-            if self.state_dict[group] and isinstance(self.state_dict[group][0], dict) and self.state_dict[group][0]['msg_type'] == 'end':
-                # 实时上传，需要发送结束信号
-                if isinstance(task, dict):
-                    uploader_name = self.state_dict[group][0]['uploader_name']
-                    uploader = self.uploaders[uploader_name]
-                    uploader.end_upload()
-                
-                self.state_dict[group].pop(0)
-                self.pipeSend(group, type='end', group=group)
+    def _upload_subprocess(self, task):
+        try:
+            upload_args = task['args']
+            stateless = task['stateless']
+            upload_group:str = task['upload_group']
 
-    def _uploader_subprocess(self):
-        while not self.stoped:
-            task = self.upload_queue.get()
-            if task == 'exit':
-                self.upload_queue.task_done()
-                return
+            with self._lock:
+                if not stateless and upload_group in self._uploader_pool:
+                    target_uploader = self._uploader_pool[upload_group]['class']
+                    self._uploader_pool[upload_group]['ctime'] = time.time()
+                else:
+                    engine:str = task['engine']
+                    if engine == 'biliuprs':
+                        from .biliuprs import biliuprs as TargetUploader
+                    else:
+                        raise ValueError(f'Unknown engine: {engine}')
+                    
+                    target_uploader = TargetUploader(**upload_args)
+                    self._uploader_pool[upload_group] = {
+                        'class': target_uploader,
+                        'ctime': time.time(),
+                        'expire': task.get('expire', 86400)
+                    }
 
-            # 使用实时上传
-            if isinstance(task, dict):
-                task_config = task['upload_config']
-                uploader_name = task['uploader_name']
-                uploader = self.uploaders[uploader_name]
-                video = task['video']
-                video_info = task['video_info']
-                upload_func = uploader.upload_one
-            # 使用普通上传
-            else:
-                task_config = task[0]['upload_config']
-                uploader_name = task[0]['uploader_name']
-                uploader = self.uploaders[uploader_name]
-                video = [t['video'] for t in task]
-                video_info = [t['video_info'] for t in task]
-                upload_func = uploader.upload_batch
-            
-            retry = task_config.get('retry', 0)
+            files = task['files']
+            retry = upload_args.get('retry', 0)
             status = info = None
             while retry >= 0:
                 try:
-                    logging.info(
-                        f"正在上传 {video} 至 {task_config['account']}")
-                    logging.debug(task)
-
-                    status, info = upload_func(
-                        video=video, 
-                        video_info=video_info,
-                        config=task_config,
-                    )
-                    # status, info = True, 'ok'
+                    self.logger.info(f"正在上传 {[f.path for f in files]} 至 {upload_args['account']}")
+                    # logging.debug(task)
+                    status, info = target_uploader.upload(files=files, **upload_args)
                 except KeyboardInterrupt:
+                    target_uploader.stop()
                     self.stop()
                     return
                 except Exception as e:
                     status, info = False, e
-                    logging.exception(e)
+                    self.logger.exception(e)
                 
                 if status:
                     break
                 else:
-                    logging.warn(f'上传 {video} 时出现错误，即将重传.')
-                    logging.debug(info)
+                    self.logger.warn(f'上传 {files} 时出现错误，即将重传.')
+                    self.logger.debug(info)
                     time.sleep(60)
                     retry -= 1
             
@@ -169,52 +158,15 @@ class Uploader():
             else:
                 self._gather(task, 'error', desc=info)
 
-            self.upload_queue.task_done()
-
-    def start(self):
-        self.stoped = False
-        for _ in range(self.nuploaders):
-            thread = threading.Thread(
-                target=self._uploader_subprocess, daemon=True)
-            thread.start()
-        return
-
-    def add(self, video, group=None, video_info=None, upload_configs=None, **kwargs):
-        for upload_config in upload_configs:
-            if video == 'end':
-                self._distribute({
-                    'msg_type': 'end',
-                    'group': group,
-                    'video_info': video_info,
-                    'upload_config': upload_config,
-                    'uploader_name': upload_config['uploader_name'],
-                    'kwargs': kwargs,
-                })
+            if stateless:
+                with self._lock:
+                    self._uploader_pool.pop(upload_group)
             else:
-                min_length = upload_config.get('min_length', 0)
-                duration = FFprobe.get_duration(video)
-                if duration <= 0:
-                    duration = video_info.get('duration', duration)
-                if duration > min_length:
-                    self._distribute({
-                        'msg_type': 'upload',
-                        'video': video,
-                        'group': group,
-                        'video_info': video_info,
-                        'upload_config': upload_config,
-                        'uploader_name': upload_config['uploader_name'],
-                        'kwargs': kwargs,
-                    })
-                else:
-                    logging.info(f'视频 {video} 过短，设置 {min_length}s，实际 {duration}s，跳过上传.')
+                self._free_uploader_pool()
+        
+        except Exception as e:
+            self.logger.exception(e)
+            self._gather(task, 'error', desc=e)
 
     def stop(self):
-        self.stoped = True
-        for uploader in self.uploaders.values():
-            try:
-                uploader.stop()
-            except Exception as e:
-                logging.debug(e)
-
-        self._distribute('exit')
-        logging.debug('uploader exit.')
+        pass

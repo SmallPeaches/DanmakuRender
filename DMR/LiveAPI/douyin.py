@@ -1,4 +1,5 @@
 import logging
+import random
 import re
 import os
 import requests
@@ -19,19 +20,20 @@ class douyin_cache():
 
     @classmethod
     def refresh_cookies(cls):
-        try:
-            response = requests.get(f'https://live.douyin.com/462574904325',headers=cls.base_headers,timeout=5)
-            assert response.cookies.get('__ac_nonce')
-            cls.cookies['__ac_nonce'] = response.cookies.get('__ac_nonce')
-        except Exception as e:
-            logging.exception(f'获取抖音cookies错误: {e}')
-        
-        try:
-            response = requests.get(f'https://live.douyin.com',headers=cls.base_headers,timeout=5)
-            assert response.cookies.get('ttwid')
-            cls.cookies['ttwid'] = response.cookies.get('ttwid')
-        except Exception as e:
-            logging.exception(f'获取抖音cookies错误: {e}')
+        with requests.Session() as sess:
+            try:
+                response = sess.get(f'https://live.douyin.com/462574904325',headers=cls.base_headers,timeout=5)
+                assert response.cookies.get('__ac_nonce')
+                cls.cookies['__ac_nonce'] = response.cookies.get('__ac_nonce')
+            except Exception as e:
+                logging.exception(f'获取抖音cookies错误: {e}')
+            
+            try:
+                response = sess.get(f'https://live.douyin.com',headers=cls.base_headers,timeout=5)
+                assert response.cookies.get('ttwid')
+                cls.cookies['ttwid'] = response.cookies.get('ttwid')
+            except Exception as e:
+                logging.exception(f'获取抖音cookies错误: {e}')
 
     @classmethod
     def get_cookies(cls) -> dict:
@@ -47,9 +49,10 @@ class douyin_cache():
 
 
 class douyin(BaseAPI):
-    headers = douyin_cache.get_headers()
     def __init__(self,rid:str) -> None:
         self.web_rid = rid
+        self.sess = requests.Session()
+        self.headers = douyin_cache.get_headers()
         if len(rid) == 19:
             self.real_rid = rid
         else:
@@ -58,6 +61,9 @@ class douyin(BaseAPI):
                 self.real_rid = resp['data'][0]['id_str']
             except:
                 raise Exception(f'解析抖音房间号{rid}错误.')
+    
+    def __del__(self):
+        self.sess.close()
 
     def is_available(self) -> bool:
         return len(self.real_rid) == 19
@@ -73,7 +79,7 @@ class douyin(BaseAPI):
             'browser_name': 'Edge',
             'browser_version': '104.0.1293.54',
         }
-        text = requests.get(url, headers=self.headers, params=params, timeout=5).text
+        text = self.sess.get(url, headers=self.headers, params=params, timeout=5).text
         data = json.loads(text)['data']
         return data
 
@@ -82,21 +88,50 @@ class douyin(BaseAPI):
         code = resp['data'][0]['status']
         return code == 2
 
-    def get_stream_url(self, **kwargs) -> str:
+    def get_stream_urls(self, **kwargs) -> str:
         resp = self._get_response_douyin()
         stream_info = resp['data'][0]['stream_url']
+        real_urls = []
         try:
             extra_data = stream_info['live_core_sdk_data']['pull_data']['stream_data']
             extra_data = json.loads(urllib.parse.unquote(extra_data))
             qualities = stream_info['live_core_sdk_data']['pull_data']['options']['qualities']
             this_quality = qualities[-1]['sdk_key']
             url_dict = extra_data['data']
-            url = url_dict[this_quality]['main']['flv']
+            for stype, url in url_dict[this_quality]['main'].items():
+                if not url.startswith('http'):
+                    continue
+                real_urls.append({
+                    'quality': this_quality,
+                    'stream_type': stype,
+                    'stream_url': url,
+                })
         except Exception as e:
             logging.debug(e)
-            urls = list(stream_info['flv_pull_url'].values())
-            url = urls[0]
-        return url
+            url = list(stream_info['flv_pull_url'].items())[0]
+            real_urls = [{
+                    'quality': url[0],
+                    'stream_type': 'flv',
+                    'stream_url': url[1],
+                }]
+        return real_urls
+    
+    def get_stream_url(self, stream_type=None, **kwargs) -> str:
+        stream_type = stream_type or 'flv'
+        
+        avail_urls = self.get_stream_urls()
+        selected_urls = []
+        for url_info in avail_urls:
+            if url_info['stream_type'] != stream_type:
+                continue
+            uri = url_info['stream_url']
+            selected_urls.append(uri)
+        
+        if not selected_urls:
+            logging.warning(f'抖音{self.web_rid}没有{stream_type}流，将使用默认选项.')
+            return random.choice(avail_urls)['stream_url']
+        else:
+            return random.choice(selected_urls)
 
     def get_info(self) -> tuple:
         resp = self._get_response_douyin()
@@ -107,5 +142,5 @@ class douyin(BaseAPI):
         return title, uname, face_url, keyframe_url
 
 if __name__ == '__main__':
-    api = douyin('739453887773')
+    api = douyin('458897981613')
     print(api.get_stream_url())

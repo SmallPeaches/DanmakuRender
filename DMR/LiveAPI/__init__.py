@@ -1,5 +1,7 @@
-from .utils import *
+from ..utils import *
 import logging
+
+logger = logging.getLogger(__name__)
 
 AVAILABLE_DANMU = ['huya','douyu','bilibili','douyin','cc']
 AVAILABLE_LIVE = ['huya','douyu','bilibili','douyin','cc']
@@ -25,43 +27,59 @@ class LiveAPI():
             from .cc import cc
             self.api_class = cc(rid=self.rid)
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f'Platform {platform} is not supported.')
 
-    def GetStreamerInfo(self):
+    def GetStreamerInfo(self) -> StreamerInfo:
         try:
-            return self.api_class.get_info()
+            info = self.api_class.get_info()
+            return StreamerInfo(
+                name=info[1], 
+                uid=None, 
+                platform=self.platform, 
+                room_id=self.rid, 
+                url=concat_rid(self.platform, self.rid), 
+                face_url=info[2], 
+                cover_url=info[3],
+            )
         except Exception as e:
-            logging.debug(e)
+            logger.debug(f'GetStreamerInfo {self.platform, self.rid} Error: {e}')
+
+    def GetRoomInfo(self) -> dict:
+        try:
+            info = self.api_class.get_info()
+            return {'title': info[0], 'name': info[1], 'face_url': info[2], 'cover_url': info[3]}
+        except Exception as e:
+            logger.debug(f'GetRoomInfo {self.platform, self.rid} Error: {e}')
 
     def GetStreamURL(self, **kwargs):
         try:
             return self.api_class.get_stream_url(**kwargs)
         except Exception as e:
-            logging.debug(e)
+            logger.debug(e)
+
+    def GetStreamURLs(self, **kwargs):
+        try:
+            return self.api_class.get_stream_urls(**kwargs)
+        except Exception as e:
+            logger.debug(e)
 
     def Onair(self):
         try:
             return self.api_class.onair()
         except Exception as e:
-            logging.debug(e)
+            logger.debug(e)
 
     def IsAvailable(self):
         try:
             return self.api_class.is_available()
         except Exception as e:
-            logging.debug(e)
+            logger.debug(e)
 
     def GetStreamHeader(self) -> dict:
         try:
             return self.api_class.get_stream_header()
         except Exception as e:
-            logging.debug(e)
-
-    def IsStable(self) -> bool:
-        try:
-            return self.api_class.is_stable()
-        except Exception as e:
-            logging.debug(e)
+            logger.debug(e)
 
     def __getattribute__(self, __name: str):
         try:
@@ -74,7 +92,25 @@ def GetStreamerInfo(plat,rid=None) -> tuple:
         plat,rid = split_url(plat)
     api = LiveAPI(plat,rid)
     try:
-        return api.get_info()
+        return api.GetStreamerInfo()
+    except:
+        return None
+    
+def GetRoomInfo(plat,rid=None) -> dict:
+    if rid is None:
+        plat,rid = split_url(plat)
+    api = LiveAPI(plat,rid)
+    try:
+        return api.GetRoomInfo()
+    except:
+        return None
+    
+def GetStreamURLs(plat,rid=None,**kwargs) -> list:
+    if rid is None:
+        plat,rid = split_url(plat)
+    api = LiveAPI(plat,rid)
+    try:
+        return api.get_stream_urls(**kwargs)
     except:
         return None
 

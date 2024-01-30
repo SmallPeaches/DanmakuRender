@@ -9,20 +9,22 @@ from datetime import datetime
 from os.path import *
 
 from DMR.LiveAPI.danmaku import DanmakuClient
-from DMR.utils import sec2hms, hms2sec, BGR2RGB
-from DMR.danmaku import SimpleDanmaku
+from DMR.utils import SimpleDanmaku
 
-class DanmakuWriter():
+__all__ = ['DanmakuDownloader']
+
+class DanmakuDownloader():
     def __init__(self,
                  url:str,
                  output:str,
                  segment:float,
                  dm_format:str,
-                 dm_filter:str,
+                 dm_filter:dict=None,
                  advanced_dm_args:dict={},
                  **kwargs) -> None:
         self.stoped = False
 
+        self.logger = logging.getLogger(__name__)
         self.url = url
         self.output = output
         self.segment = segment
@@ -31,6 +33,7 @@ class DanmakuWriter():
         self.dm_delay_fixed = self.advanced_dm_args.get('dm_delay_fixed', 6)
         self.dm_auto_restart = self.advanced_dm_args.get('dm_auto_restart', 300)
         try:
+            dm_filter = dm_filter['keywords']
             if not dm_filter:
                 self.dm_filter = []
             elif isinstance(dm_filter, str):
@@ -39,7 +42,7 @@ class DanmakuWriter():
                 self.dm_filter = dm_filter
             self.dm_filter = [re.compile(str(x)) for x in self.dm_filter]
         except Exception as e:
-            logging.warn(f'弹幕屏蔽词{dm_filter}设置错误:{e}，此功能将不会生效.')
+            self.logger.warn(f'弹幕屏蔽词{dm_filter}设置错误:{e}，此功能将不会生效.')
             self.dm_filter = []
         self.kwargs = kwargs
 
@@ -74,21 +77,20 @@ class DanmakuWriter():
         
         return self.start_dmc()
     
-    def split(self, filename=None):
+    def split(self, filename:str=None):
         self.part += 1
         self.part_start_time = datetime.now().timestamp()
-        self.dmwriter.close()
+        old_dm_file = self.dm_file
+        if not self.stoped:
+            new_dm_file = self.output.replace(f'%03d','%03d'%self.part)
+            self.logger.debug(f'New DMfile: {new_dm_file}')
+            self.dmwriter.open(new_dm_file)
+            self.dm_file = new_dm_file
         if filename:
             try:
-                os.rename(self.dm_file, filename)
+                os.rename(old_dm_file, filename)
             except Exception as e:
-                logging.error(e)
-                logging.error(f'弹幕 {self.dm_file} 分段失败.')
-        if not self.stoped:
-            dm_file = self.output.replace(f'%03d','%03d'%self.part)
-            logging.debug(f'New DMfile: {dm_file}')
-            self.dmwriter.open(dm_file)
-            self.dm_file = dm_file
+                self.logger.error(f'弹幕 {old_dm_file} 分段失败: {e}.')
 
     def dm_available(self,dm) -> bool:
         if not (dm.get('msg_type') == 'danmaku'):
@@ -111,10 +113,10 @@ class DanmakuWriter():
                     await dmc.start()
                 except asyncio.CancelledError:
                     await dmc.stop()
-                    logging.debug('Cancel the future.')
+                    self.logger.debug('Cancel the future.')
                 except Exception as e:
                     await dmc.stop()
-                    logging.exception(e)
+                    self.logger.exception(e)
                 
             task = asyncio.create_task(dmc_task())
             last_dm_time = datetime.now().timestamp()
@@ -140,11 +142,11 @@ class DanmakuWriter():
                     pass
                 
                 if task.done():
-                    logging.error('弹幕下载线程异常退出，正在重试...')
+                    self.logger.error('弹幕下载线程异常退出，正在重试...')
                     try:
-                        logging.debug(task.result())
+                        self.logger.debug(task.result())
                     except:
-                        logging.exception(task.exception())
+                        self.logger.exception(task.exception())
                     task.cancel()
                     retry += 1
                     last_dm_time = datetime.now().timestamp()
@@ -153,7 +155,7 @@ class DanmakuWriter():
                     continue
 
                 if self.dm_auto_restart and datetime.now().timestamp()-last_dm_time>self.dm_auto_restart:
-                    logging.error('获取弹幕超时，正在重试...')
+                    self.logger.error('获取弹幕超时，正在重试...')
                     task.cancel()
                     last_dm_time = datetime.now().timestamp()
                     task = asyncio.create_task(dmc_task())
@@ -164,7 +166,7 @@ class DanmakuWriter():
             try:
                 await task
             except asyncio.CancelledError:
-                logging.debug("DMC task cancelled.")
+                self.logger.debug("DMC task cancelled.")
 
         new_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(new_loop)
@@ -172,11 +174,11 @@ class DanmakuWriter():
 
     def stop(self):
         self.stoped = True
-        logging.debug('danmaku writer stoped.')
+        self.logger.debug('danmaku writer stoped.')
         if datetime.now().timestamp() - self.part_start_time < 10: # duration < 10s
             try:
                 os.remove(self.dm_file)
             except Exception as e:
-                logging.debug(e)
+                self.logger.debug(e)
         return True
 
