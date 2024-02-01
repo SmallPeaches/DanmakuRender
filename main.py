@@ -16,8 +16,7 @@ from os.path import exists, split
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
 
-VERSION = '2023.10.24'
-VERSION_DEBUG = '4-2023.10.24'
+VERSION = '2024.1.30'
 
 from DMR import DanmakuRender
 from DMR.Render import Render
@@ -95,7 +94,7 @@ if __name__ == '__main__':
     logging.getLogger().addHandler(console_handler)
     logging.getLogger().addHandler(file_handler)
 
-    logging.debug(f'DEBUG VERSION: {VERSION_DEBUG}')
+    logging.debug(f'DEBUG VERSION: {VERSION}')
     logging.debug(f'args: {args}')
     logging.debug(f'Full config: {json.dumps(config.replay_config, indent=4, ensure_ascii=False)}')
     dmr = DanmakuRender(config, args.debug)
