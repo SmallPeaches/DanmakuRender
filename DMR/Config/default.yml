@@ -56,8 +56,26 @@ download_args:
     # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
     # 如果希望不登录录制最低画质，请设置为'None'
     bili_watch_cookies: .login_info/bili_watch_cookies.json
-  # 高级视频录制参数，具体可用选项请参考文档
-  advanced_video_args: ~
+  # 高级视频录制参数
+  # 请注意此参数随时可能删减，正常情况下不应该修改
+  advanced_video_args: 
+    # 默认分辨率，此选项用于在程序无法获取流分辨率时指定默认分辨率用于弹幕录制
+    default_resolution: [1920, 1080]
+    # 开播检测间隔，每隔这样一段时间检测一次是否开播
+    start_check_interval: 60
+    # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
+    stop_check_interval: 30
+    # ffmpeg取流参数(仅ffmpeg下载引擎生效)
+    ffmpeg_stream_args: [ '-rw_timeout','10000000',
+                          '-analyzeduration','15000000',
+                          '-probesize','50000000',
+                          '-thread_queue_size', '16']
+    # ffmpeg输出参数(仅ffmpeg下载引擎生效)
+    ffmpeg_output_args: [ '-movflags','faststart+frag_keyframe+empty_moov']
+    # 检测流变化(仅ffmpeg下载引擎生效)
+    check_stream_changes: false
+    # 禁用下载速度慢时自动重启(仅ffmpeg下载引擎生效)
+    disable_lowspeed_interrupt: false
 
   # 以下是弹幕录制参数
   # 弹幕录制格式，只能选择ass
@@ -93,8 +111,13 @@ download_args:
     # 用户名称过滤，只有用户名称完全与发弹幕的用户名相同才会过滤
     # 此功能暂不生效
     username: ~
-  # 高级弹幕录制参数，具体可用选项请参考文档
-  advanced_dm_args: ~
+  # 高级弹幕录制参数
+  # 请注意此参数随时可能删减，正常情况下不应该修改
+  advanced_dm_args:
+    # 弹幕延迟补偿(秒)，将弹幕强行提前
+    dm_delay_fixed: 6
+    # 弹幕超时自动重启（秒），超过一段时间无弹幕会自动重启弹幕录制，0表示关闭
+    dm_auto_restart: 300
 
 # 渲染器核心参数
 render_kernel_args:
@@ -125,8 +148,14 @@ render_args:
     # 输出重缩放，会把输出重缩放到指定分辨率，可以设置为'WxH'直接指定输出分辨率，例如'3840x2160'（4K）
     # 也可以指定为当前视频的大小倍数，例如'1.5'，这样1080P视频将会被放大到2880x1620（这个也符合了B站的4K视频标准）
     output_resize: ~
-    # 高级渲染参数，具体可用选项请参考文档
-    advanced_render_args: ~
+    # 高级渲染参数
+    # 请注意此参数随时可能删减，正常情况下不应该修改
+    advanced_render_args:
+      # 指定输出帧率。此选项不同于'-r'，这里的帧率将直接作用在video filter上，默认保持原视频帧率
+      fps: 0
+      # 直接定义video filter，这里的{DANMAKU}代表弹幕文件路径
+      # 注意设置filter_complex之后将会禁用fps等其他有关filter的选项
+      filter_complex: subtitles=filename='{DANMAKU}'
   # 原视频转码
   transcode:
     # 渲染输出文件夹，默认为在录制输出文件夹后面加上“带弹幕版”
@@ -148,8 +177,14 @@ render_args:
     # 输出重缩放，会把输出重缩放到指定分辨率，可以设置为'WxH'直接指定输出分辨率，例如'3840x2160'（4K）
     # 也可以指定为当前视频的大小倍数，例如'1.5'，这样1080P视频将会被放大到2880x1620（这个也符合了B站的4K视频标准）
     output_resize: 1.5
-    # 高级渲染参数，具体可用选项请参考文档
-    advanced_render_args: ~
+    # 高级渲染参数
+    # 请注意此参数随时可能删减，正常情况下不应该修改
+    advanced_render_args:
+      # 指定输出帧率。此选项不同于'-r'，这里的帧率将直接作用在video filter上，默认保持原视频帧率
+      fps: 0
+      # 直接定义video filter，这里的{DANMAKU}代表弹幕文件路径
+      # 注意设置filter_complex之后将会禁用fps等其他有关filter的选项
+      filter_complex: subtitles=filename='{DANMAKU}'
   # 自定义ffmpeg调用
   rawffmpeg:
     # 输出文件类型，可选src_video或者dm_video

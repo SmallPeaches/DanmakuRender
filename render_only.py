@@ -1,7 +1,7 @@
 import argparse
 from datetime import datetime
 from glob import glob
-import os
+import optparse
 import sys
 import logging
 import logging.handlers
@@ -11,29 +11,21 @@ from os.path import exists, join
 sys.path.append('..')
 sys.path.append('.')
 
-from main import load_config
-from DMR.utils import FFprobe
+from DMR.utils import PipeMessage
+from DMR import Config
+from DMR.utils import FFprobe, isvideo, VideoInfo
 from DMR.Render import Render
-from DMR.Config import Config, new_config
-
-def isvideo(path:str) -> bool:
-    ext = path.split('.')[-1].lower()
-    if ext in ['mp4','flv','ts','mkv']:
-        return True
-    else:
-        return False
 
 def main():    
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c','--config',default='replay.yml')
-    parser.add_argument('--default_config',default='configs/default.yml')
-    parser.add_argument('--debug',action='store_true')
-    parser.add_argument('--render_only',action='store_true')
+    parser.add_argument('--config', default='configs')
+    parser.add_argument('--global_config',default='configs/global.yml')
+    parser.add_argument('--mode', default='dmrender')
     parser.add_argument('--input_dir',type=str)
     parser.add_argument('--output_dir',type=str)
     args = parser.parse_args()
-    
-    config = load_config(args.default_config, args.config)
+
+    config = Config(args.global_config, args.config)
     
     logging.getLogger().setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler(sys.stdout)
@@ -41,7 +33,7 @@ def main():
     console_handler.setFormatter(logging.Formatter("[%(asctime)s][%(levelname)s]: %(message)s"))
     logging.getLogger().addHandler(console_handler)
 
-    input_dir = args.input_dir if args.input_dir else config.config['downloader'].get('output_dir')
+    input_dir = args.input_dir if args.input_dir else config.global_config.get('downloader_args', {}).get('output_dir', '直播回放')
     inp = input(f"请输入视频文件夹路径 (回车使用默认路径 {input_dir}): \n")
     if inp: input_dir = inp
 
@@ -52,14 +44,18 @@ def main():
     tasks = []
     ignores = []
 
+    render_args = config.global_config.get('render_args', {}).get(args.mode, '')
+    render_kernel_args = config.global_config.get('render_kernel_args', {})
+    assert render_args, f'请在 global.yml 中配置 {args.mode} 的参数'
+
     for _, vname in enumerate(videos):
         danmu = os.path.splitext(vname)[0] + '.ass'
-        fmt = config.render_config.get('format', 'mp4')
-        filename = os.path.splitext(os.path.basename(vname))[0] + f"（带弹幕版）.{fmt}"
+        fmt = render_args.get('format', 'mp4')
+        filename = os.path.splitext(os.path.basename(vname))[0] + f"（弹幕版）.{fmt}"
         if args.output_dir:
             output_dir = args.output_dir
         else:
-            output_dir = os.path.dirname(vname)+'（带弹幕版）'
+            output_dir = os.path.dirname(vname)+'（弹幕版）'
         os.makedirs(output_dir,exist_ok=True)
         output = join(output_dir,filename)
 
@@ -100,12 +96,30 @@ def main():
     if inp:
         task_idx = [int(x) for x in inp.split(' ')]
 
-    render = Render(pipe=None, debug=True, **config.render_config)
-    render.start()
+    if args.mode == 'dmrender':
+        from DMR.Render.dmrender import DmRender as TargetRender
+    elif args.mode == 'transcode':
+        from DMR.Render.transcode import Transcoder as TargetRender
+    elif args.mode == 'rawffmpeg':
+        raise NotImplementedError
+        from .ffmpeg import RawFFmpegRender as TargetRender
+    
     for idx in task_idx:
-        render.add(**tasks[idx])
-    render.wait()
-    render.stop()
+        task = tasks[idx]
+        video = VideoInfo(
+            path=task['video'],
+            dm_file_id=task['danmaku'],
+        )
+        logging.info(f'正在渲染: {video.path}')
+        os.makedirs(os.path.dirname(output), exist_ok=True)
+
+        target_render = TargetRender(debug=True, **render_args)
+        status, info = target_render.render_one(video=video, output=output)
+
+        if status:
+            logging.info(f'渲染完成: {video.path} -> {output}')
+        else:
+            logging.error(f'渲染失败: {video.path} -> {output}, {info}')
 
 if __name__ == '__main__':
     try:

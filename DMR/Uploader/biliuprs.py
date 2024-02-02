@@ -183,8 +183,9 @@ class biliuprs():
             self.logger.warn('上传速度慢于录制速度，可能导致上传队列阻塞！')
         
         with self._upload_lock:
-            status, bvid = True, 'BV0000000000'
-            # status, bvid = self.upload_once(video=files, bvid=self.task_info.get('bvid'), **config)
+            # status, bvid = True, 'BV0000000000'
+            video_files = [f.path for f in files]
+            status, bvid = self.upload_once(video=video_files, bvid=self.task_info.get('bvid'), **config)
             if status:
                 self.task_info['bvid'] = bvid
             

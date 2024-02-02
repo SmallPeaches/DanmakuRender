@@ -32,18 +32,6 @@ download_args:
   stop_wait_time: 5
   # 录制视频的格式，默认flv
   vid_format: flv
-  # 直播流选项
-  stream_option:
-    # 直播流CDN
-    # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认tx
-    # 对于B站，可选特定的CDN域名前缀，例如 c1--cn-gotcha208
-    stream_cdn: ~
-    # 直播流类型，可选flv, hls，默认flv
-    # 暂时只对B站生效（部分情况下B站的flv流是不可用的，只能用hls）
-    stream_type: flv 
-    # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
-    # 如果希望不登录录制最低画质，请设置为'None'
-    bili_watch_cookies: .login_info/bili-xiaohao.json
 
   # 以下是弹幕录制参数
   # 弹幕录制格式，只能选择ass

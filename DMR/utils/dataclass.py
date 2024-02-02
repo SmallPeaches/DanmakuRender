@@ -70,10 +70,10 @@ class StreamerInfo(cpdict):
         
 class FileInfo(cpdict):
     def __init__(self, 
-                 file_id:str,
-                 dtype:str,
                  path:str,
-                 size:int,
+                 file_id:str=None,
+                 dtype:str=None,
+                 size:int=0,
                  ctime:datetime=None,
                  **kwargs):
         self.file_id = file_id
@@ -92,15 +92,15 @@ class FileInfo(cpdict):
         
 class VideoInfo(FileInfo):
     def __init__(self,
-                file_id:str,
-                dtype:str,
                 path:str,
-                size:int,
-                ctime:datetime,
-                duration:int,
-                resolution:Tuple[int, int],
-                title:str,
-                streamer:StreamerInfo,
+                file_id:str=None,
+                dtype:str=None,
+                size:int=0,
+                ctime:datetime=None,
+                duration:int=0,
+                resolution:Tuple[int, int]=None,
+                title:str=None,
+                streamer:StreamerInfo=None,
                 group_id:str=None,
                 segment_id:int=0,
                 taskname:str=None,

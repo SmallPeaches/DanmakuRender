@@ -152,6 +152,7 @@ class DefaultEvents(BaseEvents):
                             if not arg.get('realtime'):
                                 continue
                             if info['file'].duration < arg.get('min_length', 0):
+                                self.logger.info(f'视频{info["file"].path}时长为{info["file"].duration}s，设置{arg.get("min_length", 0)}s，跳过上传.')
                                 continue
                             upload_msg = PipeMessage(
                                 source=self.name,

@@ -11,7 +11,6 @@ from os.path import exists, abspath, splitext
 from uuid import uuid1
 from datetime import datetime
 
-from DMR.utils.dataclass import VideoInfo
 
 __all__ = [
     'rename_safe',

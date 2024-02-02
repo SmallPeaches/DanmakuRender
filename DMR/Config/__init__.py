@@ -36,6 +36,12 @@ class Config():
                     else:
                         self.global_config[k][_k] = _v
 
+        for toolname, path in self.global_config.get('executable_tools_path',{}).items():
+            if not path:
+                ToolsList.get(toolname, auto_install=True)
+            else:
+                ToolsList.set(toolname, path)
+
         for config_path in self.replay_config_path:
             with open(config_path, 'r', encoding='utf-8') as f:
                 _replay_config = yaml.safe_load(f)
@@ -51,7 +57,7 @@ class Config():
             if common_args.get('auto_render'):
                 replay_config['render_args'] = self.global_config['render_args'].copy()
                 if _replay_config.get('render_args'):
-                    for key in replay_config['render_args'].keys():
+                    for key in self.global_config['render_args'].keys():
                         if _replay_config['render_args'].get(key):
                             replay_config['render_args'][key].update(_replay_config['render_args'].get(key))
                         else:

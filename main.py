@@ -30,7 +30,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.version:
-        print(f'DanmakuRender-4 {VERSION}.')
+        print(f'DanmakuRender-5 {VERSION}.')
         print('https://github.com/SmallPeaches/DanmakuRender')
         exit(0)
     
