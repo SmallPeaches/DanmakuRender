@@ -1,7 +1,7 @@
 import argparse
 from datetime import datetime
 from glob import glob
-import optparse
+import os
 import sys
 import logging
 import logging.handlers
@@ -11,8 +11,7 @@ from os.path import exists, join
 sys.path.append('..')
 sys.path.append('.')
 
-from DMR.utils import PipeMessage
-from DMR import Config
+from DMR.Config import Config
 from DMR.utils import FFprobe, isvideo, VideoInfo
 from DMR.Render import Render
 

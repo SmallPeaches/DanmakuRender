@@ -12,6 +12,8 @@ common_event_args:
 
 # 下载参数
 download_args:
+  # 下载类型
+  dltype: live
   # 直播间链接
   url: 'https://live.bilibili.com/21247078'
   # 录制输出文件夹，设置为空则使用主播名称作为文件夹

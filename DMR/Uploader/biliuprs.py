@@ -8,7 +8,7 @@ import tempfile
 import time
 import subprocess
 
-from DMR.utils import replace_keywords, ToolsList
+from DMR.utils import replace_keywords, ToolsList, VideoInfo
 
 class biliuprs():
     def __init__(self, cookies:str=None, account:str=None, debug=False, biliup:str=None, **kwargs) -> None:
@@ -169,16 +169,41 @@ class biliuprs():
             
         return status, info
     
-    def upload(self, files:list, upload_group=None, **kwargs):
-        config = kwargs.copy()
-        
+    def format_config(self, config, video_info=None, replace_invalid=False):
+        config = config.copy()
+
         if config.get('title'):
-            config['title'] = replace_keywords(config['title'], files[0])
+            config['title'] = replace_keywords(config['title'], video_info, replace_invalid=replace_invalid)
         if config.get('desc'):
-            config['desc'] = replace_keywords(config['desc'], files[0])
+            config['desc'] = replace_keywords(config['desc'], video_info, replace_invalid=replace_invalid)
         if config.get('dynamic'):
-            config['dynamic'] = replace_keywords(config['dynamic'], files[0])
-        
+            config['dynamic'] = replace_keywords(config['dynamic'], video_info, replace_invalid=replace_invalid)
+        if config.get('tag'):
+            config['tag'] = replace_keywords(config['tag'], video_info, replace_invalid=replace_invalid)
+        if config.get('source'):
+            config['source'] = replace_keywords(config['source'], video_info, replace_invalid=replace_invalid)
+        if config.get('cover'):
+            config['cover'] = replace_keywords(config['cover'], video_info, replace_invalid=replace_invalid)
+            if config['cover'].startswith('http'):
+                import requests
+                try:
+                    resp = requests.get(config['cover'], headers={'User-Agent': 'Mozilla/5.0'}, timeout=5.0)
+                    if resp.status_code != 200:
+                        raise Exception(f'HTTP Error {resp.status_code}')
+                    else:
+                        cover_filename = f'.temp/biliuprs_cover_{int(time.time())+86400}.png'
+                        with open(cover_filename, 'wb') as f:
+                            f.write(resp.content)
+                        config['cover'] = cover_filename
+                except Exception as e:
+                    logging.error(f'视频 {config["title"]} 封面图片下载失败: {e}, 跳过设置.')
+                    config['cover'] = ''
+            
+        return config
+    
+    def upload(self, files:list[VideoInfo], upload_group=None, **kwargs):
+        config = self.format_config(kwargs, files[0])
+
         if self._upload_lock.locked():
             self.logger.warn('上传速度慢于录制速度，可能导致上传队列阻塞！')
         

@@ -1,0 +1,135 @@
+# 本文件一个代表一个录制任务，这里的设置基本上包含了所有可用的参数
+# 配置文件编写请参考 https://github.com/SmallPeaches/DanmakuRender 
+common_event_args:
+  # 启动自动渲染
+  auto_render: False
+  # 启动自动上传
+  auto_upload: True
+  # 启动自动清理
+  auto_clean: False
+  # 原视频自动转码
+  auto_transcode: False
+
+# 下载参数
+download_args:
+  # 下载类型，可选videos（视频），live（直播）
+  dltype: videos
+  # 需要下载的视频链接
+  # 可以是UP主主页，播放列表，合集等
+  url: ''
+  # 录制输出文件夹
+  output_dir: ./视频下载
+  # 录制文件名称格式
+  # 默认为 视频标题.视频格式，例如：【2024LPL春季赛】2月7日 IG vs RNG.mp4
+  # 如果下载B站用户主页视频（https://space.bilibili.com/<mid> 格式的链接），则可以使用关键字替换，例如 {STREAMER.NAME}-{TITLE}
+  # 如果下载其他的B站视频，例如合集，播放列表等，则应该设置yutto的输出格式，例如 {title}/{name}
+  # 具体请参考 https://github.com/yutto-dev/yutto?tab=readme-ov-file#已支持的下载类型
+  # 如果使用yt-dlp下载其他平台的视频，应该使用yt-dlp的输出格式，例如 '%(title)s.%(ext)s'
+  # 具体请参考 https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#output-template
+  output_name: ~
+  # 下载引擎
+  # B站视频默认使用yutto，其他平台默认使用yt-dlp
+  engine: ~
+  # 视频质量，默认可用的最高画质
+  # 此参数将被直接传入下载引擎，具体可用值请参考相关文档
+  quality: ~
+  # 登录账号名称，程序依靠这个来识别不同的账号
+  # 下载B站时，不登录只能下载480P视频，登录但是不是大会员只能下1080P30的视频
+  # 其他平台暂不生效
+  account: bilibili
+  # 登录cookies路径
+  # 如果设置为空将会保存到./login_info/{ACCOUNT}.json
+  cookies: ~
+  # 下载视频的起始时间，设置格式为'YYYY-MM-DD HH:MM:SS'，例如'2024-01-01 00:00:00'
+  # 如果设置为空将从当前时间开始下载之后的新视频
+  # YouTube视频只能精确到天，例如设置为'2024-01-01 12:00:00'仍然会从0点开始下载
+  start_time: ~
+  # 下载视频的结束时间
+  # 一般情况下应该设置为空
+  end_time: ~
+  # 是否下载弹幕
+  # 仅对B站视频有效
+  danmaku: False
+  # 是否下载字幕
+  # 仅对B站视频有效，如果yt-dlp需要字幕请在extra_args中添加相应参数
+  subtitle: False
+  # 检测更新时长（秒），默认600
+  # 每隔这么长时间检测一次是否有新视频
+  check_interval: 600
+  # 下载超时时间（秒）
+  # 如果一次下载超过此时间没有结束，将会被强制终止
+  subprocess_timeout: 86400
+  # 附加参数列表
+  # 此参数将直接传入下载引擎，可以用来设置一些特殊的下载参数
+  extra_args: []
+
+# 上传参数，如果不需要上传就把下面的都删了
+upload_args:
+  # 原视频
+  src_video: 
+    # 上传账号名称，程序依靠这个来识别不同的账号，如果打算传不同账号就要设置不同的名称
+    account: bilibili
+    # 上传cookies路径，如果设置为空将会保存到./login_info/{ACCOUNT}.json
+    cookies: ~
+    # 重试次数，如果上传遇到错误将会重试，设置为0表示不重试
+    # 注意：重试会整个视频重传，并且阻塞后面视频的上传，不应该设置太大
+    retry: 0
+    # 实时上传（边录边传），每录制一个分段上传一次，同一场直播的不同分P仍然会在一个视频下，默认开启
+    # 注意：实时上传可能无法上传很短的视频，尤其是在网速较快的情况下（B站对修改稿件的间隔有限制）
+    # 录制视频只能实时上传
+    realtime: True
+    # 上传的视频最短长度（秒）
+    min_length: 0
+    # 以下参数来自biliuprs，详细内容可以参考 https://biliup.github.io/biliup-rs/index.html
+    # 上传线路
+    line: bda2
+    # 上传线程数
+    limit: 3
+    # 是否为转载视频 1-自制 2-转载
+    copyright: 1
+    # 转载来源，转载视频必填
+    source: ''
+    # 分区号，分区参考 https://biliup.github.io/tid-ref.html
+    tid: 65
+    # 封面，指向本地文件地址
+    cover: ''
+    # 标题，可以使用关键字替换
+    # 默认的例子：[飞天狙想要努力变胖] 晚上七点半比赛
+    title: '[{STREAMER.NAME}] {TITLE}'
+    # 简介，可以使用关键字替换
+    desc: |
+      原视频标题：{TITLE} 
+      原视频链接：{URL}
+      原视频发布时间：{YEAR}年{MONTH}月{DAY}日 
+      {STREAMER.NAME}：{STREAMER.URL} 
+
+      ————————————
+      由DanmakuRender录制：
+      https://github.com/SmallPeaches/DanmakuRender
+    # 动态内容，可以使用关键字替换
+    dynamic: '{STREAMER.NAME} {TITLE}'
+    # 标签（一定要有！多个标签逗号分割）
+    tag: '视频'
+    # 延迟发布，单位秒，如果需要的话至少设置14400秒（4个小时）
+    dtime: 0
+    # 是否开启杜比音效? 0-关闭 1-开启
+    dolby: 0
+    # 允许转载? 0-允许转载，1-禁止转载
+    no_reprint: 1
+    # 是否开启充电? 0-关闭 1-开启
+    open_elec: 1
+  
+clean_args:
+  all:
+    # 清理方法，可选copy（复制），move（移动），delete（删除），默认不清理
+    # 注意：清理过程不可逆！
+    method: delete
+    # 目标文件夹，文件夹不存在会自动创建，可以使用关键字替换
+    dest: ~
+    # 清理延迟（秒），默认86400（24小时）
+    delay: 86400
+    # 清理弹幕视频时同时清理原文件，默认false
+    # 请注意，此功能应该只在不上传原文件的情况下使用，否则会导致上传失败
+    w_srcfile: False
+    # 清理源文件时同时清理转码前文件（如果有的话），默认true
+    w_srcpre: True

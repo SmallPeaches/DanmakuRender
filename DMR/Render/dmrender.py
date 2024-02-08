@@ -86,7 +86,7 @@ class DmRender(BaseRender):
         if not exists(video.path):
             raise RuntimeError(f'不存在视频文件 {video.path}，跳过渲染.')
         danmaku = kwargs.get('danmaku') or video.dm_file_id
-        if not exists(danmaku):
+        if not danmaku or not exists(danmaku):
             raise RuntimeError(f'不存在弹幕文件 {danmaku}，跳过渲染.')
 
         start_time = datetime.now()

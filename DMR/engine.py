@@ -12,7 +12,7 @@ from .utils import *
 
 class DMREngine():
     def __init__(self):
-        self.logger = logging.getLogger('DMR.Engine')
+        self.logger = logging.getLogger(__name__)
         self.task_dict = {}
         self.plugin_dict = {}
         self.recv_queue = None
@@ -56,20 +56,20 @@ class DMREngine():
         self.recv_queue = queue.Queue()
         self._piperecvprocess = threading.Thread(target=self._pipeRecvMonitor, daemon=True)
         self._piperecvprocess.start()
-        self.logger.info('DMR engine started.')
+        self.logger.debug('DMR engine started.')
 
         for name, plugin in self.plugin_dict.values():
             if plugin['status'] == 0:
                 plugin['class'].start()
                 self.plugin_dict['name']['status'] = 1
-                self.logger.info(f'Plugin {name} started.')
+                self.logger.debug(f'Plugin {name} started.')
         
         for name, task in self.task_dict.values():
             if task['status'] == 0:
                 task['class'].start()
                 self.task_dict['name']['status'] = 1
                 self.pipeSend(PipeMessage('engine', f'replay/{name}', 'ready'))
-                self.logger.info(f'Task {name} started.')
+                self.logger.debug(f'Task {name} started.')
 
     def add_plugin(self, name, config):
         send_queue = queue.Queue()
@@ -86,9 +86,9 @@ class DMREngine():
             # raise Exception(f'Unknown plugin {name}.')
         if self.stoped == False:
             plugin.start()
-            self.logger.info(f'Plugin {name} started.')
+            self.logger.debug(f'Plugin {name} started.')
         else:
-            self.logger.info(f'Plugin {name} created.')
+            self.logger.debug(f'Plugin {name} created.')
         self.plugin_dict[name] = {
             'class': plugin,
             'config': config,

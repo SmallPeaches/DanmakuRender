@@ -7,7 +7,7 @@ class DefaultEvents(BaseEvents):
     def __init__(self, name, config):
         super().__init__(name, config)
         self.state_dict = {}
-        self.ended_groups = []
+        self.ended_dict = {}
         self.logger = logging.getLogger('DMR')
 
     @property
@@ -29,6 +29,7 @@ class DefaultEvents(BaseEvents):
             target='downloader',
             event='newtask',
             data={
+                'dltype': self.config['download_args']['dltype'],
                 'taskname': self.name,
                 'config': self.config['download_args'],
             }
@@ -119,7 +120,7 @@ class DefaultEvents(BaseEvents):
             return
         
         if group_id in self.state_dict:
-            self.ended_groups.append(group_id)
+            self.ended_dict[group_id] = time.time()
         else:
             self.logger.debug(f'No such group:{group_id}.')
         
@@ -173,7 +174,7 @@ class DefaultEvents(BaseEvents):
                             ret_msgs.append(upload_msg)
         
         # 如果当前视频组已经被标记结束，检查是否有视频组完全准备好上传（用于非实时上传）
-        if group_id in self.ended_groups:
+        if group_id in self.ended_dict:
             # 遍历所有视频类型
             video_types = list(self.state_dict[group_id][-1].keys())
             for vtype in video_types:
@@ -286,7 +287,7 @@ class DefaultEvents(BaseEvents):
         if self.config['common_event_args'].get('auto_clean'):
             final_status = 'cleaned'
         
-        for group_id in self.ended_groups.copy():
+        for group_id in list(self.ended_dict.keys()):
             need_free = True
             for idx, video_state in enumerate(self.state_dict[group_id]):
                 for vtype, info in video_state.items():
@@ -296,13 +297,14 @@ class DefaultEvents(BaseEvents):
                 if not need_free: break
             if need_free:
                 self.logger.debug(f'视频组{group_id}处理完成，视频信息已被释放.')
-                self.ended_groups.remove(group_id)
+                self.ended_dict.pop(group_id)
                 self.state_dict.pop(group_id)
 
-        if len(self.state_dict) > 7:
-            group_id = list(self.state_dict.keys())[0]
-            self.logger.debug(f'视频组{group_id}超长，已被释放.')
-            self.state_dict.pop(group_id)
+        for group_id in list(self.ended_dict.keys()):
+            if time.time() - self.ended_dict[group_id] > 72*3600:
+                self.logger.debug(f'视频组{group_id}处理超时，视频信息将被释放.')
+                self.ended_dict.pop(group_id)
+                self.state_dict.pop(group_id)
 
     def onUploadEnd(self, message:PipeMessage):
         self.logger.info(f'{self.name}: {message.msg}.')
@@ -329,4 +331,4 @@ class DefaultEvents(BaseEvents):
     def onExit(self, *args, **kwargs) -> None:
         self.logger.info(f'{self.name}: 任务结束.')
         self.state_dict.clear()
-        self.ended_groups.clear()
+        self.ended_dict.clear()

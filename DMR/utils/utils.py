@@ -24,8 +24,15 @@ __all__ = [
     'BGR2RGB',
     'RGB2BGR',
     'uuid',
+    'get_platform',
 ]
 
+
+def get_platform(url:str) -> str:
+    if 'bilibili.com' in url:
+        return 'bilibili'
+    elif 'youtube.com' in url:
+        return 'youtube'
 
 def rename_safe(src:str, dst:str, retry:int=10):
     dst:str = dst
@@ -52,7 +59,7 @@ def rename_safe(src:str, dst:str, retry:int=10):
 
 def isvideo(path: str) -> bool:
     ext = path.split('.')[-1]
-    if ext in ['mp4', 'flv', 'ts', 'mkv']:
+    if ext in ['mp4', 'flv', 'ts', 'mkv', 'webm', 'm4v', 'mov', 'avi', 'mpg', 'mpeg','wmv']:
         return True
     else:
         return False

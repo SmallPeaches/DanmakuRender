@@ -23,101 +23,154 @@ downloader_kernel_args:
 
 # 默认下载参数
 download_args:
-  # 直播间链接
-  url: 'https://live.bilibili.com/29332'
-  # 录制输出文件夹，设置为空则使用主播名称作为文件夹
-  output_dir: ./直播回放
-  # 录制文件名称格式，可使用关键字替换，默认效果：飞天狙想要努力变胖-2023年3月1日20点30分，注意这里不能含有冒号，斜杠等非法字符！！
-  output_name: '{STREAMER.NAME}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
-  # 录播分段时间（秒），默认一个小时
-  segment: 3600
-  # 录制程序引擎，可选ffmpeg或者streamgears
-  # 在使用streamgears作为录制引擎时，录制视频格式可能会根据直播流的不同而不同
-  # 建议PC推流的直播使用ffmpeg录制，手机推流的直播使用streamgears录制
-  engine: ffmpeg
-  # 是否录制弹幕
-  danmaku: True
-  # 是否录制直播流
-  video: True
-  # 延迟下播计时（分钟）
-  # 使用这个功能可以把主播短暂下播又开播认定为同一场直播
-  stop_wait_time: 5
-  # 录制视频的格式，默认flv
-  vid_format: flv
-  # 直播流选项
-  stream_option:
-    # 直播流CDN
-    # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认tx
-    # 对于B站，可选特定的CDN域名前缀，例如 c1--cn-gotcha208
-    stream_cdn: ~
-    # 直播流类型，可选flv, hls，默认flv
-    # 暂时只对B站生效（部分情况下B站的flv流是不可用的，只能用hls）
-    stream_type: flv 
-    # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
-    # 如果希望不登录录制最低画质，请设置为'None'
-    bili_watch_cookies: .login_info/bili_watch_cookies.json
-  # 高级视频录制参数
-  # 请注意此参数随时可能删减，正常情况下不应该修改
-  advanced_video_args: 
-    # 默认分辨率，此选项用于在程序无法获取流分辨率时指定默认分辨率用于弹幕录制
-    default_resolution: [1920, 1080]
-    # 开播检测间隔，每隔这样一段时间检测一次是否开播
-    start_check_interval: 60
-    # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
-    stop_check_interval: 30
-    # ffmpeg取流参数(仅ffmpeg下载引擎生效)
-    ffmpeg_stream_args: [ '-rw_timeout','10000000',
-                          '-analyzeduration','15000000',
-                          '-probesize','50000000',
-                          '-thread_queue_size', '16']
-    # ffmpeg输出参数(仅ffmpeg下载引擎生效)
-    ffmpeg_output_args: [ '-movflags','faststart+frag_keyframe+empty_moov']
-    # 检测流变化(仅ffmpeg下载引擎生效)
-    check_stream_changes: false
-    # 禁用下载速度慢时自动重启(仅ffmpeg下载引擎生效)
-    disable_lowspeed_interrupt: false
+  # 直播录制
+  live:
+    # 直播间链接
+    url: ''
+    # 录制输出文件夹，设置为空则使用主播名称作为文件夹
+    output_dir: ./直播回放
+    # 录制文件名称格式，可使用关键字替换，默认效果：飞天狙想要努力变胖-2023年3月1日20点30分，注意这里不能含有冒号，斜杠等非法字符！！
+    output_name: '{STREAMER.NAME}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
+    # 录播分段时间（秒），默认一个小时
+    segment: 3600
+    # 录制程序引擎，可选ffmpeg或者streamgears
+    # 在使用streamgears作为录制引擎时，录制视频格式可能会根据直播流的不同而不同
+    # 建议PC推流的直播使用ffmpeg录制，手机推流的直播使用streamgears录制
+    engine: ffmpeg
+    # 是否录制弹幕
+    danmaku: True
+    # 是否录制直播流
+    video: True
+    # 延迟下播计时（分钟）
+    # 使用这个功能可以把主播短暂下播又开播认定为同一场直播
+    stop_wait_time: 5
+    # 录制视频的格式，默认flv
+    vid_format: flv
+    # 直播流选项
+    stream_option:
+      # 直播流CDN
+      # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认tx
+      # 对于B站，可选特定的CDN域名前缀，例如 c1--cn-gotcha208
+      stream_cdn: ~
+      # 直播流类型，可选flv, hls，默认flv
+      # 暂时只对B站生效（部分情况下B站的flv流是不可用的，只能用hls）
+      stream_type: flv 
+      # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
+      # 如果希望不登录录制最低画质，请设置为'None'
+      bili_watch_cookies: .login_info/bili_watch_cookies.json
+    # 高级视频录制参数
+    # 请注意此参数随时可能删减，正常情况下不应该修改
+    advanced_video_args: 
+      # 默认分辨率，此选项用于在程序无法获取流分辨率时指定默认分辨率用于弹幕录制
+      default_resolution: [1920, 1080]
+      # 开播检测间隔，每隔这样一段时间检测一次是否开播
+      start_check_interval: 60
+      # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
+      stop_check_interval: 30
+      # ffmpeg取流参数(仅ffmpeg下载引擎生效)
+      ffmpeg_stream_args: [ '-rw_timeout','10000000',
+                            '-analyzeduration','15000000',
+                            '-probesize','50000000',
+                            '-thread_queue_size', '16']
+      # ffmpeg输出参数(仅ffmpeg下载引擎生效)
+      ffmpeg_output_args: [ '-movflags','faststart+frag_keyframe+empty_moov']
+      # 检测流变化(仅ffmpeg下载引擎生效)
+      check_stream_changes: false
+      # 禁用下载速度慢时自动重启(仅ffmpeg下载引擎生效)
+      disable_lowspeed_interrupt: false
 
-  # 以下是弹幕录制参数
-  # 弹幕录制格式，只能选择ass
-  dm_format: ass 
-  # 弹幕上下间距（行距），设置为0-1的表示为视频宽度的倍数，设置为大于1的数表示像素，默认6
-  margin_h: 6
-  # 弹幕左右间距，设置为-1表示允许弹幕叠加，设置为0-1的表示间距为视频宽度的倍数，设置为大于1的数表示像素，默认0.05
-  # 实际上这个东西就是弹幕密度，弹幕左右间距越大密度越小
-  margin_w: 0.05
-  # 指定弹幕占屏幕的最大比例（即屏幕上半部分有多少可以用来显示弹幕），默认为0.4
-  dmrate: 0.4
-  # 指定弹幕字体，默认为微软雅黑字体(Microsoft YaHei)
-  font: Microsoft YaHei
-  # 指定弹幕字体大小，默认为36
-  fontsize: 36
-  # Distance from Screen Top 弹幕距离屏幕顶端的距离（像素，例如20，表示距离屏幕顶端20px）
-  dst: 20
-  # 指定单条弹幕持续时间（秒），默认为16
-  dmduration: 16
-  # 指定弹幕不透明度，默认为0.8
-  opacity: 0.8
-  # 使用自适应弹幕大小（会让把设置的弹幕大小按1080P标准缩放）
-  auto_fontsize: True
-  # 弹幕描边颜色(6位十六进制)
-  outlinecolor: 000000
-  # 弹幕描边宽度
-  outlinesize: 1.0
-  # 弹幕过滤规则，满足其中任意条件的弹幕将被过滤
-  dm_filter:
-    # 关键字过滤，只要有关键字的弹幕都会被过滤
-    # 例如：[菜, fw]
-    keywords: ~
-    # 用户名称过滤，只有用户名称完全与发弹幕的用户名相同才会过滤
-    # 此功能暂不生效
-    username: ~
-  # 高级弹幕录制参数
-  # 请注意此参数随时可能删减，正常情况下不应该修改
-  advanced_dm_args:
-    # 弹幕延迟补偿(秒)，将弹幕强行提前
-    dm_delay_fixed: 6
-    # 弹幕超时自动重启（秒），超过一段时间无弹幕会自动重启弹幕录制，0表示关闭
-    dm_auto_restart: 300
+    # 以下是弹幕录制参数
+    # 弹幕录制格式，只能选择ass
+    dm_format: ass 
+    # 弹幕上下间距（行距），设置为0-1的表示为视频宽度的倍数，设置为大于1的数表示像素，默认6
+    margin_h: 6
+    # 弹幕左右间距，设置为-1表示允许弹幕叠加，设置为0-1的表示间距为视频宽度的倍数，设置为大于1的数表示像素，默认0.05
+    # 实际上这个东西就是弹幕密度，弹幕左右间距越大密度越小
+    margin_w: 0.05
+    # 指定弹幕占屏幕的最大比例（即屏幕上半部分有多少可以用来显示弹幕），默认为0.4
+    dmrate: 0.4
+    # 指定弹幕字体，默认为微软雅黑字体(Microsoft YaHei)
+    font: Microsoft YaHei
+    # 指定弹幕字体大小，默认为36
+    fontsize: 36
+    # Distance from Screen Top 弹幕距离屏幕顶端的距离（像素，例如20，表示距离屏幕顶端20px）
+    dst: 20
+    # 指定单条弹幕持续时间（秒），默认为16
+    dmduration: 16
+    # 指定弹幕不透明度，默认为0.8
+    opacity: 0.8
+    # 使用自适应弹幕大小（会让把设置的弹幕大小按1080P标准缩放）
+    auto_fontsize: True
+    # 弹幕描边颜色(6位十六进制)
+    outlinecolor: 000000
+    # 弹幕描边宽度
+    outlinesize: 1.0
+    # 弹幕过滤规则，满足其中任意条件的弹幕将被过滤
+    dm_filter:
+      # 关键字过滤，只要有关键字的弹幕都会被过滤
+      # 例如：[菜, fw]
+      keywords: ~
+      # 用户名称过滤，只有用户名称完全与发弹幕的用户名相同才会过滤
+      # 此功能暂不生效
+      username: ~
+    # 高级弹幕录制参数
+    # 请注意此参数随时可能删减，正常情况下不应该修改
+    advanced_dm_args:
+      # 弹幕延迟补偿(秒)，将弹幕强行提前
+      dm_delay_fixed: 6
+      # 弹幕超时自动重启（秒），超过一段时间无弹幕会自动重启弹幕录制，0表示关闭
+      dm_auto_restart: 300
+  
+  # 视频下载
+  videos:
+    # 需要下载的视频链接
+    # 可以是UP主主页，播放列表，合集等
+    url: ''
+    # 录制输出文件夹
+    output_dir: ./视频下载
+    # 录制文件名称格式
+    # 默认为 视频标题.视频格式，例如：【2024LPL春季赛】2月7日 IG vs RNG.mp4
+    # 如果下载B站用户主页视频（https://space.bilibili.com/<mid> 格式的链接），则可以使用关键字替换，例如 {STREAMER.NAME}-{TITLE}
+    # 如果下载其他的B站视频，例如合集，播放列表等，则应该设置yutto的输出格式，例如 {title}/{name}
+    # 具体请参考 https://github.com/yutto-dev/yutto?tab=readme-ov-file#已支持的下载类型
+    # 如果使用yt-dlp下载其他平台的视频，应该使用yt-dlp的输出格式，例如 '%(title)s.%(ext)s'
+    # 具体请参考 https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#output-template
+    output_name: ~
+    # 下载引擎
+    # B站视频默认使用yutto，其他平台默认使用yt-dlp
+    engine: ~
+    # 视频质量，默认可用的最高画质
+    # 此参数将被直接传入下载引擎，具体可用值请参考相关文档
+    quality: ~
+    # 登录账号名称，程序依靠这个来识别不同的账号
+    # 下载B站时，不登录只能下载480P视频，登录但是不是大会员只能下1080P30的视频
+    # 其他平台暂不生效
+    account: bilibili
+    # 登录cookies路径
+    # 如果设置为空将会保存到./login_info/{ACCOUNT}.json
+    cookies: ~
+    # 下载视频的起始时间，设置格式为'YYYY-MM-DD HH:MM:SS'，例如'2024-01-01 00:00:00'
+    # 如果设置为空将从当前时间开始下载之后的新视频
+    # YouTube视频只能精确到天，例如设置为'2024-01-01 12:00:00'仍然会从0点开始下载
+    start_time: ~
+    # 下载视频的结束时间
+    # 一般情况下应该设置为空
+    end_time: ~
+    # 是否下载弹幕
+    # 仅对B站视频有效
+    danmaku: False
+    # 是否下载字幕
+    # 仅对B站视频有效，如果yt-dlp需要字幕请在extra_args中添加相应参数
+    subtitle: False
+    # 检测更新时长（秒），默认600
+    # 每隔这么长时间检测一次是否有新视频
+    check_interval: 600
+    # 下载超时时间（秒）
+    # 如果一次下载超过此时间没有结束，将会被强制终止
+    subprocess_timeout: 86400
+    # 附加参数列表
+    # 此参数将直接传入下载引擎，可以用来设置一些特殊的下载参数
+    extra_args: []
 
 # 渲染器核心参数
 render_kernel_args:

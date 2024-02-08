@@ -3,7 +3,6 @@ import os
 import queue
 import threading
 
-from .downloadtask import DownloadTask
 from DMR.utils import *
 
 class Downloader():
@@ -40,7 +39,9 @@ class Downloader():
                     if message.event == 'stoptask':
                         self.stoptask(message.data)
                     elif message.event == 'newtask':
-                        self.newtask(message.data['taskname'], message.data['config'])
+                        self.newtask(message)
+                    elif message.event == 'exit':
+                        break
             except Exception as e:
                 self.logger.error(f'Message:{message} raise an error.')
                 self.logger.exception(e)
@@ -53,11 +54,21 @@ class Downloader():
         else:
             raise ValueError(f'下载任务 {taskname} 不存在。')
         
-    def newtask(self, taskname:str, config:dict):
+    def newtask(self, message:PipeMessage):
+        taskname = message.data['taskname']
+        dltype = message.data['dltype']
+        config = message.data['config']
         if taskname in self.download_tasks:
             raise ValueError(f'下载任务 {taskname} 已存在。')
         
-        self.download_tasks[taskname] = DownloadTask(taskname=taskname, send_queue=self.send_queue, logger=self.logger, **config)
+        if dltype == 'live':
+            from .stream_downloader import StreamDownloadTask
+            downloader_task = StreamDownloadTask
+        elif dltype == 'videos':
+            from .video_downloader import VideoDownloadTask
+            downloader_task = VideoDownloadTask
+        
+        self.download_tasks[taskname] = downloader_task(taskname=taskname, send_queue=self.send_queue, **config)
         self.download_tasks[taskname].start()
         self._pipeSend(event='info', msg=f'下载任务 {taskname} 已启动。', dtype='str', data=taskname)
         
@@ -65,3 +76,11 @@ class Downloader():
         self.stoped = False
         self._piperecvprocess = threading.Thread(target=self._pipeRecvMonitor, daemon=True)
         self._piperecvprocess.start()
+
+    def stop(self):
+        self.stoped = True
+        self.recv_queue.put(PipeMessage(source='downloader', target='downloader', event='exit'))
+        for taskname in self.download_tasks:
+            self.stoptask(taskname)
+        self.logger.info('Downloader stoped.')
+        self._pipeSend(event='info', msg='下载器已停止.')

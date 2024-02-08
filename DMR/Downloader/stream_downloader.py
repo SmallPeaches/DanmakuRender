@@ -12,7 +12,7 @@ from DMR.LiveAPI import *
 from DMR.utils import *
 
 
-class DownloadTask():
+class StreamDownloadTask():
     def __init__(self, 
                  url, 
                  output_dir, 
@@ -39,7 +39,7 @@ class DownloadTask():
         self.output_format = output_format
         self.output_name = output_name
         self.send_queue = send_queue
-        self.logger = logging.getLogger('DMR.Downloader.DownloadTask')
+        self.logger = logging.getLogger(__name__)
         self.kwargs = kwargs
         self.debug = debug
         self.segment = segment

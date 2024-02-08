@@ -50,7 +50,10 @@ class Config():
             # self.replay_config[taskname] = replay_config
             common_args = _replay_config.get('common_event_args')
             replay_config['common_event_args'] = common_args.copy()
-            replay_config['download_args'] = self.global_config.get('download_args').copy()
+            
+            global_download_args = self.global_config['download_args']
+            dltype = _replay_config.get('download_args', {}).get('dltype')
+            replay_config['download_args'] = global_download_args[dltype].copy()
             if _replay_config.get('download_args'):
                 replay_config['download_args'].update(_replay_config.get('download_args'))
             
