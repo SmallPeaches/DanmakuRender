@@ -95,7 +95,7 @@ def replace_keywords(string:str, kw_info:dict=None, replace_invalid:bool=False):
         def __getitem__(self, _key):
             res = super().__getitem__(_key)
             if isinstance(res, str) and replace_invalid:
-                return replace_invalid(res)
+                return replace_invalid_chars(res)
             return res
         def __missing__(self, key:str):
             if key.lower() in self.keys():

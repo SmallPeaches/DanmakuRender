@@ -3,7 +3,7 @@ import logging
 import threading
 
 from typing import Tuple
-from .defaultevents import DefaultEvents
+from .liveevents import LiveEvents
 from ..utils import *
 
 
@@ -13,7 +13,7 @@ class ReplayTask():
         self.taskname = taskname
         self.config = config
         self.logger = logging.getLogger(__name__)
-        self.event_class = DefaultEvents(self.taskname, self.config)
+        self.event_class = LiveEvents(self.taskname, self.config)
         self._event_dict = {}
         self.stoped = True
 
@@ -47,7 +47,20 @@ class ReplayTask():
                             else:
                                 self.logger.error(f'Event:{event} return an unknown type of message.')
                     else:
-                        self.logger.info(f'Event:{event} is not registered at task:{self.taskname}.')
+                        if self._event_dict.get('default') is None:
+                            self.logger.info(f'Event:{event} is not registered at task:{self.taskname}.')
+                        else:
+                            for func in self._event_dict['default']:
+                                ret_msgs = func(msg)
+                                if not ret_msgs:
+                                    continue
+                                elif isinstance(ret_msgs, list):
+                                    for return_msg in ret_msgs:
+                                        self._pipeSend(return_msg)
+                                elif isinstance(ret_msgs, PipeMessage):
+                                    self._pipeSend(ret_msgs)
+                                else:
+                                    self.logger.error(f'Event:{event} return an unknown type of message.')
                     
                     if msg.event == 'exit':
                         self.logger.debug(f'Task:{self.taskname} recieved exit message.')
@@ -63,6 +76,9 @@ class ReplayTask():
         self._piperecvprocess.start()
 
         for event, trigger in self.event_class.event_dict.items():
+            if isinstance(trigger, (list, tuple, set)):
+                for func in trigger:
+                    self.add_event(event, func)
             self.add_event(event, trigger)
 
     def stop(self):

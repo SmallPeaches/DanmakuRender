@@ -3,7 +3,7 @@ import os
 from .baseevents import BaseEvents
 from ..utils import *
 
-class DefaultEvents(BaseEvents):
+class LiveEvents(BaseEvents):
     def __init__(self, name, config):
         super().__init__(name, config)
         self.state_dict = {}
@@ -14,14 +14,22 @@ class DefaultEvents(BaseEvents):
     def event_dict(self):
         return {
             'ready': self.onReady,
-            'downloader/livestart': self.onLiveStart, 
+            'exit': self.onExit,
+            'downloader/livestart': self.defaultEvent, 
             'downloader/livesegment': self.onLiveSegment,
             'downloader/liveend': self.onLiveEnd,
             'downloader/livestop': self.onLiveEnd,
             'render/end': self.onRenderEnd,
+            'render/error': self.defaultEvent,
             'uploader/end': self.onUploadEnd,
-            'cleaner/end': self.onCleanEnd,
+            'uploader/error': self.defaultEvent,
+            'cleaner/end': self.defaultEvent,
+            'cleaner/error': self.defaultEvent,
+            'default': self.defaultEvent,
         }
+    
+    def defaultEvent(self, message:PipeMessage):
+        self.logger.info(f'{self.name}: {message.msg}')
 
     def onReady(self, *args, **kwargs):
         return PipeMessage(
@@ -34,9 +42,6 @@ class DefaultEvents(BaseEvents):
                 'config': self.config['download_args'],
             }
         )
-    
-    def onLiveStart(self, message:PipeMessage):
-        self.logger.info(f'{self.name}: {message.msg}')
     
     def onLiveSegment(self, message:PipeMessage):
         self.logger.info(f'{self.name}: {message.msg}')
@@ -56,7 +61,8 @@ class DefaultEvents(BaseEvents):
         if self.config['common_event_args'].get('auto_transcode'):
             transcode_args = self.config['render_args']['transcode']
             if transcode_args.get('output_name'):
-                filename = replace_keywords(transcode_args['output_name'], video, replace_invalid=True)
+                filename = replace_keywords(transcode_args['output_name'], video, replace_invalid=True) + \
+                        f".{transcode_args.get('format','mp4')}"
             else:
                 filename = os.path.splitext(os.path.basename(video.path))[0] + \
                         f"（转码后）.{transcode_args.get('format','mp4')}"
@@ -88,7 +94,8 @@ class DefaultEvents(BaseEvents):
         if self.config['common_event_args'].get('auto_render'):
             render_args = self.config['render_args']['dmrender']
             if render_args.get('output_name'):
-                filename = replace_keywords(render_args['output_name'], video, replace_invalid=True)
+                filename = replace_keywords(render_args['output_name'], video, replace_invalid=True) + \
+                        f".{render_args.get('format','mp4')}"
             else:
                 filename = os.path.splitext(os.path.basename(video.path))[0] + \
                         f"（弹幕版）.{render_args.get('format','mp4')}"
@@ -331,9 +338,6 @@ class DefaultEvents(BaseEvents):
         
         return ret_msgs
 
-    def onCleanEnd(self, message:PipeMessage):
-        self.logger.info(f'{self.name}: {message.msg}.')
-    
     def onExit(self, *args, **kwargs) -> None:
         self.logger.info(f'{self.name}: 任务结束.')
         self.state_dict.clear()

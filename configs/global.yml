@@ -204,8 +204,6 @@ render_args:
     # 高级渲染参数
     # 请注意此参数随时可能删减，正常情况下不应该修改
     advanced_render_args:
-      # 指定输出帧率。此选项不同于'-r'，这里的帧率将直接作用在video filter上，默认保持原视频帧率
-      fps: ~
       # 直接定义video filter，这里的{DANMAKU}代表弹幕文件路径
       # 注意设置filter_complex之后将会禁用fps等其他有关filter的选项
       filter_complex: subtitles=filename='{DANMAKU}'

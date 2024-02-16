@@ -59,13 +59,10 @@ class DmRender(BaseRender):
         if self.advanced_render_args.get('filter_complex'):
             filter_name = '-filter_complex'
             filter_str = self.advanced_render_args.get('filter_complex')
-            filter_str = replace_keywords(filter_str, {'DANMAKU': danmaku})
+            filter_str = replace_keywords(filter_str, {'danmaku': danmaku})
         else:
             filter_name = '-vf'
             filter_str = 'subtitles=filename=\'%s\'' % danmaku
-            fps = self.advanced_render_args.get('fps')
-            if fps:
-                filter_str += ',fps=fps=%i' % int(fps)
         
         ffmpeg_args += [
             '-fflags', '+discardcorrupt',
