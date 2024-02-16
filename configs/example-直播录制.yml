@@ -19,7 +19,7 @@ download_args:
   # 录制输出文件夹，设置为空则使用主播名称作为文件夹
   output_dir: ./直播回放
   # 录制文件名称格式，可使用关键字替换，默认效果：飞天狙想要努力变胖-2023年3月1日20点30分，注意这里不能含有冒号，斜杠等非法字符！！
-  output_name: '{STREAMER.NAME}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
+  output_name: '{STREAMER.NAME}-{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日{CTIME.HOUR:02d}点{CTIME.MINUTE:02d}分'
   # 录播分段时间（秒），默认一个小时
   segment: 600
   # 录制程序引擎，可选ffmpeg或者streamgears
@@ -101,19 +101,19 @@ upload_args:
     cover: ''
     # 标题，可以使用关键字替换
     # 默认的例子：[飞天狙想要努力变胖/直播回放] 晚上七点半比赛 2023年2月24日 （带弹幕版）
-    title: '[{STREAMER.NAME}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日'
+    title: '[{STREAMER.NAME}/直播回放] {TITLE} {CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日'
     # 简介，可以使用关键字替换
     desc: |
       {STREAMER.NAME} 的直播回放
       标题：{TITLE} 
-      时间：{YEAR}年{MONTH}月{DAY}日 
+      时间：{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日
       直播地址：{STREAMER.URL} 
 
       ————————————
       由DanmakuRender录制：
       https://github.com/SmallPeaches/DanmakuRender
     # 动态内容，可以使用关键字替换
-    dynamic: '{STREAMER.NAME} 的直播回放，{YEAR}年{MONTH}月{DAY}日'
+    dynamic: '{STREAMER.NAME} 的直播回放，{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日'
     # 标签（一定要有！多个标签逗号分割）
     tag: '直播回放'
     # 延迟发布，单位秒，如果需要的话至少设置14400秒（4个小时）
@@ -154,19 +154,19 @@ upload_args:
     cover: ''
     # 标题，可以使用关键字替换
     # 默认的例子：[飞天狙想要努力变胖/直播回放] 晚上七点半比赛 2023年2月24日 （带弹幕版）
-    title: '[{STREAMER.NAME}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日'
+    title: '[{STREAMER.NAME}/直播回放] {TITLE} {CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日 (弹幕版)'
     # 简介，可以使用关键字替换
     desc: |
       {STREAMER.NAME} 的直播回放
       标题：{TITLE} 
-      时间：{YEAR}年{MONTH}月{DAY}日 
+      时间：{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日
       直播地址：{STREAMER.URL} 
 
       ————————————
       由DanmakuRender录制：
       https://github.com/SmallPeaches/DanmakuRender
     # 动态内容，可以使用关键字替换
-    dynamic: '{STREAMER.NAME} 的直播回放，{YEAR}年{MONTH}月{DAY}日'
+    dynamic: '{STREAMER.NAME} 的直播回放，{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日'
     # 标签（一定要有！多个标签逗号分割）
     tag: '直播回放'
     # 延迟发布，单位秒，如果需要的话至少设置14400秒（4个小时）

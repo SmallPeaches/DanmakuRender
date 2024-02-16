@@ -26,7 +26,7 @@ download_args:
     # 录制输出文件夹，设置为空则使用主播名称作为文件夹
     output_dir: ./直播回放
     # 录制文件名称格式，可使用关键字替换，默认效果：飞天狙想要努力变胖-2023年3月1日20点30分，注意这里不能含有冒号，斜杠等非法字符！！
-    output_name: '{STREAMER.NAME}-{YEAR}年{MONTH}月{DAY}日{HOUR}点{MINUTE}分'
+    output_name: '{STREAMER.NAME}-{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日{CTIME.HOUR:02d}点{CTIME.MINUTE:02d}分'
     # 录播分段时间（秒），默认一个小时
     segment: 3600
     # 录制程序引擎，可选ffmpeg或者streamgears
@@ -116,6 +116,10 @@ download_args:
       dm_delay_fixed: 6
       # 弹幕超时自动重启（秒），超过一段时间无弹幕会自动重启弹幕录制，0表示关闭
       dm_auto_restart: 300
+      # 额外弹幕流输入
+      # 部分主播可能同时在平台同时开播，可以用这个同时录制多个直播间的弹幕到一个视频
+      # 应该设置为一个列表（不包括原来录制的房间），例如：['https://live.bilibili.com/123456', 'https://live.bilibili.com/654321']
+      dm_extra_inputs: []
   
   # 视频下载
   videos:
@@ -178,9 +182,9 @@ render_kernel_args:
 render_args:
   # 弹幕渲染
   dmrender:
-    # 渲染输出文件夹，默认为在录制输出文件夹后面加上“带弹幕版”
+    # 渲染输出文件夹，默认为在录制输出文件夹后面加上“弹幕版”
     output_dir: ~
-    # 渲染文件名称，默认在录制文件后面加上“带弹幕版”
+    # 渲染文件名称，默认在录制文件后面加上“弹幕版”
     output_name: ~
     # 生成的视频文件格式，默认mp4
     format: mp4
@@ -201,15 +205,15 @@ render_args:
     # 请注意此参数随时可能删减，正常情况下不应该修改
     advanced_render_args:
       # 指定输出帧率。此选项不同于'-r'，这里的帧率将直接作用在video filter上，默认保持原视频帧率
-      fps: 0
+      fps: ~
       # 直接定义video filter，这里的{DANMAKU}代表弹幕文件路径
       # 注意设置filter_complex之后将会禁用fps等其他有关filter的选项
       filter_complex: subtitles=filename='{DANMAKU}'
   # 原视频转码
   transcode:
-    # 渲染输出文件夹，默认为在录制输出文件夹后面加上“带弹幕版”
+    # 渲染输出文件夹，默认为在录制输出文件夹后面加上“转码后”
     output_dir: ~
-    # 渲染文件名称，默认在录制文件后面加上“带弹幕版”
+    # 渲染文件名称，默认在录制文件后面加上“转码后”
     output_name: ~
     # 生成的视频文件格式，默认mp4
     format: mp4
@@ -228,12 +232,7 @@ render_args:
     output_resize: 1.5
     # 高级渲染参数
     # 请注意此参数随时可能删减，正常情况下不应该修改
-    advanced_render_args:
-      # 指定输出帧率。此选项不同于'-r'，这里的帧率将直接作用在video filter上，默认保持原视频帧率
-      fps: 0
-      # 直接定义video filter，这里的{DANMAKU}代表弹幕文件路径
-      # 注意设置filter_complex之后将会禁用fps等其他有关filter的选项
-      filter_complex: subtitles=filename='{DANMAKU}'
+    advanced_render_args: ~
   # 自定义ffmpeg调用
   rawffmpeg:
     # 输出文件类型，可选src_video或者dm_video
@@ -279,19 +278,19 @@ upload_args:
     cover: ''
     # 标题，可以使用关键字替换
     # 默认的例子：[飞天狙想要努力变胖/直播回放] 晚上七点半比赛 2023年2月24日 （带弹幕版）
-    title: '(录制测试)[{STREAMER.NAME}/直播回放] {TITLE} {YEAR}年{MONTH}月{DAY}日'
+    title: '[{STREAMER.NAME}/直播回放] {TITLE} {CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日'
     # 简介，可以使用关键字替换
     desc: |
       {STREAMER.NAME} 的直播回放
       标题：{TITLE} 
-      时间：{YEAR}年{MONTH}月{DAY}日 
+      时间：{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日
       直播地址：{STREAMER.URL} 
 
       ————————————
       由DanmakuRender录制：
       https://github.com/SmallPeaches/DanmakuRender
     # 动态内容，可以使用关键字替换
-    dynamic: '{STREAMER.NAME} 的直播回放，{YEAR}年{MONTH}月{DAY}日'
+    dynamic: '{STREAMER.NAME} 的直播回放，{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日'
     # 标签（一定要有！多个标签逗号分割）
     tag: '直播回放'
     # 延迟发布，单位秒，如果需要的话至少设置14400秒（4个小时）

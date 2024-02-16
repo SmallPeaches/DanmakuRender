@@ -17,7 +17,7 @@ Windows平台下的安装可以参考[B站专栏](https://www.bilibili.com/read/
 2. 下载DMR主程序    
 [点击这里下载](https://github.com/SmallPeaches/DanmakuRender/releases/latest)，选择下面的`Source code.zip`，下载完成之后解压即可。 
 
-新版本下载完成之后就已经可以运行了，程序会在第一次运行时自动安装FFmpeg等需要的组件，无需手动安装。这里仍然展示手动安装的步骤，供特殊情况下使用。
+下载完成之后就可以运行了，程序会在第一次运行时自动安装FFmpeg等需要的组件，无需手动安装。这里仍然展示手动安装的步骤，供特殊情况下使用。
 
 3. 安装Python包     
 打开命令行窗口（win10系统shift+右键点击页面空白处，在菜单中选择“在此处打开powershell窗口”，win11在页面右键选择“在终端中打开”），输入下面的命令安装Python包。    
@@ -43,7 +43,7 @@ sudo apt install python3.9
 2. 安装程序     
 安装release版本的方法类似Windows，安装测试版的话可以使用git命令安装：
 ```git
-git clone https://github.com/SmallPeaches/DanmakuRender.git
+git clone https://github.com/SmallPeaches/DanmakuRender.git -b v5
 ```
 
 3. 安装Python包     
@@ -64,5 +64,5 @@ sudo apt-get install ffmpeg
 
 ## 备注     
 - 如果需要使用硬件加速，请根据显卡类型自行前往官网下载最新的驱动程序，**渲染失败的最可能原因是没安装最新显卡驱动！**        
-- DMR录制斗鱼弹幕的功能目前无法工作在Python 3.10以上，如果有需要的话请使用Python 3.9版本，其他功能正常。        
+- DMR录制斗鱼弹幕的功能目前无法工作在Python 3.10以上，如果有需要的话请使用Python 3.9版本。        
 

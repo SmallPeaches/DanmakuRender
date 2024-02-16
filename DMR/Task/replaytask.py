@@ -12,7 +12,7 @@ class ReplayTask():
         self.send_queue, self.recv_queue = pipe
         self.taskname = taskname
         self.config = config
-        self.logger = logging.getLogger('DMR')
+        self.logger = logging.getLogger(__name__)
         self.event_class = DefaultEvents(self.taskname, self.config)
         self._event_dict = {}
         self.stoped = True

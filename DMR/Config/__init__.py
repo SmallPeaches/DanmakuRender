@@ -52,7 +52,7 @@ class Config():
             replay_config['common_event_args'] = common_args.copy()
             
             global_download_args = self.global_config['download_args']
-            dltype = _replay_config.get('download_args', {}).get('dltype')
+            dltype = _replay_config.get('download_args', {}).get('dltype', 'live')
             replay_config['download_args'] = global_download_args[dltype].copy()
             if _replay_config.get('download_args'):
                 replay_config['download_args'].update(_replay_config.get('download_args'))
@@ -64,10 +64,7 @@ class Config():
                         if _replay_config['render_args'].get(key):
                             replay_config['render_args'][key].update(_replay_config['render_args'].get(key))
                         else:
-                            if key in ['transcode', 'rawffmpeg']:
-                                replay_config['render_args'].pop(key)
-                            else:
-                                replay_config['render_args'][key].update(_replay_config['render_args'])
+                            replay_config['render_args'][key].update(_replay_config['render_args'])
 
             if common_args.get('auto_upload'):
                 global_upload_args = self.global_config['upload_args']

@@ -7,3 +7,6 @@ stream-gears
 protobuf>=4.23.2
 websocket-client
 brotli
+yt-dlp
+yutto
+easydict

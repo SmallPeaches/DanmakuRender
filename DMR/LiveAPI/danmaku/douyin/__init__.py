@@ -45,6 +45,7 @@ def build_request_url(url: str) -> str:
     return new_url
 
 class Douyin:
+    headers = douyin_cache.get_headers()
     heartbeat = b':\x02hb'
     heartbeatInterval = 10
 

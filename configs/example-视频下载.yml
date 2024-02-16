@@ -100,7 +100,7 @@ upload_args:
     desc: |
       原视频标题：{TITLE} 
       原视频链接：{URL}
-      原视频发布时间：{YEAR}年{MONTH}月{DAY}日 
+      原视频发布时间：{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日 
       {STREAMER.NAME}：{STREAMER.URL} 
 
       ————————————

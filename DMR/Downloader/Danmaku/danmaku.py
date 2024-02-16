@@ -32,6 +32,7 @@ class DanmakuDownloader():
         self.advanced_dm_args = advanced_dm_args
         self.dm_delay_fixed = self.advanced_dm_args.get('dm_delay_fixed', 6)
         self.dm_auto_restart = self.advanced_dm_args.get('dm_auto_restart', 300)
+        self.dm_extra_inputs = self.advanced_dm_args.get('dm_extra_inputs', [])
         try:
             dm_filter = dm_filter['keywords']
             if not dm_filter:
@@ -104,11 +105,13 @@ class DanmakuDownloader():
         return True
     
     def start_dmc(self):
-        async def danmu_monitor():
+        async def danmu_monitor(url:str=None):
+            if not url:
+                url = self.url  
             q = asyncio.Queue()
 
             async def dmc_task():
-                dmc = DanmakuClient(self.url, q)
+                dmc = DanmakuClient(url, q)
                 try:
                     await dmc.start()
                 except asyncio.CancelledError:
@@ -168,9 +171,12 @@ class DanmakuDownloader():
             except asyncio.CancelledError:
                 self.logger.debug("DMC task cancelled.")
 
+        danmu_monitor_sets = []
+        for url in [self.url] + self.dm_extra_inputs:
+            danmu_monitor_sets.append(danmu_monitor(url))
         new_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(new_loop)
-        asyncio.get_event_loop().run_until_complete(danmu_monitor())
+        asyncio.get_event_loop().run_until_complete(asyncio.gather(*danmu_monitor_sets))
 
     def stop(self):
         self.stoped = True

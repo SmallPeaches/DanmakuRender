@@ -57,7 +57,7 @@ if __name__ == '__main__':
     logger.info('正在启动测试...')
     dmr.start()
 
-    time.sleep(60)
+    time.sleep(180)
     for taskname, task in dmr.engine.task_dict.items():
         msg = PipeMessage(
             source='dryrun',

@@ -8,7 +8,7 @@ class DefaultEvents(BaseEvents):
         super().__init__(name, config)
         self.state_dict = {}
         self.ended_dict = {}
-        self.logger = logging.getLogger('DMR')
+        self.logger = logging.getLogger(__name__)
 
     @property
     def event_dict(self):
@@ -55,8 +55,11 @@ class DefaultEvents(BaseEvents):
         ret_msgs = []
         if self.config['common_event_args'].get('auto_transcode'):
             transcode_args = self.config['render_args']['transcode']
-            filename = os.path.splitext(os.path.basename(video.path))[0] + \
-                       f"（转码后）.{transcode_args.get('format','mp4')}"
+            if transcode_args.get('output_name'):
+                filename = replace_keywords(transcode_args['output_name'], video, replace_invalid=True)
+            else:
+                filename = os.path.splitext(os.path.basename(video.path))[0] + \
+                        f"（转码后）.{transcode_args.get('format','mp4')}"
             if transcode_args.get('output_dir'):
                 output_dir = transcode_args.get('output_dir')
             else:
@@ -84,8 +87,11 @@ class DefaultEvents(BaseEvents):
         
         if self.config['common_event_args'].get('auto_render'):
             render_args = self.config['render_args']['dmrender']
-            filename = os.path.splitext(os.path.basename(video.path))[0] + \
-                       f"（弹幕版）.{render_args.get('format','mp4')}"
+            if render_args.get('output_name'):
+                filename = replace_keywords(render_args['output_name'], video, replace_invalid=True)
+            else:
+                filename = os.path.splitext(os.path.basename(video.path))[0] + \
+                        f"（弹幕版）.{render_args.get('format','mp4')}"
             if render_args.get('output_dir'):
                 output_dir = render_args.get('output_dir')
             else:

@@ -54,9 +54,10 @@ class VideoDownloadTask():
             )
             self.send_queue.put(msg)
     
-    def _segment_callback(self, file_info:FileInfo):
+    def _segment_callback(self, file_info:VideoInfo):
         filepath = file_info.path
-        self._pipeSend(event='livesegment', msg=f'视频分段 {filepath} 录制完成.', target=f'replay/{self.taskname}', dtype='VideoInfo', data=file_info)
+        self._pipeSend(event='livesegment', msg=f'视频 {filepath} 录制完成.', target=f'replay/{self.taskname}', dtype='VideoInfo', data=file_info)
+        self._pipeSend(event='liveend', msg=f'视频 {filepath} 录制完成.', target=f'replay/{self.taskname}', dtype='str', data=file_info.group_id)
 
     def start_helper(self):
         if self.engine == 'yutto':

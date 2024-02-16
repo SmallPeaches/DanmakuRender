@@ -5,8 +5,8 @@ import time
 import re
 import os
 import glob
-import logging
 
+from easydict import EasyDict as edict
 from os.path import exists, abspath, splitext
 from uuid import uuid1
 from datetime import datetime
@@ -90,23 +90,38 @@ def split_url(url: str):
 def replace_keywords(string:str, kw_info:dict=None, replace_invalid:bool=False):
     if not kw_info:
         return string
+
+    class dict_wapper(edict):
+        def __getitem__(self, _key):
+            res = super().__getitem__(_key)
+            if isinstance(res, str) and replace_invalid:
+                return replace_invalid(res)
+            return res
+        def __missing__(self, key:str):
+            if key.lower() in self.keys():
+                return self[key.lower()]
+            return ''
+
+    def to_lower(match):
+        return match.group().lower()
+
+    string = re.sub(r'(?<!\{)\{.*?\}(?!\})', to_lower, string)
+    result = string.format_map(dict_wapper(kw_info))
     
-    tostr = replace_invalid_chars if replace_invalid else str
+    # for k, v in kw_info.items():
+    #     if isinstance(v, datetime):
+    #         for kw in ['year','month','day','hour','minute','second']:
+    #             if kw != 'year':
+    #                 string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)).zfill(2))
+    #             else:
+    #                 string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)))
+    #     elif isinstance(v, dict):
+    #         for kw in v.keys():
+    #             string = string.replace('{'+f'{k}.{kw}'.upper()+'}', tostr(v[kw]))
+    #     else:
+    #         string = string.replace('{'+f'{k}'.upper()+'}', tostr(v))
     
-    for k, v in kw_info.items():
-        if isinstance(v, datetime):
-            for kw in ['year','month','day','hour','minute','second']:
-                if kw != 'year':
-                    string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)).zfill(2))
-                else:
-                    string = string.replace('{'+f'{kw}'.upper()+'}', str(getattr(v,kw)))
-        elif isinstance(v, dict):
-            for kw in v.keys():
-                string = string.replace('{'+f'{k}.{kw}'.upper()+'}', tostr(v[kw]))
-        else:
-            string = string.replace('{'+f'{k}'.upper()+'}', tostr(v))
-    
-    return string
+    return result
 
 def replace_invalid_chars(string:str) -> str:
     return re.sub(r"[\\/:;.*?\"<>|]", "", str(string))
