@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 import subprocess
 import sys
 import os
@@ -13,26 +14,19 @@ from DMR.utils import *
 from DMR.LiveAPI import Onair
 
 
-class StreamgearsDownloader():
-    default_header = {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
-                            '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
-        }
+class StreamlinkDownloader():
     def __init__(self,  
-                 stream_url:str, 
                  output_dir:str,
                  segment:int,
                  url:str,
                  taskname:str,
+                 output_format:str,
                  debug=False,
-                 header:dict=None,
                  segment_callback=None,
                  **kwargs):
         
-        self.stream_url = stream_url
-        self.header = header if header else self.default_header
         self.output_dir = output_dir
+        self.output_format = output_format
         self.segment = segment
         self.debug = debug
         self.taskname = taskname
@@ -44,32 +38,37 @@ class StreamgearsDownloader():
         self.stoped = False
     
     def start_helper(self):
-        raw_name = join(self.output_dir, f'[正在录制]{self.taskname}-%Y%m%d%H%M%S-{self.uuid}')
-        stream_url, header = self.stream_url, self.header
+        raw_name = join(self.output_dir, f'[正在录制]{self.taskname}-{time.strftime("%Y%m%d%H%M%S",time.localtime())}-Part%03d-{self.uuid}.{self.output_format}')
 
-        streamgears_args = [
-            sys.executable, 
-            'DMR/Downloader/streamgears_wrapper.py',
-            '-i', stream_url,
-            '-o', raw_name, 
-            '-s', self.segment,
-            '--header', json.dumps(header),
+        port = random.randint(10000, 65535)
+        streamlink_args = [
+            "streamlink",
+            "--player-external-http",  # 为外部程序提供流媒体数据
+            "--twitch-disable-ads",                     # 去广告，去掉、跳过嵌入的广告流
+            "--twitch-disable-reruns",  # 如果该频道正在重放回放，不打开流
+            "--player-external-http-port", str(port),  # 对外部输出流的端口
+            self.url, "best"  # 流链接
         ]
-
-        streamgears_args = [str(x) for x in streamgears_args]
-        self.logger.debug(f'Stream-gears downloader args: {streamgears_args}')
-
-        if self.debug:
-            self.streamgears_proc = subprocess.Popen(streamgears_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT, bufsize=10**8)
-            self.streamgears_proc.wait()
-            return
+        ffmpeg_args = [
+            ToolsList.get('ffmpeg'),
+            "-i", f"http://localhost:{port}",
+            "-c", "copy",
+        ]
+        if self.segment:
+            ffmpeg_args += ['-f','segment',
+                            '-segment_time',str(self.segment),
+                            '-reset_timestamps','1',
+                            raw_name]
+        else:
+            ffmpeg_args += [raw_name]
 
         with tempfile.TemporaryFile() as logfile:
         # with open('.temp/test.log', 'wb') as logfile:
-            self.streamgears_proc = subprocess.Popen(streamgears_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT, bufsize=10**8)
+            self.streamlink_proc = subprocess.Popen(streamlink_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT)
+            self.ffmpeg_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT)
             self.lastfile = None
             while not self.stoped:
-                if self.streamgears_proc.poll() is not None:
+                if self.streamlink_proc.poll() is not None or self.ffmpeg_proc.poll() is not None:
                     break
 
                 files = sorted(glob.glob(join(self.output_dir, f'*{self.uuid}*')))
@@ -87,23 +86,27 @@ class StreamgearsDownloader():
             if not self.stoped and Onair(self.url):
                 logfile.seek(0)
                 log = logfile.read().decode('utf8', errors='ignore')
-                raise RuntimeError(f'{self.taskname} Stream-gears 异常退出 {log}.')
+                raise RuntimeError(f'{self.taskname} Streamlink 异常退出 {log}.')
 
     def start(self):
         # 生成一个uuid，用于标记这次录制的文件
-        self.uuid = uuid(16)
+        self.uuid = uuid(8)
         return self.start_helper()
     
     def stop(self):
         self.stoped = True
         try:
-            self.streamgears_proc.kill()
+            self.streamlink_proc.kill()
+            self.ffmpeg_proc.kill()
         except Exception as e:
             self.logger.debug(e)
         finally:
-            out, _ = self.streamgears_proc.communicate(timeout=0.1)
+            out, _ = self.streamlink_proc.communicate(timeout=0.1)
             if out: 
-                self.logger.debug(f'{self.taskname} streamgears: {out}')
+                self.logger.debug(f'{self.taskname} streamlink: {out}')
+            out, _ = self.ffmpeg_proc.communicate(timeout=0.1)
+            if out: 
+                self.logger.debug(f'{self.taskname} streamlink: {out}')
 
         files = sorted(glob.glob(join(self.output_dir, f'*{self.uuid}*')))
         try:
@@ -116,4 +119,4 @@ class StreamgearsDownloader():
                 self.lastfile = files[p]
                 self.segment_callback(self.lastfile)
         
-        self.logger.debug('Stream-gears downloader stoped.')
+        self.logger.debug('Streamlink downloader stoped.')

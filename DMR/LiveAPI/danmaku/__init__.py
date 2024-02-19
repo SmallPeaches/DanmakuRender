@@ -3,24 +3,37 @@ import logging
 import re, asyncio, aiohttp
 
 # from .youtube import Youtube
-# from .twitch import Twitch
-from .bilibili import Bilibili
-from .cc import CC
-from .douyu import Douyu
-from .huya import Huya
-from .douyin import Douyin
 from DMR.utils import *
 
 __all__ = ["DanmakuClient"]
 
 # 使用DMC的API，只实现了几个类方法
-site_class = {
-    'bilibili': Bilibili,
-    'douyu': Douyu, 
-    'huya': Huya,
-    'cc': CC,
-    'douyin': Douyin,
-}
+class site_class:
+    @staticmethod
+    def get(platform):
+        if platform == 'bilibili':
+            from .bilibili import Bilibili
+            return Bilibili
+        elif platform == 'douyu':
+            from .douyu import Douyu
+            return Douyu
+        elif platform == 'huya':
+            from .huya import Huya
+            return Huya
+        elif platform == 'cc':
+            from .cc import CC
+            return CC
+        elif platform == 'twitch':
+            from .twitch import Twitch
+            return Twitch
+        elif platform == 'douyin':
+            from .douyin import Douyin
+            return Douyin
+        elif platform == 'youtube':
+            from .youtube import Youtube
+            return Youtube
+        else:
+            raise NotImplementedError(f'Platform {platform} is not supported.')
 
 # 使用自建API，DMC会实例化这个类然后调用start方法启动
 site_class_v2 = {
@@ -51,7 +64,7 @@ class DanmakuClient:
 
     async def init_ws(self):
         ws_url, reg_datas = await self.__site_api.get_ws_info(self.__url)
-        self.__ws = await self.__hs.ws_connect(ws_url, headers=self.__site_api.headers)
+        self.__ws = await self.__hs.ws_connect(ws_url, headers=getattr(self.__site_api, 'headers', {}))
         for reg_data in reg_datas:
             if type(reg_data) == str:
                 await self.__ws.send_str(reg_data)

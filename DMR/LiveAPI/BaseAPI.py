@@ -24,7 +24,7 @@ class BaseAPI(ABC):
         pass
     
     def get_stream_url(self, **kwargs) -> str:
-        return random.choice(self.get_stream_urls(**kwargs))
+        return random.choice(self.get_stream_urls(**kwargs))['stream_url']
 
     @abstractmethod
     def get_stream_urls(self, **kwargs) -> list:

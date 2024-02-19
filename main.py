@@ -50,7 +50,7 @@ if __name__ == '__main__':
     if exists(log_file):
         _cnt = len(glob(splitext(log_file)[0] + '*'))
         log_file = splitext(log_file)[0] + f'({_cnt})' + splitext(log_file)[1]
-    file_handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1, backupCount=0, encoding='utf-8')
+    file_handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1, backupCount=3, encoding='utf-8')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter("[%(asctime)s][%(module)s][%(levelname)s]: %(message)s"))
     
@@ -67,8 +67,4 @@ if __name__ == '__main__':
             time.sleep(60)
     except KeyboardInterrupt:
         dmr.stop()
-            
-    
-
-
-    
+        exit(0)

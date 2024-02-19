@@ -10,3 +10,4 @@ brotli
 yt-dlp
 yutto
 easydict
+streamlink

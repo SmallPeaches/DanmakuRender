@@ -15,7 +15,7 @@ dmr_engine_args:
   # 是否动态更新配置文件
   dynamic_config: False
   # 动态更新的配置文件路径
-  dynmaic_config_path: ./configs
+  dynamic_config_path: ./configs
 
 # 默认下载参数
 download_args:
@@ -41,7 +41,7 @@ download_args:
     # 使用这个功能可以把主播短暂下播又开播认定为同一场直播
     stop_wait_time: 5
     # 录制视频的格式，默认flv
-    vid_format: flv
+    output_format: flv
     # 直播流选项
     stream_option:
       # 直播流CDN

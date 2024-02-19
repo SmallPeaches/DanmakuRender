@@ -33,7 +33,7 @@ download_args:
   # 使用这个功能可以把主播短暂下播又开播认定为同一场直播
   stop_wait_time: 5
   # 录制视频的格式，默认flv
-  vid_format: flv
+  output_format: flv
 
   # 以下是弹幕录制参数
   # 弹幕录制格式，只能选择ass

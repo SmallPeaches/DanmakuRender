@@ -117,7 +117,7 @@ class douyin(BaseAPI):
         return real_urls
     
     def get_stream_url(self, stream_type=None, **kwargs) -> str:
-        stream_type = stream_type or 'flv'
+        stream_type = 'flv'
         
         avail_urls = self.get_stream_urls()
         selected_urls = []

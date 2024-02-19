@@ -4,7 +4,6 @@ import yaml
 
 from typing import List
 from DMR.utils import *
-from DMR.LiveAPI import GetStreamerInfo, split_url, AVAILABLE_DANMU, AVAILABLE_LIVE
 
 # __all__ = ['Config', 'new_config']
 

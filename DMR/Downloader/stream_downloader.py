@@ -34,7 +34,7 @@ class StreamDownloadTask():
         self.taskname = taskname
         self.url = url
         self.plat, self.rid = split_url(url)
-        self.liveapi = LiveAPI(self.plat, self.rid)
+        self.liveapi = LiveAPI(url)
         self.output_dir = output_dir
         self.output_format = output_format
         self.output_name = output_name
@@ -57,6 +57,9 @@ class StreamDownloadTask():
         elif self.engine == 'streamgears':
             from .streamgears import StreamgearsDownloader
             self.download_class = StreamgearsDownloader
+        elif self.engine == 'streamlink':
+            from .streamlink import StreamlinkDownloader
+            self.download_class = StreamlinkDownloader
         else: 
             raise NotImplementedError(f'No Downloader Named {self.engine}.')
 
@@ -111,6 +114,8 @@ class StreamDownloadTask():
         if self.danmaku:
             newdmfile = splitext(newfile)[0]+'.'+self.kwargs.get('dm_format', 'ass')
             self.dmw.split(newdmfile)
+        else:
+            newdmfile = None
         
         video_info.path = newfile
         video_info.dm_file_id = newdmfile
@@ -232,6 +237,8 @@ class StreamDownloadTask():
                 live_end = False
                 self._pipeSend('livestart', '直播开始', dtype='str', data=self.sess_id)
                 self.start_once()
+                if self.liveapi.Onair():
+                    raise RuntimeError(f'{self.taskname} 录制异常退出.')
             except KeyboardInterrupt:
                 self.stop()
                 exit(0)

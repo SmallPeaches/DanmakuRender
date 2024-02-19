@@ -69,13 +69,16 @@ def concat_rid(plat: str, rid: str) -> str:
         url = f'https://live.{plat}.com/{str(rid)}'
     elif plat == 'cc':
         url = f'https://cc.163.com/{str(rid)}'
+    elif plat == 'twitch':
+        url = f'https://www.twitch.tv/{str(rid)}'
     else:
         url = f'https://www.{plat}.com/{str(rid)}'
     return url
 
 def split_url(url: str):
-    platform = re.findall(r'\.(.*).com/', url)[0]
-    rid = re.findall(r'\.com/([\w]*)', url)[0]
+    domain = re.search(r'(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)', url).group(1)
+    platform = domain.split('.')[-2]
+    rid = re.search(r'(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?[^:\/?\n]+\/([^\/\?\n]+)', url).group(1)
 
     if platform == 'douyu':
         try:

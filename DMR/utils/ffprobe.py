@@ -54,7 +54,9 @@ class FFprobe():
             '-print_format','json',
             '-show_format','-show_streams',
             '-v','quiet'
-            ])
+            ],
+            timeout=15,
+        )
         out = out.decode('utf8')
         res = json.loads(out)
         return res

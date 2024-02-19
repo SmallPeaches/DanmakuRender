@@ -123,7 +123,7 @@ class DMREngine():
 
     def stop(self):
         self.stoped = True
-        for taskname in self.task_dict.keys():
+        for taskname in list(self.task_dict.keys()):
             self.del_task(taskname)
         for name in self.plugin_dict.keys():
             try:
