@@ -21,6 +21,8 @@ class DanmakuRender():
 
     def start(self):
         self.stoped = False
+        os.makedirs('.temp', exist_ok=True)
+        
         self.logger.debug(f'Global Config:\n{json.dumps(self.config.global_config, indent=4, ensure_ascii=False)}')
         self.logger.debug(f'Replay Config:\n{json.dumps(self.config.replay_config, indent=4, ensure_ascii=False)}')
         self.engine.start()
