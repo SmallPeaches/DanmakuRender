@@ -10,6 +10,8 @@ from datetime import datetime
 from os.path import splitext, split, join, exists
 import tempfile
 import time
+
+import requests
 from DMR.utils import *
 from DMR.LiveAPI import Onair
 
@@ -65,6 +67,13 @@ class StreamlinkDownloader():
         with tempfile.TemporaryFile() as logfile:
         # with open('.temp/test.log', 'wb') as logfile:
             self.streamlink_proc = subprocess.Popen(streamlink_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT)
+            # 等待streamlink流开始
+            try:
+                resp = requests.get(f'http://localhost:{port}', stream=True, timeout=15)
+                resp.raise_for_status()
+            except Exception as e:
+                self.logger.warning(f'{self.taskname} streamlink启动失败: {e}, 可能导致录制错误.')
+                
             self.ffmpeg_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT)
             self.lastfile = None
             while not self.stoped:

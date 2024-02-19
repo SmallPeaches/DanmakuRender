@@ -56,7 +56,7 @@ class Config():
             if _replay_config.get('download_args'):
                 replay_config['download_args'].update(_replay_config.get('download_args'))
             
-            if common_args.get('auto_render'):
+            if common_args.get('auto_render') or common_args.get('auto_transcode'):
                 replay_config['render_args'] = self.global_config['render_args'].copy()
                 if _replay_config.get('render_args'):
                     for key in self.global_config['render_args'].keys():

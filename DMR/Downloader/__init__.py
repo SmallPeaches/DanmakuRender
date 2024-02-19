@@ -80,7 +80,7 @@ class Downloader():
     def stop(self):
         self.stoped = True
         self.recv_queue.put(PipeMessage(source='downloader', target='downloader', event='exit'))
-        for taskname in self.download_tasks:
+        for taskname in list(self.download_tasks.keys()):
             self.stoptask(taskname)
         self.logger.info('Downloader stoped.')
         self._pipeSend(event='info', msg='下载器已停止.')

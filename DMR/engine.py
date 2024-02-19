@@ -25,6 +25,9 @@ class DMREngine():
             self.recv_queue.put(message)
         elif target.startswith('replay/'):
             taskname = target.split('/')[1]
+            if taskname not in self.task_dict:
+                self.logger.error(f'Task {taskname} not exists.')
+                return
             self.task_dict[taskname]['send_queue'].put(message)
         elif target == 'render':
             self.plugin_dict['render']['send_queue'].put(message)
