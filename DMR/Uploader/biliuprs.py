@@ -174,8 +174,13 @@ class biliuprs():
 
         if config.get('title'):
             config['title'] = replace_keywords(config['title'], video_info, replace_invalid=replace_invalid)
+            if len(config['title']) > 80:
+                config['title'] = config['title'][:80]
+                self.logger.warn(f'视频标题超过80字符，已自动截取为: {config["title"]}.')
         if config.get('desc'):
             config['desc'] = replace_keywords(config['desc'], video_info, replace_invalid=replace_invalid)
+            if len(config['desc']) > 250:
+                self.logger.warn(f'视频简介超过250字符，可能导致实时上传失败.')
         if config.get('dynamic'):
             config['dynamic'] = replace_keywords(config['dynamic'], video_info, replace_invalid=replace_invalid)
         if config.get('tag'):
@@ -201,7 +206,9 @@ class biliuprs():
             
         return config
     
-    def upload(self, files:list[VideoInfo], upload_group=None, **kwargs):
+    def upload(self, files:list[VideoInfo], **kwargs):
+        if not isinstance(files, list):
+            files = [files]
         config = self.format_config(kwargs, files[0])
 
         if self._upload_lock.locked():
@@ -230,6 +237,3 @@ class biliuprs():
             self.logger.debug(out)
         except Exception as e:
             self.logger.debug(e)
-
-        
-

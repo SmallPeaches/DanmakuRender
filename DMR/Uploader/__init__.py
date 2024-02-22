@@ -61,7 +61,7 @@ class Uploader():
             for upload_group in list(self._uploader_pool.keys()):
                 expire = self._uploader_pool[upload_group]['expire']
                 if expire > 0 and time.time() - self._uploader_pool[upload_group]['ctime'] > expire:
-                    self._uploader_pool[upload_group].stop()
+                    self._uploader_pool[upload_group]['class'].stop()
                     self._uploader_pool.pop(upload_group)
 
     def add_task(self, msg:PipeMessage):
@@ -148,7 +148,7 @@ class Uploader():
                 if status:
                     break
                 else:
-                    self.logger.warn(f'上传 {files} 时出现错误，即将重传.')
+                    self.logger.warn(f'上传 {[f.path for f in files]} 时出现错误，即将重传.')
                     self.logger.debug(info)
                     time.sleep(60)
                     retry -= 1

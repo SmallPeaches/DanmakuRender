@@ -51,6 +51,7 @@ class StreamlinkDownloader():
             "--player-external-http-port", str(port),  # 对外部输出流的端口
             self.url, "best"  # 流链接
         ]
+        self.logger.debug(f'{self.taskname} streamlink args: {streamlink_args}')
         ffmpeg_args = [
             ToolsList.get('ffmpeg'),
             "-i", f"http://localhost:{port}",
@@ -63,16 +64,13 @@ class StreamlinkDownloader():
                             raw_name]
         else:
             ffmpeg_args += [raw_name]
+        self.logger.debug(f'{self.taskname} ffmpeg args: {ffmpeg_args}')
 
         with tempfile.TemporaryFile() as logfile:
         # with open('.temp/test.log', 'wb') as logfile:
             self.streamlink_proc = subprocess.Popen(streamlink_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT)
             # 等待streamlink流开始
-            try:
-                resp = requests.get(f'http://localhost:{port}', stream=True, timeout=15)
-                resp.raise_for_status()
-            except Exception as e:
-                self.logger.warning(f'{self.taskname} streamlink启动失败: {e}, 可能导致录制错误.')
+            time.sleep(5)
                 
             self.ffmpeg_proc = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT)
             self.lastfile = None
