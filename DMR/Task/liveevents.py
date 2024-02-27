@@ -342,3 +342,9 @@ class LiveEvents(BaseEvents):
         self.logger.info(f'{self.name}: 任务结束.')
         self.state_dict.clear()
         self.ended_dict.clear()
+        return PipeMessage(
+            source=self.name,
+            target='downloader',
+            event='stoptask',
+            data=self.name,
+        )

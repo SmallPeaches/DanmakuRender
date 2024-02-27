@@ -118,7 +118,7 @@ class DMREngine():
     def del_task(self, taskname):
         if taskname in self.task_dict:
             self.pipeSend(PipeMessage('engine', f'replay/{taskname}', 'exit'))
-            self.task_dict[taskname]['class'].stop()
+            # self.task_dict[taskname]['class'].stop()
             del self.task_dict[taskname]
             self.logger.debug(f'Task {taskname} deleted.')
         else:

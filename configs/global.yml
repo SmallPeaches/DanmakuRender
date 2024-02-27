@@ -13,7 +13,7 @@ dmr_engine_args:
   # 选择组件
   enabled_plugins: ['downloader', 'render', 'uploader', 'cleaner']
   # 是否动态更新配置文件
-  dynamic_config: False
+  dynamic_config: True
   # 动态更新的配置文件路径
   dynamic_config_path: ./configs
 
