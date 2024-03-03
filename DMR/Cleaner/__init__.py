@@ -108,7 +108,7 @@ class Cleaner():
                     elif method == 'delete':
                         from .delete import delete
                         delete.delete(f)
-                    elif method == 'cmd':
+                    elif method == 'custom':
                         from ..utils import runcmd
                         cmds = [replace_keywords(str(x), file) for x in clean_args.get('command')]
                         wait = clean_args.get('wait', True)

@@ -267,7 +267,7 @@ class LiveEvents(BaseEvents):
                             for arg in clean_arg:
                                 files = [info['file']]
                                 # 判断是否需要清理源文件
-                                if vtype == 'dm_video' and arg.get('w_srcfile', True) == False:
+                                if vtype == 'dm_video' and arg.get('w_srcfile', False) == True and video_state['src_video']['file'] is not None:
                                     files.append(video_state['src_video']['file'])
                                     self.state_dict[group_id][idx]['src_video']['status'] = 'cleaned'
                                 # 判断是否需要清理源文件（转码前）
