@@ -60,6 +60,9 @@ class StreamDownloadTask():
         elif self.engine == 'streamlink':
             from .streamlink import StreamlinkDownloader
             self.download_class = StreamlinkDownloader
+        elif self.engine == 'pyrequests':
+            from .pyrequests import PyRequestsDownloader
+            self.download_class = PyRequestsDownloader
         else: 
             raise NotImplementedError(f'No Downloader Named {self.engine}.')
 
