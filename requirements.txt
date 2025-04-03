@@ -12,3 +12,4 @@ yt-dlp
 yutto
 easydict
 streamlink
+m3u8
