@@ -224,7 +224,7 @@ class PyRequestsDownloader:
             except Exception as e:
                 done, _ = wait(self.future_to_segid, timeout=1, return_when=FIRST_COMPLETED)
                 finished_segid_to_future = {self.future_to_segid[fut]: fut for fut in done}
-                with open(self.video_file, 'wb') as video_file:
+                with open(self.video_file, 'ab') as video_file:
                     while self.next_segid in finished_segid_to_future:
                         future = finished_segid_to_future[self.next_segid]
                         result = future.result()
