@@ -155,13 +155,13 @@ class StreamDownloadTask():
         stream_url = self.liveapi.GetStreamURL(**self.stream_option)
         stream_request_header = self.liveapi.GetStreamHeader()
         width, height = FFprobe.get_resolution(stream_url, stream_request_header)
-        # 斗鱼的直播地址只能用一次，所以要重新获取
-        if self.plat == 'douyu':
+        # 斗鱼和虎牙的直播地址只能用一次，所以要重新获取
+        if self.plat == 'douyu' or self.plat == 'huya':
             stream_url = self.liveapi.GetStreamURL(**self.stream_option)
 
         if not (width and height):
             default_resolution = self.advanced_video_args.get('default_resolution', (1920, 1080))
-            self.logger.warn(f'无法获取视频大小，使用默认值 {default_resolution}.')
+            self.logger.warning(f'无法获取视频大小，使用默认值 {default_resolution}.')
             width, height = default_resolution
         
         self.width,self.height = width, height
