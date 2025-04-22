@@ -43,7 +43,9 @@ class bilibili(BaseAPI):
             else:
                 return False
 
-    def get_stream_urls(self, bili_watch_cookies=None, **kwargs) -> dict:
+    def get_stream_urls(self,
+                        bili_watch_cookies=None,
+                        **kwargs) -> dict:
         bili_watch_cookies = bili_watch_cookies or '.login_info/.bili_watch_cookies.json'
         watch_cookies = {}
         if bili_watch_cookies.lower() != 'none':
@@ -69,7 +71,7 @@ class bilibili(BaseAPI):
             'platform': 'html5',
             'protocol': '0,1',
             'format': '0,1,2',
-            'codec': '0,1,2',   # 0:flv, 1:hevc, 2:av1
+            'codec': '0,1,2',   # 0:avc, 1:hevc, 2:av1
             'qn': 20000,
             'ptype': 8,
             'dolby': 5,
@@ -108,20 +110,23 @@ class bilibili(BaseAPI):
                        stream_type=None,
                        quality=None,
                        **kwargs) -> str:
-        stream_type = stream_type or 'flv'
-        quality = quality or 'best'
         avail_urls = self.get_stream_urls(**kwargs)
 
         # 有可能返回的流存在多种质量，因为H.265和H.264压缩策略不同
         max_quality = max(avail_urls, key=lambda x: x['quality'])['quality']
         avail_urls = [max_res_urls for max_res_urls in avail_urls if max_res_urls['quality'] == max_quality]
 
-        # 当设置为best时，尽可能找到URL里面不带bluray字样的原画流
-        # 这些流的区别从quality里面看不出来
-        if quality == 'best':
-            best_urls = [best_urls for best_urls in avail_urls if not re.search(r'live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z]{1,10}', best_urls['stream_url'])]
-            if best_urls:
-                avail_urls = best_urls
+        # 找出URL里面不带bluray字样的原画流
+        best_urls = [best_urls for best_urls in avail_urls if not re.search(r'live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z]{1,10}', best_urls['stream_url'])]
+        if best_urls:
+            avail_urls = best_urls
+
+        # 如果没有指定cdn和流类型，并且没有找到原画流，则使用fmp4流用于强制原画
+        if not stream_cdn and not stream_type and not best_urls:
+            stream_cdn = '.*gotcha.*'
+            stream_type = 'fmp4'
+        else:
+            stream_type = 'fmp4' if stream_type == 'hls' else 'flv'
 
         selected_urls = []
         for url_info in avail_urls:
@@ -133,7 +138,7 @@ class bilibili(BaseAPI):
                 continue
             uri = url_info['stream_url']
             selected_urls.append(uri)
-        
+
         if not selected_urls:
             logger.warning(f'Bilibili{self.rid}没有满足 {stream_cdn},{stream_type} 的流，将使用默认选项.')
             return random.choice(avail_urls)['stream_url']
@@ -167,5 +172,5 @@ class bilibili(BaseAPI):
         return self.header
 
 if __name__ == '__main__':
-    api = bilibili('25803826')    
+    api = bilibili('13308358')    
     print(api.get_stream_url()) 

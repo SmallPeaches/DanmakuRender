@@ -28,12 +28,13 @@ download_args:
     # 直播间链接
     # 请填写标准格式链接，例如：https://live.bilibili.com/123456
     url: 
-    # 录制程序引擎，可选ffmpeg, streamgears 或者 streamlink
-    # 在使用streamgears作为录制引擎时，录制视频格式可能会根据直播流的不同而不同
+    # 录制程序引擎，可选ffmpeg, streamgears, pyrequests 或者 streamlink
+    # 在使用streamgears作为录制引擎时不支持录制B站hls流
     # 建议PC推流的直播使用ffmpeg录制，手机推流的直播使用streamgears录制
     # 录制twitch等特殊平台建议使用streamlink
     # streamlink可用平台请参考 https://streamlink.github.io/plugins.html
-    engine: streamgears
+    # 默认为auto，由程序自动选择
+    engine: auto
     # 录制输出文件夹，设置为空则使用主播名称作为文件夹
     output_dir: ./直播回放
     # 录制文件名称模板
@@ -51,14 +52,19 @@ download_args:
     # 使用这个功能可以把主播短暂下播又开播认定为同一场直播
     stop_wait_time: 120
     # 直播流选项
+    # 使用streamlink录制时不生效
     stream_option:
       # 直播流CDN
-      # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认tx
-      # 对于B站，可选特定的CDN域名前缀，例如 c1--cn-gotcha208
+      # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写
+      # 对于B站，可选特定的CDN域名前缀，例如：c1--cn-gotcha208
+      # 或者正则匹配特定CDN，例如：.*cn-gotcha.*
+      # 默认为空，由程序随机选择可用cdn
       stream_cdn: ~
-      # 直播流类型，可选flv, hls，默认flv
-      # 暂时只对B站生效（部分情况下B站的flv流是不可用的，只能用hls）
-      stream_type: flv 
+      # 直播流类型（暂时只对B站生效）可选flv，hls，avc，hevc，av1
+      # 注意hls流无法使用streamgears录制
+      # 如果需要同时指定codec类型，请使用'type-codec'的格式，例如：flv-avc
+      # 默认为空，由程序自动选择
+      stream_type: ~
       # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
       # 如果希望不登录录制最低画质，请设置为'None'
       bili_watch_cookies: .login_info/bili_watch_cookies.json
@@ -70,7 +76,9 @@ download_args:
       # 开播检测间隔，每隔这段时间检测一次是否开播
       start_check_interval: 60
       # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
-      stop_check_interval: 30
+      stop_check_interval: 60
+      # 录制组编号，可用于多任务协同，详情请参考文档
+      group_id: ~
       # ffmpeg取流参数(仅ffmpeg下载引擎生效)
       ffmpeg_stream_args: [ '-rw_timeout','10000000',
                             '-analyzeduration','15000000',
@@ -130,7 +138,7 @@ download_args:
       # 用户名称过滤，只有用户名称完全与发弹幕的用户名相同才会过滤
       # 例如：[虎牙小助手, TwitchBot]
       username: ~
-      # 最长弹幕长度，超过此长度的弹幕将被过滤
+      # 最长弹幕长度，超过此长度的弹幕将被过滤，0表示不限制
       max_length: 0
     # 弹幕模板
     dm_template:
@@ -149,7 +157,7 @@ download_args:
       dm_extra_inputs: []
       # 弹幕文件最小录制时间（秒），小于此录制时间的弹幕文件将被删除
       # 此功能可用于删除因为录制错误导致的许多空弹幕文件
-      dm_file_min_time: 10
+      dm_file_min_time: 30
   
   # 视频下载
   videos:
@@ -360,10 +368,11 @@ upload_args:
     timeout: 0
     # 实时上传（边录边传），每录制一个分段上传一次，youtube默认关闭
     realtime: False
-    # 是否合并视频（此功能暂不生效）
+    # 是否合并视频
     # 如果设置为True，那么会把所有分段视频合并成一个视频再上传，默认True
     # 使用实时上传时此功能不生效
     # 强烈建议关闭实时上传，并启动合并视频再上传，因为YouTube API默认每天只能上传6个视频
+    # 使用此功能请确保延迟下播时间设置较短，否则不同分辨率的视频合并会导致上传失败
     concat_video: True
     # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认120s
     min_length: 120
@@ -456,3 +465,6 @@ clean_args:
     delay: 0
     w_srcfile: False
     w_srcpre: True
+
+webservice_kernel_args:
+  web_api: True

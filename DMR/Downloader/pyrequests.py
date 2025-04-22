@@ -167,6 +167,10 @@ class PyRequestsDownloader:
                             continue
                         if self.force_origin:
                             seg_uri = self._convert2origin(seg_uri)
+                        
+                        # 过多的下载任务会导致内存溢出
+                        if len(self.future_to_segid) > 30:
+                            raise RuntimeError('Too many segments downloading.')
 
                         future = self.download_executor.submit(self._download_segment, seg_uri)
                         self.future_to_segid[future] = self.segid
@@ -247,4 +251,5 @@ class PyRequestsDownloader:
     
     def stop(self):
         self.stoped = True
+        self.download_executor.shutdown(wait=False)
         self.logger.debug('Pyrequests downloader stoped.')

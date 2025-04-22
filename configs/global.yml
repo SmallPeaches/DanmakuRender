@@ -24,12 +24,13 @@ download_args:
     # 直播间链接
     # 请填写标准格式链接，例如：https://live.bilibili.com/123456
     url: 
-    # 录制程序引擎，可选ffmpeg, streamgears 或者 streamlink
+    # 录制程序引擎，可选ffmpeg, streamgears, pyrequests 或者 streamlink
     # 在使用streamgears作为录制引擎时不支持录制B站hls流
     # 建议PC推流的直播使用ffmpeg录制，手机推流的直播使用streamgears录制
     # 录制twitch等特殊平台建议使用streamlink
     # streamlink可用平台请参考 https://streamlink.github.io/plugins.html
-    engine: streamgears
+    # 默认为auto，由程序自动选择
+    engine: auto
     # 录制输出文件夹，设置为空则使用主播名称作为文件夹
     output_dir: ./直播回放
     # 录制文件名称模板
@@ -50,14 +51,16 @@ download_args:
     # 使用streamlink录制时不生效
     stream_option:
       # 直播流CDN
-      # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认tx
+      # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写
       # 对于B站，可选特定的CDN域名前缀，例如：c1--cn-gotcha208
       # 或者正则匹配特定CDN，例如：.*cn-gotcha.*
+      # 默认为空，由程序随机选择可用cdn
       stream_cdn: ~
-      # 直播流类型（暂时只对B站生效）可选flv，fmp4，ts，avc，hevc，av1，默认flv
-      # 注意fmp4，ts等hls流无法使用streamgears录制
+      # 直播流类型（暂时只对B站生效）可选flv，hls，avc，hevc，av1
+      # 注意hls流无法使用streamgears录制
       # 如果需要同时指定codec类型，请使用'type-codec'的格式，例如：flv-avc
-      stream_type: flv
+      # 默认为空，由程序自动选择
+      stream_type: ~
       # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
       # 如果希望不登录录制最低画质，请设置为'None'
       bili_watch_cookies: .login_info/bili_watch_cookies.json
@@ -69,7 +72,7 @@ download_args:
       # 开播检测间隔，每隔这段时间检测一次是否开播
       start_check_interval: 60
       # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
-      stop_check_interval: 30
+      stop_check_interval: 60
       # 录制组编号，可用于多任务协同，详情请参考文档
       group_id: ~
       # ffmpeg取流参数(仅ffmpeg下载引擎生效)
@@ -150,7 +153,7 @@ download_args:
       dm_extra_inputs: []
       # 弹幕文件最小录制时间（秒），小于此录制时间的弹幕文件将被删除
       # 此功能可用于删除因为录制错误导致的许多空弹幕文件
-      dm_file_min_time: 10
+      dm_file_min_time: 30
   
   # 视频下载
   videos:
@@ -454,3 +457,6 @@ clean_args:
     delay: 0
     w_srcfile: False
     w_srcpre: True
+
+webservice_kernel_args:
+  web_api: True

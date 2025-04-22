@@ -7,6 +7,7 @@ from .Downloader import Downloader
 from .Render import Render
 from .Uploader import Uploader
 from .Task import ReplayTask
+from .WebService import WebService
 from .utils import *
 
 
@@ -48,6 +49,10 @@ class DMREngine():
                 if message.target == 'engine':
                     if message.event == 'info':
                         self.logger.info(message.msg)
+                    elif message.event == 'addtask':
+                        self.add_task(message.data['taskname'], message.data['config'])
+                    elif message.event == 'deltask':
+                        self.del_task(message.data)
                 else:
                     self.pipeSend(message)
             except Exception as e:
@@ -84,6 +89,8 @@ class DMREngine():
             plugin = Cleaner((self.recv_queue, send_queue), **config)
         elif name == 'downloader':
             plugin = Downloader((self.recv_queue, send_queue), **config)
+        elif name == 'webservice':
+            plugin = WebService((self.recv_queue, send_queue), **config)
         else:
             self.logger.error(f'Unknown plugin {name}.')
             # raise Exception(f'Unknown plugin {name}.')

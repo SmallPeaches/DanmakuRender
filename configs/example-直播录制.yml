@@ -26,7 +26,7 @@ download_args:
   # 在使用streamgears作为录制引擎时不支持录制B站hls流
   # 建议PC推流的直播使用ffmpeg录制，手机推流的直播使用streamgears录制
   # 录制twitch等特殊平台建议使用streamlink
-  engine: streamgears
+  engine: auto
   # 是否录制弹幕
   danmaku: True
   # 是否录制直播流

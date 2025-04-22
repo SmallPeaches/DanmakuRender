@@ -47,23 +47,11 @@ class StreamDownloadTask():
         self.video = video
         self.stream_option = stream_option
         self.stop_wait_time = stop_wait_time
-        self.engine = engine
+        self.engine = engine or 'auto'
         self.advanced_video_args = advanced_video_args if advanced_video_args else {}
         self.advanced_dm_args = advanced_dm_args if advanced_dm_args else {}
 
-        if self.engine == 'ffmpeg':
-            from .ffmpeg import FFmpegDownloader
-            self.download_class = FFmpegDownloader
-        elif self.engine == 'streamgears':
-            from .streamgears import StreamgearsDownloader
-            self.download_class = StreamgearsDownloader
-        elif self.engine == 'streamlink':
-            from .streamlink import StreamlinkDownloader
-            self.download_class = StreamlinkDownloader
-        elif self.engine == 'pyrequests':
-            from .pyrequests import PyRequestsDownloader
-            self.download_class = PyRequestsDownloader
-        else: 
+        if self.engine not in ['ffmpeg', 'streamlink', 'streamgears', 'pyrequests', 'auto']:
             raise NotImplementedError(f'No Downloader Named {self.engine}.')
 
         os.makedirs(self.output_dir,exist_ok=True)
@@ -147,7 +135,7 @@ class StreamDownloadTask():
         self.room_info = retry_safe(self.liveapi.GetRoomInfo)
         self.streamer_info = retry_safe(self.liveapi.GetStreamerInfo)
         if not(self.room_info and self.streamer_info):
-            raise RuntimeError(f'获取主播信息出现错误.')
+            raise RuntimeError(f'{self.taskname}: 获取主播信息出现错误.')
         
         self.segment_start_time = datetime.now()
         os.makedirs(self.output_dir,exist_ok=True)
@@ -158,6 +146,45 @@ class StreamDownloadTask():
         # 斗鱼和虎牙的直播地址只能用一次，所以要重新获取
         if self.plat == 'douyu' or self.plat == 'huya':
             stream_url = self.liveapi.GetStreamURL(**self.stream_option)
+
+        this_engine = self.engine
+        if this_engine == 'auto':
+            # B站规则：带有bluray的hls流使用pyrequests，普通的hls流使用ffmpeg，flv流使用streamgears
+            if self.plat == 'bilibili':
+                if re.search(r'live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z]{1,10}', stream_url)\
+                    and '.m3u8' in stream_url:
+                    this_engine = 'pyrequests'
+                elif '.m3u8' in stream_url:
+                    this_engine = 'ffmpeg'
+                else:
+                    this_engine = 'streamgears'
+            # 虎牙必须使用ffmpeg (https://github.com/SmallPeaches/DanmakuRender/issues/386)
+            elif self.plat == 'huya':
+                this_engine = 'ffmpeg'
+            # 其他原生支持的平台hls流使用ffmpeg，flv流使用streamgears
+            elif self.plat in ['huya', 'douyu', 'douyin', 'cc']:
+                if '.m3u8' in stream_url:
+                    this_engine = 'ffmpeg'
+                else:
+                    this_engine = 'streamgears'
+            # streamlink支持的平台使用streamlink
+            else:
+                this_engine = 'streamlink'
+
+        if this_engine == 'ffmpeg':
+            from .ffmpeg import FFmpegDownloader
+            downloader_class = FFmpegDownloader
+        elif this_engine == 'streamgears':
+            from .streamgears import StreamgearsDownloader
+            downloader_class = StreamgearsDownloader
+        elif this_engine == 'streamlink':
+            from .streamlink import StreamlinkDownloader
+            downloader_class = StreamlinkDownloader
+        elif this_engine == 'pyrequests':
+            from .pyrequests import PyRequestsDownloader
+            downloader_class = PyRequestsDownloader
+        else: 
+            raise NotImplementedError(f'No Downloader Named {this_engine}.')
 
         if not (width and height):
             default_resolution = self.advanced_video_args.get('default_resolution', (1920, 1080))
@@ -183,7 +210,7 @@ class StreamDownloadTask():
             self.dmw.start(self_segment=not self.video)
         
         def video_thread():
-            self.downloader = self.download_class(
+            self.downloader = downloader_class(
                 stream_url=stream_url,
                 header=stream_request_header,
                 output_dir=self.output_dir,
@@ -284,14 +311,14 @@ class StreamDownloadTask():
 
     def stop_once(self):
         self.stoped = True
-        if self.danmaku and hasattr(self, 'dmw') and self.dmw:
-            try:
-                self.dmw.stop()
-            except Exception as e:
-                self.logger.exception(e)
         if self.video and hasattr(self, 'downloader'):
             try:
                 self.downloader.stop()
+            except Exception as e:
+                self.logger.exception(e)
+        if self.danmaku and hasattr(self, 'dmw') and self.dmw:
+            try:
+                self.dmw.stop()
             except Exception as e:
                 self.logger.exception(e)
         try:
