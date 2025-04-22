@@ -122,7 +122,9 @@ def main():
             path=task['video'],
             dm_file_id=task['danmaku'],
         )
-        logging.info(f'正在渲染: {video.path}')
+        output = task['output']
+
+        logging.info(f'正在渲染: {video.path} -> {output}')
         os.makedirs(os.path.dirname(output), exist_ok=True)
 
         target_render = TargetRender(debug=True, **render_args)

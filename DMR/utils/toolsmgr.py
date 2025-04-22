@@ -74,6 +74,15 @@ def check_ffmpeg():
         exit(0)
 
 def check_biliup():
+    try:
+        proc = subprocess.Popen(['biliup','-V'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        out = proc.stdout.readlines()[0].decode('utf-8')
+        if 'biliup' in out:
+            ToolsList.set('biliup', 'biliup')
+        return True
+    except:
+        pass
+
     if sys.platform == 'win32':
         if not os.access("./tools/biliup.exe", os.F_OK):
             input("Biliup未正确安装, 回车自动安装:")

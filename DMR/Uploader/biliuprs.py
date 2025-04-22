@@ -141,12 +141,15 @@ class biliuprs():
     def login(self):
         login_args = self.base_args + ['login']
 
-        while not self.islogin():
-            print(f'正在登录名称为 {self.account} 的账户:')
+        for _ in range(5):
+            self.logger.info(f'正在登录名称为 {self.account} 的账户:')
             proc = subprocess.Popen(login_args)
             proc.wait()
+            if self.islogin():
+                self.logger.info(f'将 {self.account} 的登录信息保存到 {self.cookies}.')
+                break
         
-        print(f'将 {self.account} 的登录信息保存到 {self.cookies}.')
+        self.logger.error(f'{self.account} 登录失败!.')
 
     def upload_once(self, video, bvid=None, **config):
         with tempfile.TemporaryFile(dir='.temp') as logfile:
