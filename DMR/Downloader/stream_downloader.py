@@ -99,7 +99,10 @@ class StreamDownloadTask():
             taskname=self.taskname,
         )
 
-        newfile = join(self.output_dir, replace_keywords(self.output_name, video_info, replace_invalid=True)+'.'+self.output_format)
+        max_fn_length = self.advanced_video_args.get('max_fn_length', 80)
+        raw_filename = replace_keywords(self.output_name, video_info, replace_invalid=True)[:max_fn_length]
+
+        newfile = join(self.output_dir, raw_filename+'.'+self.output_format)
         _file = rename_safe(filename, newfile)
         if _file:
             newfile = _file
@@ -120,12 +123,24 @@ class StreamDownloadTask():
             group_id = str(self.advanced_video_args['group_id'])
             group_id = replace_keywords(group_id, video_info)
             video_info.upload_group_id = group_id
-        self._pipeSend(event='livesegment', msg=f'视频分段 {newfile} 录制完成.', target=f'replay/{self.taskname}', dtype='VideoInfo', data=video_info)
 
+        min_video_size = self.advanced_video_args.get('min_video_size')
+        min_video_duration = self.advanced_video_args.get('min_video_duration')
+        if (min_video_size and video_info.size < min_video_size *1024*1024) \
+            or (min_video_duration and video_info.duration < min_video_duration):
+            self.logger.info(f'视频 {video_info.path} 过小, 设置 {min_video_size}MB {min_video_duration}s,'
+                             f'实际 {video_info.size/1024/1024:.2f}MB {video_info.duration}s')
+            if exists(video_info.path):
+                os.remove(video_info.path)
+            if video_info.dm_file_id and exists(video_info.dm_file_id):
+                os.remove(video_info.dm_file_id)
+            self.segment_start_time = datetime.now()
+            return
+
+        self._pipeSend(event='livesegment', msg=f'视频分段 {newfile} 录制完成.', target=f'replay/{self.taskname}', dtype='VideoInfo', data=video_info)
         new_room_info = retry_safe(self.liveapi.GetRoomInfo)
         if new_room_info:
             self.room_info = new_room_info
-        self.segment_start_time = datetime.now()
         self.segment_id += 1
 
     def start_once(self):

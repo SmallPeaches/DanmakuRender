@@ -30,8 +30,19 @@ __all__ = [
     'random_user_agent',
     'retry_safe',
     'get_tempfile',
+    'merge_dict',
 ]
 
+
+def merge_dict(dict1:dict, dict2:dict) -> dict:
+    """合并两个字典，dict2的值覆盖dict1的值"""
+    merged = dict1.copy()
+    for key, value in dict2.items():
+        if isinstance(value, dict) and key in merged and isinstance(merged[key], dict):
+            merged[key] = merge_dict(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 def get_tempfile(expire:int=86400, prefix:str=None, suffix:str=None) -> str:
     if not suffix:

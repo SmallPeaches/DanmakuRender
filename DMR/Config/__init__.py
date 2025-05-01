@@ -55,16 +55,12 @@ class Config():
             dltype = _replay_config.get('download_args', {}).get('dltype', 'live')
             replay_config['download_args'] = deepcopy(global_download_args[dltype])
             if _replay_config.get('download_args'):
-                replay_config['download_args'].update(_replay_config.get('download_args'))
-            
+                replay_config['download_args'] = merge_dict(replay_config['download_args'], _replay_config['download_args'])
+
             if common_args.get('auto_render') or common_args.get('auto_transcode'):
                 replay_config['render_args'] = deepcopy(self.global_config['render_args'])
                 if _replay_config.get('render_args'):
-                    for key in self.global_config['render_args'].keys():
-                        if _replay_config['render_args'].get(key):
-                            replay_config['render_args'][key].update(_replay_config['render_args'].get(key))
-                        else:
-                            replay_config['render_args'][key].update(_replay_config['render_args'])
+                    replay_config['render_args'] = merge_dict(replay_config['render_args'], _replay_config['render_args'])
 
             if common_args.get('auto_upload'):
                 global_upload_args = self.global_config['upload_args']

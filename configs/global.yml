@@ -73,6 +73,15 @@ download_args:
       start_check_interval: 60
       # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
       stop_check_interval: 60
+      # 视频文件名称最长长度，超过此长度的文件名称将会被裁剪，默认80（B站视频名称最大长度）
+      # 最大设置为256，否则文件无法被创建
+      max_fn_length: 80
+      # 视频文件最小大小（MB），小于此大小的视频文件将会被删除，默认1MB
+      # 此功能可用于删除因为录制错误导致的许多空视频文件
+      min_video_size: 1
+      # 视频文件最小录制时间（秒），小于此录制时间的视频文件将被删除，默认不启用
+      # 和最小大小配合使用时，只要有一个满足就会被删除
+      min_video_duration: ~
       # 录制组编号，可用于多任务协同，详情请参考文档
       group_id: ~
       # ffmpeg取流参数(仅ffmpeg下载引擎生效)
@@ -86,8 +95,6 @@ download_args:
       disable_lowspeed_interrupt: false
       # streamlink 额外输入参数
       # 可用参数列表请参考 https://streamlink.github.io/cli.html
-      # 一个典型的使用方法是添加一个--twitch-api-header参数，用于取消twitch直播流的广告
-      # 特别提醒，使用此方法传入参数会在日志文件中明文显示，如果需要共享日志文件请确保删除了敏感信息！
       streamlink_extra_args: [
         "--twitch-disable-ads",     # 去广告，去掉、跳过嵌入的广告流
         "--twitch-disable-reruns",  # 如果该频道正在重放回放，不打开流
