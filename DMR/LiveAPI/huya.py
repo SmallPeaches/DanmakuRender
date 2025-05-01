@@ -140,16 +140,17 @@ class huya(BaseAPI):
         return True
 
     def onair(self) -> bool:
+        SKIP_PREFIX = ['【回放】', '【录像】', '【重播】']
         try:
             room_profile = self.get_room_profile()
             status = room_profile['live']
             if not status:
                 return False
             else:
-                if room_profile['room_title'].startswith('【回放】'):
-                    return False
-                else:
-                    return True
+                for prefix in SKIP_PREFIX:
+                    if room_profile['room_title'].startswith(prefix):
+                        return False
+                return True
         except Exception as e:
             # logging.debug(e)
             return None
