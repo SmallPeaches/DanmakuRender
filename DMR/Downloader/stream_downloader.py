@@ -141,6 +141,7 @@ class StreamDownloadTask():
         new_room_info = retry_safe(self.liveapi.GetRoomInfo)
         if new_room_info:
             self.room_info = new_room_info
+        self.segment_start_time = datetime.now()
         self.segment_id += 1
 
     def start_once(self):

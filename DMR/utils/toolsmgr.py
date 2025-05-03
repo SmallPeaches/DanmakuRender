@@ -74,13 +74,18 @@ def check_ffmpeg():
         exit(0)
 
 def check_biliup():
-    try:
-        proc = subprocess.Popen(['biliup','-V'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        out = proc.stdout.readlines()[0].decode('utf-8')
-        if 'biliup' in out:
-            ToolsList.set('biliup', 'biliup')
+    if os.path.exists("./tools/biliup.exe"):
+        ToolsList.set('biliup', 'tools/biliup.exe')
         return True
-    except:
+    elif os.path.exists("./tools/biliup"):
+        ToolsList.set('biliup', 'tools/biliup')
+        return True
+
+    try:
+        proc = subprocess.Popen(['tools/biliup.exe', 'upload', '-help'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        if proc.wait() == 0:
+            return True
+    except Exception:
         pass
 
     if sys.platform == 'win32':
