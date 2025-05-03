@@ -84,6 +84,8 @@ download_args:
       min_video_duration: ~
       # 录制组编号，可用于多任务协同，详情请参考文档
       group_id: ~
+      # 使用B站强制原画功能，仅适用于pyrequests引擎下的hls流
+      bili_force_origin: True
       # ffmpeg取流参数(仅ffmpeg下载引擎生效)
       ffmpeg_stream_args: [ '-rw_timeout','10000000',
                             '-analyzeduration','15000000',

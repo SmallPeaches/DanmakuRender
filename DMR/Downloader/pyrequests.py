@@ -64,7 +64,7 @@ class PyRequestsFlvDownloader:
             self.video_file = splitext(self.video_file)[0] + f'({cnt})' + splitext(self.video_file)[1]
 
         with open(self.video_file, 'wb') as file_obj:
-            for idx, chunk in enumerate(stream_iter.iter_content(chunk_size=512*1024)):
+            for idx, chunk in enumerate(stream_iter):
                 file_obj.write(chunk)
                 if idx % 10 == 0:
                     file_obj.flush()
@@ -84,10 +84,11 @@ class PyRequestsFlvDownloader:
         stream = self.session.get(self.stream_url, headers=self.header, stream=True)
         if stream.status_code != 200:
             raise RuntimeError(f'Error downloading stream: {stream.status_code}')
+        stream_iter = stream.iter_content(chunk_size=512*1024)
         
         while not self.stoped:
             try:
-                self._download_part(stream)
+                self._download_part(stream_iter)
             except Exception as e:
                 self.logger.debug(f'{self.taskname} Error downloading stream: {e}')
                 raise e
@@ -123,6 +124,7 @@ class PyRequestsHlsDownloader:
                  header:dict=None,
                  advanced_video_args:dict=None,
                  segment_callback=None,
+                 stable_callback=None,
                  **kwargs):
         
         self.stream_url = stream_url
@@ -134,6 +136,7 @@ class PyRequestsHlsDownloader:
         self.taskname = taskname
         self.url = url
         self.segment_callback = segment_callback
+        self.stable_callback = stable_callback
         self.advanced_video_args = advanced_video_args if advanced_video_args else {}
         self.kwargs = kwargs
 
@@ -141,10 +144,10 @@ class PyRequestsHlsDownloader:
         self.logger = logging.getLogger(__name__)
         self.session = requests.Session()
         self.session.headers.update(self.header)
-        self.force_origin = self.advanced_video_args.get('force_origin', True)
+        self.force_origin = self.advanced_video_args.get('bili_force_origin', True)
 
         if 'bilibili' not in self.url or '.m3u8' not in self.stream_url:
-            self.logger.warning(f'pyrequestsh仅支持来自bilibili的hls流, 其他来源的hls流可能导致录制错误!')
+            self.logger.warning(f'pyrequests仅支持来自bilibili的hls流, 其他来源的hls流可能导致录制错误!')
             # raise ValueError(f'pyrequests仅支持bilibili的m3u8流!')
 
         self.downloaded_files = deque(maxlen=60)
@@ -179,8 +182,6 @@ class PyRequestsHlsDownloader:
                 # print(f'idx: {idx}')
                 headfile = resp.content
                 break
-        if not headfile:
-            self.logger.warning(f'未找到头文件: {headfile_name}')
         return headfile
     
     def _download_segment(self, uri, retry=5):
@@ -205,8 +206,17 @@ class PyRequestsHlsDownloader:
             headfile_uri = m3u8_obj.segment_map[0].absolute_uri + '?' + params_str
             if headfile_name != self.headfile_name:
                 if self.force_origin:
-                    headfile_uri = self._convert2origin(headfile_uri)
-                    self.headfile = self._find_headfile(headfile_uri)
+                    t0 = time.time()
+                    headfile_uri_origin = self._convert2origin(headfile_uri)
+                    self.headfile = self._find_headfile(headfile_uri_origin)
+                    if not self.headfile:
+                        self.logger.warning(f'{self.taskname}: 未找到原画头文件: {headfile_name}, 即将回退到非原画模式')
+                        self.headfile = self.session.get(headfile_uri).content
+                        self.force_origin = False
+                    t1 = time.time()
+                    # 将获取头文件的时间传递给回调函数，让弹幕时间更准确
+                    if self.stable_callback:
+                        self.stable_callback(t0-t1)
                 else:
                     self.headfile = self.session.get(headfile_uri).content
                 self.headfile_name = headfile_name
