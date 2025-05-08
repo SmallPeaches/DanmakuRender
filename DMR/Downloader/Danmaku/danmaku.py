@@ -34,6 +34,7 @@ class DanmakuDownloader():
         self.advanced_dm_args = advanced_dm_args
         self.dm_delay_fixed = self.advanced_dm_args.get('dm_delay_fixed', 6)
         self.dm_auto_restart = self.advanced_dm_args.get('dm_auto_restart', 300)
+        self.dm_retry_interval = self.advanced_dm_args.get('dm_retry_interval', 60)
         self.dm_extra_inputs = self.advanced_dm_args.get('dm_extra_inputs', [])
         self.dm_file_min_time = self.advanced_dm_args.get('dm_file_min_time', 10)
 
@@ -121,7 +122,7 @@ class DanmakuDownloader():
         if dm.time < 0 \
                 or not dm.content \
                 or not dm.uname \
-                or dm.dtype != 'danmaku':
+                or (dm.dtype != 'danmaku' and dm.dtype != 'gift' and dm.dtype != 'member'):
             return False
         
         for keyword in self.dm_filter['keywords']:
@@ -189,7 +190,8 @@ class DanmakuDownloader():
                 if self.dm_auto_restart and datetime.now().timestamp()-last_dm_time>self.dm_auto_restart:
                     self.logger.error(f'{self.url} 获取弹幕超时，正在重试...')
                     task.cancel()
-                    last_dm_time = datetime.now().timestamp()
+                    last_dm_time += self.dm_retry_interval
+                    #last_dm_time = datetime.now().timestamp()
                     task = asyncio.create_task(dmc_task())
                     continue
                 

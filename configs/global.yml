@@ -156,6 +156,8 @@ download_args:
       dm_delay_fixed: 6
       # 弹幕超时自动重启（秒），超过一段时间无弹幕会自动重启弹幕录制，0表示关闭
       dm_auto_restart: 300
+      # 弹幕超时重试间隔（秒）
+      dm_retry_interval: 60
       # 额外弹幕流输入
       # 部分主播可能同时在平台同时开播，可以用这个同时录制多个直播间的弹幕到一个视频
       # 应该设置为一个列表（不包括原来录制的房间），例如：['https://live.bilibili.com/123456', 'https://live.bilibili.com/654321']
