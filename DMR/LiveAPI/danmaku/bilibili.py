@@ -94,7 +94,7 @@ class Bilibili(DMAPI):
                         'DANMU_MSG': 'danmaku',
                         'WELCOME': 'enter',
                         'NOTICE_MSG': 'broadcast',
-                        # 'LIVE_INTERACTIVE_GAME': 'interactive_danmaku'  # 互动弹幕，与普通弹幕重复，已被弃用(#121)
+                        'SUPER_CHAT_MESSAGE': 'super_chat',  # 新增此行
                     }.get(j.get('cmd'), 'other')
 
                     if 'DANMU_MSG' in j.get('cmd'):
@@ -128,6 +128,16 @@ class Bilibili(DMAPI):
                         msg["roomid"] = j.get("real_roomid", 0)
                         msg["content"] = j.get("msg_common", "none")
                         msg["raw"] = j
+
+                    elif msg["msg_type"] == "super_chat":  # 新增此部分
+                        msg["name"] = j.get('data', {}).get('uinfo', {}).get('base', {}).get('name', '')
+                        msg["content"] = j.get('data', {}).get('message', '')
+                        msg["price"] = j.get('data', {}).get('price', 0)
+                        msg["color"] = j.get('data', {}).get('background_color', '#FFFFFF')
+                        try:
+                            msg['time'] = datetime.fromtimestamp(j.get('data', {}).get('ts', 0))
+                        except:
+                            msg['time'] = datetime.now()  # 如果没有时间戳，则使用当前时间
 
                     else:
                         msg["content"] = j
