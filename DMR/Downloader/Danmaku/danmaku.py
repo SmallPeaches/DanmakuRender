@@ -122,19 +122,19 @@ class DanmakuDownloader():
         if dm.time < 0 \
                 or not dm.content \
                 or not dm.uname \
-                or dm.dtype not in ['danmaku', 'super_chat', 'gift', 'member']:
+                or (dm.dtype != 'danmaku' and dm.dtype != 'gift' and dm.dtype != 'member'):
             return False
-
+        
         for keyword in self.dm_filter['keywords']:
             if keyword.search(dm.content):
                 return False
-
+        
         for username in self.dm_filter['username']:
             if username.fullmatch(dm.uname):
                 return False
-
+        
         return True
-
+    
     def start_dmc(self):
         async def danmu_monitor(url:str=None):
             if not url:
@@ -165,16 +165,11 @@ class DanmakuDownloader():
                         uname=dm.get('name', ''),
                         color=dm.get('color', 'ffffff'),
                         content=dm.get('content', ''),
-                        price=dm.get('price', 0),  # 传入 price 参数
                     )
                     if self.dm_available(danmu):
                         retry = 0
-                        if dm.get('msg_type') == 'danmaku':
-                            if self.dmwriter.add(danmu):
-                                last_dm_time = datetime.now().timestamp()
-                        elif dm.get('msg_type') == 'super_chat':
-                            if self.dmwriter.add_super_chat(danmu):
-                                last_dm_time = datetime.now().timestamp()
+                        if self.dmwriter.add(danmu):
+                            last_dm_time = datetime.now().timestamp()
                     continue
                 except asyncio.QueueEmpty:
                     pass

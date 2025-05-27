@@ -46,9 +46,6 @@ class AssWriter():
         self.kwargs = kwargs
 
         self._lock = threading.Lock()
-        self._super_chat_tails = []  # 初始化 _super_chat_tails 属性
-        self._super_chat_state = 0
-        self._latest_end_time = 0
         self._ntracks = int(((self.height - self.dst) * self.dmrate) / (self.fontsize + self.margin_h))
 
         self.meta_info = [
@@ -62,8 +59,8 @@ class AssWriter():
             '',
             '[V4+ Styles]',
             'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-            f'Style: R2L,{self.font},{self.fontsize},&H{self.opacity}FFFFFF,&H{self.opacity}000000,&H{self.opacity}{self.outlinecolor},&H4F0000FF,-1,0,0,0,100,100,0,0,1,{self.outlinesize},0,1,0,0,0,0',
-            f'Style: message_box,Microsoft YaHei,20,&H00FFFFFF,&H00FFFFFF,&H00000000,&H1E6A5149,1,0,0,0,100.00,100.00,0.00,0.00,1,1,0,7,0,0,0,1',
+            # f'Style: Fix,Microsoft YaHei UI,25,&H66FFFFFF,&H66FFFFFF,&H66000000,&H66000000,1,0,0,0,100,100,0,0,1,2,0,2,20,20,2,0',
+            f'Style: R2L,{self.font},{self.fontsize},&H{self.opacity}ffffff,,&H{self.opacity}{self.outlinecolor},,-1,0,0,0,100,100,0,0,1,{self.outlinesize},0,1,0,0,0,0',
             '',
             '[Events]',
             'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
@@ -140,54 +137,6 @@ class AssWriter():
         
         self._track_tails[tid] = danmu
         return True
-
-    def add_super_chat(self, super_chat: SimpleDanmaku):
-        with self._lock:
-            if not self._filename:
-                raise RuntimeError("ASS file is not open.")
-
-            # 格式化超级弹幕内容
-            content_lines = []
-            for i in range(0, len(super_chat.content), 15):
-                content_lines.append(super_chat.content[i:i + 15])
-            formatted_content = '\\N'.join(content_lines)
-
-            # 计算当前超级弹幕数量和更新最晚结束时间
-            current_time = super_chat.time
-            if current_time > self._latest_end_time:
-                self._super_chat_state = 0  # 重置状态
-            self._super_chat_state += 1
-            self._latest_end_time = current_time + 20  # 每个超级弹幕持续20秒
-
-            # 根据当前状态计算 y 坐标
-            base_y = 100
-            y_offset = 120
-            y = base_y + (self._super_chat_state - 1) * y_offset
-
-            t0 = current_time
-            t1 = t0 + 20  # Super Chat 持续时间固定为20秒
-
-            t0_display = '%02d:%02d:%05.2f' %sec2hms(t0)
-            t1_display = '%02d:%02d:%05.2f' %sec2hms(t1)
-
-            # 构建 ASS 格式的弹幕信息
-            dm_info = (
-                f'Dialogue: 0,{t0_display},{t1_display},message_box,,0000,0000,0000,,'
-                f'{{\\pos(0,{y})\\c&HFF6600\\shad0\\p1}}m 0 0 l 250 0 l 250 81 l 0 81\n'
-                f'Dialogue: 0,{t0_display},{t1_display},message_box,,0000,0000,0000,,'
-                f'{{\\pos(0,{y + 40})\\shad0\\p1\\c&HCC0000}}m 0 0 l 250 0 l 250 80 l 0 80\n'
-                f'Dialogue: 1,{t0_display},{t1_display},message_box,,0000,0000,0000,,'
-                f'{{\\pos(6,{y + 5})\\c&HFFFFFF\\fs15\\b1\\q2}}{super_chat.uname}\n'
-                f'Dialogue: 1,{t0_display},{t1_display},message_box,,0000,0000,0000,,'
-                f'{{\\pos(6,{y + 20})\\c&HFFFFFF\\fs15\\q2}}SuperChat CNY {super_chat.price}\n'
-                f'Dialogue: 1,{t0_display},{t1_display},message_box,,0000,0000,0000,,'
-                f'{{\\pos(6,{y + 40})\\c&HFFFFFF\\q2}}{formatted_content}\n'
-            )
-
-            with open(self._filename, 'a', encoding='utf-8') as f:
-                f.write(dm_info)
-
-            self._super_chat_tails.append(super_chat)
 
     def close(self):
         del self._filename
