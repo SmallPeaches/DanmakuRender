@@ -2,8 +2,12 @@ from datetime import datetime
 import json, re, select, random, traceback
 import asyncio, aiohttp, zlib, brotli
 from struct import pack, unpack
+from urllib.parse import urlencode
+import time
 
 from .DMAPI import DMAPI
+from ..bilivideo_utils import encode_wbi, getWbiKeys, BILI_HEADERS
+
 
 class Bilibili(DMAPI):
     heartbeat = b"\x00\x00\x00\x1f\x00\x10\x00\x01\x00\x00\x00\x02\x00\x00\x00\x01\x5b\x6f\x62\x6a\x65\x63\x74\x20\x4f\x62\x6a\x65\x63\x74\x5d"
@@ -24,26 +28,50 @@ class Bilibili(DMAPI):
                 room_json = await resp.json()
                 room_id = room_json["data"]["room_id"]
 
+        # 获取 wbi 签名密钥
+        async with aiohttp.ClientSession(headers=BILI_HEADERS) as session:
+            async with session.get('https://api.bilibili.com/x/web-interface/nav') as resp:
+                nav_data = await resp.json()
+                img_url = nav_data['data']['wbi_img']['img_url']
+                sub_url = nav_data['data']['wbi_img']['sub_url']
+                wbi_img = (
+                    img_url.rsplit('/', 1)[1].split('.')[0],
+                    sub_url.rsplit('/', 1)[1].split('.')[0]
+                )
+
+        # 构造带签名的请求参数
+        params = {
+            "id": room_id,
+            "type": 0,
+            "web_location": 444.8  # 示例值，可能需要动态获取
+        }
+        signed_params = encode_wbi(params, wbi_img)
+
+        # 构建带签名的弹幕请求 URL
+        danmu_url = f'https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?{urlencode(signed_params)}'
+
         async with aiohttp.ClientSession(headers=Bilibili.headers) as session:
-            async with session.get(f'https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={room_id}') as resp:
+            async with session.get(danmu_url) as resp:
                 room_json = await resp.json()
                 token = room_json['data']['token']
-            
+
+        # 构造 WebSocket 握手数据
         data = json.dumps({
-            "roomid": room_id, 
-            "uid": 0, 
-            "protover": 3, 
-            "key": token, 
-            "type":2, 
+            "roomid": room_id,
+            "uid": 0,
+            "protover": 3,
+            "key": token,
+            "type": 2,
             "platform": "web",
-        },separators=(",", ":"),).encode("ascii")
+        }, separators=(",", ":")).encode("ascii")
+
         data = (
-            pack(">i", len(data) + 16)
-            + pack(">h", 16)
-            + pack(">h", 1)
-            + pack(">i", 7)
-            + pack(">i", 1)
-            + data
+                pack(">i", len(data) + 16)
+                + pack(">h", 16)
+                + pack(">h", 1)
+                + pack(">i", 7)
+                + pack(">i", 1)
+                + data
         )
         reg_datas.append(data)
 
