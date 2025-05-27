@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from DMR.LiveAPI.douyin import douyin_utils
 from DMR.utils import split_url, cookiestr2dict
-from .dy_pb2 import PushFrame, Response, ChatMessage
+from .dy_pb2 import PushFrame, Response, ChatMessage, GiftMessage, MemberMessage
 from .utils import DouyinDanmakuUtils
 
 import aiohttp
@@ -158,9 +158,28 @@ class Douyin:
                 chatMessage.ParseFromString(msg.payload)
                 data = json_format.MessageToDict(chatMessage, preserving_proto_field_name=True)
                 name = data['user']['nickName']
-                content = data['content']
+                content = name+":"+data['content']
                 msg_dict = {"time": now, "name": name, "content": content, "msg_type": "danmaku", "color": "ffffff"}
                 # print(msg_dict)
+            elif msg.method == 'WebcastMemberMessage':
+                memberMessage = MemberMessage()
+                memberMessage.ParseFromString(msg.payload)
+                data = json_format.MessageToDict(memberMessage, preserving_proto_field_name=True)
+                name = data['user']['nickName']
+                content = name+"来了"#+json.dumps(data, ensure_ascii=False)
+                msg_dict = {"time": now, "name": name, "content": content, "msg_type": "member", "color": "ffffff"}
+                #print(msg_dict)
+            elif msg.method == 'WebcastGiftMessage':
+                giftMessage = GiftMessage()
+                giftMessage.ParseFromString(msg.payload)
+                data = json_format.MessageToDict(giftMessage, preserving_proto_field_name=True)
+                if 'combo' in data['gift'] and not 'repeatEnd' in data:
+                  continue
+                name = data['user']['nickName']
+                diamondCount=str(data['gift']['diamondCount'])
+                content = name+"送给主播"+data['repeatCount']+"个"+data['gift']['name']+"每个价值抖币"+diamondCount #+json.dumps(data, ensure_ascii=False)
+                msg_dict = {"time": now, "name": name, "content": content, "msg_type": "gift", "color": "ffffff"}
+                #print(msg_dict)
             else:
                 msg_dict = {"time": now, "name": "", "content": "", "msg_type": "other", "raw_data": msg}
             msgs.append(msg_dict)
