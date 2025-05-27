@@ -56,10 +56,8 @@ class biliuprs():
         copyright:int=1,
         cover:str='',
         desc:str='',
-        dolby:int=0,
         dtime:int=0,
         dynamic:str='',
-        interactive:int=0,
         line:str=None,
         limit:int=3,
         no_reprint:int=1,
@@ -68,6 +66,7 @@ class biliuprs():
         tag:str='',
         tid:int=65,
         title:str='',
+        extra_args:list=None,
         timeout:int=None,
         logfile=None,
         **kwargs
@@ -82,10 +81,8 @@ class biliuprs():
             '--copyright', copyright,
             '--cover', cover,
             '--desc', desc,
-            '--dolby', dolby,
             '--dtime', dtime,
             '--dynamic', dynamic,
-            '--interactive', interactive,
             '--limit', limit,
             '--no-reprint', no_reprint,
             '--open-elec', open_elec,
@@ -96,6 +93,8 @@ class biliuprs():
         ]
         if line:
             upload_args += ['--line', line]
+        if extra_args:
+            upload_args += extra_args
 
         if isinstance(video, str):
             upload_args += [video]

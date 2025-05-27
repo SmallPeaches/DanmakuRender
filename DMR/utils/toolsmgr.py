@@ -82,8 +82,9 @@ def check_biliup():
         return True
 
     try:
-        proc = subprocess.Popen(['tools/biliup.exe', 'upload', '-help'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        proc = subprocess.Popen(['biliup', 'upload', '-help'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if proc.wait() == 0:
+            ToolsList.set('biliup', "biliup")
             return True
     except Exception:
         pass

@@ -27,14 +27,7 @@ class Config():
         with open(global_config_path, 'r', encoding='utf-8') as f:
             _global_config = yaml.safe_load(f)
         
-        for k, v in self._base_config.items():
-            global_config = _global_config.get(k)
-            if isinstance(global_config, dict):
-                for _k, _v in global_config.items():
-                    if _global_config[k].get(_k) and isinstance(_v, dict):
-                        self.global_config[k][_k].update(_v)
-                    else:
-                        self.global_config[k][_k] = _v
+        self.global_config = merge_dict(self.global_config, _global_config)
 
         for toolname, path in self.global_config.get('executable_tools_path',{}).items():
             if not path:
