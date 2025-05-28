@@ -3,7 +3,7 @@ import json, re, select, random, traceback
 import asyncio, aiohttp, zlib, brotli
 from struct import pack, unpack
 
-from DMR.utils import random_user_agent
+from DMR.utils import random_user_agent, SuperChatDanmaku, SimpleDanmaku
 from DMR.LiveAPI.bilivideo_utils import encode_wbi, getWbiKeys
 from .DMAPI import DMAPI
 
@@ -116,7 +116,7 @@ class Bilibili(DMAPI):
                         msg["color"] = f"{j.get('info', [[0, 0, 0, 16777215]])[0][3]:06x}"
                         msg["content"] = j.get("info")[1]
                         try:
-                            msg['time'] = datetime.fromtimestamp(j.get('info')[0][4]/1000)
+                            msg['timestamp'] = j.get('info')[0][4]/1000
                             if j.get('info')[13] != r'{}':
                                 emoticon_info = j.get('info')[0][13]
                                 emoticon_url = emoticon_info['url']
@@ -142,12 +142,12 @@ class Bilibili(DMAPI):
                         msg["name"] = j.get('data', {}).get('uinfo', {}).get('base', {}).get('name', '')
                         msg["content"] = j.get('data', {}).get('message', '')
                         msg["price"] = j.get('data', {}).get('price', 0)
-                        msg["color"] = j.get('data', {}).get('background_color', '#FFFFFF')
+                        msg["color"] = j.get('data', {}).get('background_color', 'ffffff')
                         try:
-                            msg['time'] = datetime.fromtimestamp(j.get('data', {}).get('ts', 0))
+                            msg['timestamp'] = j.get('data', {}).get('ts')
                         except:
-                            msg['time'] = datetime.now()  # 如果没有时间戳，则使用当前时间
-
+                            msg['timestamp'] = datetime.now().timestamp()  # 如果没有时间戳，则使用当前时间
+                        msg = SuperChatDanmaku(**msg)  # 转换为 SuperChatDanmaku 对象
                     else:
                         msg["content"] = j
                 else:

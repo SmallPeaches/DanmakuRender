@@ -9,7 +9,7 @@ from datetime import datetime
 from os.path import *
 
 from DMR.LiveAPI.danmaku import DanmakuClient
-from DMR.utils import SimpleDanmaku
+from DMR.utils import SimpleDanmaku, replace_keywords
 
 __all__ = ['DanmakuDownloader']
 
@@ -20,6 +20,7 @@ class DanmakuDownloader():
                  segment:float,
                  dm_format:str,
                  dm_filter:dict=None,
+                 dm_template:dict=None,
                  dm_stream_option:dict={},
                  advanced_dm_args:dict={},
                  **kwargs) -> None:
@@ -32,12 +33,13 @@ class DanmakuDownloader():
         self.dm_format = dm_format
         self.dm_stream_option = dm_stream_option
         self.advanced_dm_args = advanced_dm_args
+        self.dm_template = dm_template if dm_template else {}
         self.dm_delay_fixed = self.advanced_dm_args.get('dm_delay_fixed', 6)
         self.dm_auto_restart = self.advanced_dm_args.get('dm_auto_restart', 300)
         self.dm_extra_inputs = self.advanced_dm_args.get('dm_extra_inputs', [])
         self.dm_file_min_time = self.advanced_dm_args.get('dm_file_min_time', 10)
 
-        self.dm_filter = {}
+        self.dm_filter = dm_filter.copy() if dm_filter else {}
         try:
             keywords_filter = dm_filter['keywords']
             if not keywords_filter:
@@ -51,7 +53,7 @@ class DanmakuDownloader():
             keywords_filter = [re.compile(str(x)) for x in keywords_filter]
             self.dm_filter['keywords'] = keywords_filter
         except Exception as e:
-            self.logger.warn(f'弹幕屏蔽词{keywords_filter}设置错误:{e}，此功能将不会生效.')
+            self.logger.warning(f'弹幕屏蔽词{keywords_filter}设置错误:{e}，此功能将不会生效.')
             self.dm_filter['keywords'] = []
         
         try:
@@ -78,7 +80,7 @@ class DanmakuDownloader():
         
         if dm_format == 'ass':
             from .asswriter import AssWriter
-            self.dmwriter = AssWriter(**self.kwargs)
+            self.dmwriter = AssWriter(dm_template=self.dm_template, **self.kwargs)
         else:
             raise NotImplementedError(f"unsupported danmaku format {dm_format}")
 
@@ -119,17 +121,26 @@ class DanmakuDownloader():
 
     def dm_available(self, dm:SimpleDanmaku) -> bool:
         if dm.time < 0 \
-                or not dm.content \
+                or not dm.text \
                 or not dm.uname \
-                or dm.dtype not in ['danmaku', 'member' , 'gift' , 'super_chat']:
+                or dm.dtype in ['other', 'others'] \
+                or not dm.dtype:
             return False
 
+        if self.dm_filter.get('dm_type', 'danmaku') != 'all':
+            if dm.dtype not in self.dm_filter.get('dm_type', 'danmaku'):
+                return False
+
         for keyword in self.dm_filter['keywords']:
-            if keyword.search(dm.content):
+            if keyword.search(dm.text):
                 return False
 
         for username in self.dm_filter['username']:
             if username.fullmatch(dm.uname):
+                return False
+            
+        if max_length := self.dm_filter.get('max_length'):
+            if len(dm.text) > max_length:
                 return False
 
         return True
@@ -158,21 +169,23 @@ class DanmakuDownloader():
             while not self.stoped:
                 try:
                     dm = q.get_nowait()
-                    danmu = SimpleDanmaku(
-                        time=datetime.now().timestamp() - self.part_start_time - self.dm_delay_fixed,
-                        dtype=dm.get('msg_type', 'others'),
-                        uname=dm.get('name', ''),
-                        color=dm.get('color', 'ffffff'),
-                        content=dm.get('content', ''),
-                        price=dm.get('price', 0),  # 传入 price 参数
-                    )
-                    if self.dm_available(danmu):
+                    if not isinstance(dm, SimpleDanmaku):
+                        dm = SimpleDanmaku(
+                            dtype=dm.get('msg_type', 'other'),
+                            uname=dm.get('name', ''),
+                            content=dm.get('content', ''),
+                            timestamp=dm.get('timestamp', datetime.now().timestamp()),
+                            color=dm.get('color', 'ffffff'),
+                        )
+                    # 将绝对时间转换为相对时间
+                    dm.time = dm.timestamp - self.start_time - self.dm_delay_fixed
+                    # 载入弹幕模板
+                    if dm_templ := self.dm_template.get(dm.dtype):
+                        dm.text = replace_keywords(dm_templ, dm)
+                    if self.dm_available(dm):
                         retry = 0
-                        if dm.get('msg_type') != 'super_chat':
-                            if self.dmwriter.add(danmu):
-                                last_dm_time = datetime.now().timestamp()
-                        elif self.dmwriter.add_super_chat(danmu):
-                                last_dm_time = datetime.now().timestamp()
+                        if self.dmwriter.add(dm):
+                            last_dm_time = datetime.now().timestamp()
                     continue
                 except asyncio.QueueEmpty:
                     pass

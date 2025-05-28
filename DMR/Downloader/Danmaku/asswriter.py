@@ -42,7 +42,7 @@ class AssWriter():
         self.opacity = hex(255-int(opacity*255))[2:].zfill(2)
         self.outlinecolor = str(outlinecolor).zfill(6)
         self.outlinesize = outlinesize
-        self.ass_text_template = dm_template.get('ass_text')
+        self.ass_text_template = dm_template.get('ass_text') if dm_template else None
         self.kwargs = kwargs
 
         self._lock = threading.Lock()
@@ -84,8 +84,15 @@ class AssWriter():
             self._track_tails = [None for _ in range(self._ntracks)]
             for info in self.meta_info:
                 f.write(info+'\n')
-    
-    def add(self, danmu:SimpleDanmaku, calc_collision=True):
+
+    def add(self, danmu, **kwargs):
+        if isinstance(danmu, SuperChatDanmaku):
+            return self.add_super_chat(danmu)
+        elif isinstance(danmu, SimpleDanmaku):
+            return self.add_simple(danmu, **kwargs)
+        return False
+
+    def add_simple(self, danmu:SimpleDanmaku, calc_collision=True):
         """
         添加弹幕到ASS文件 
         danmu: 待添加弹幕
@@ -97,7 +104,7 @@ class AssWriter():
         def tail_dist(tail_dm:SimpleDanmaku, tic:float):
             if not tail_dm:
                 return 1e5
-            dm_length = self._get_length(tail_dm.content)
+            dm_length = self._get_length(tail_dm.text)
             dist = (tic - tail_dm.time) * (dm_length + self.width) / self.dmduration - dm_length 
             return dist
         
@@ -114,7 +121,7 @@ class AssWriter():
         if calc_collision and max_dist < self.margin_w:
             return False
         
-        dm_length = self._get_length(danmu.content)
+        dm_length = self._get_length(danmu.text)
         x0 = self.width
         x1 = -dm_length
         y = self.fontsize + (self.fontsize + self.margin_h) * tid
@@ -129,7 +136,7 @@ class AssWriter():
         dm_info = f'Dialogue: 0,{t0},{t1},R2L,,0,0,0,,'
         dm_info += '{\\move(%d,%d,%d,%d)}'%(x0, y + self.dst, x1, y + self.dst)
         dm_info += '{\\alpha&H%s\\1c%s&}'%(self.opacity, RGB2BGR(danmu.color))
-        content = danmu.content.replace('\n',' ').replace('\r',' ')
+        content = danmu.text.replace('\n',' ').replace('\r',' ')
         if not self.ass_text_template:
             dm_info += content
         else:
@@ -141,7 +148,7 @@ class AssWriter():
         self._track_tails[tid] = danmu
         return True
 
-    def add_super_chat(self, super_chat: SimpleDanmaku):
+    def add_super_chat(self, super_chat: SuperChatDanmaku):
         with self._lock:
             if not self._filename:
                 raise RuntimeError("ASS file is not open.")
