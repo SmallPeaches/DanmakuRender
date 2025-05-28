@@ -139,8 +139,8 @@ download_args:
     dm_filter:
       # 弹幕类型过滤，只获取指定类型的弹幕，支持情况请参考文档
       # 可选值：all（所有）, danmaku（纯弹幕）, gift（礼物信息）, entry（进场信息）, superchat（超级弹幕）
-      # 默认只获取文字弹幕
-      dm_type: [danmaku]
+      # 默认只获取文字弹幕(danmaku)
+      dm_type: ~
       # 关键字过滤，只要有关键字的弹幕都会被过滤
       # 例如：[菜, fw]
       keywords: ~
@@ -149,10 +149,13 @@ download_args:
       username: ~
       # 最长弹幕长度，超过此长度的弹幕将被过滤，0表示不限制
       max_length: 0
-    # 弹幕模板
+    # 弹幕模板，具体使用请参考文档
     dm_template:
-      # ASS文本模板，使用方法请参考文档
-      ass_text: ~
+      # 不同类型弹幕的模板
+      danmaku: ~
+      superchat: ~
+      gift: ~
+      entry: ~
     # 高级弹幕录制参数
     # 请确保你明白这些参数的含义后再修改
     advanced_dm_args:
@@ -242,6 +245,8 @@ download_args:
       # 匹配视频时间字符串转换为datetime对象的格式，用于datetime.strptime
       # 必须与time_str同时使用
       time_format:
+      # 是否匹配弹幕文件，仅支持同名的ass文件
+      danmaku: True
     # 分段等待时间（分钟），如果视频在此时间内没有更新，则会被认为分段录制完成
     segment_wait_time: 3
     # 下播等待时间（分钟），如果没有视频在此时间内更新，则会被认为直播已经结束
@@ -255,7 +260,7 @@ download_args:
       # 视频文件最小录制时间（秒），小于此录制时间的视频文件将被忽略，默认不启用
       # 和最小大小配合使用时，只要有一个满足就会被忽略
       # 此参数推荐不设置，因为虚拟下载中视频长度是由文件创建时间和修改时间计算得到的
-      # 在部分操作系统中这两个时间相等，会导致计算得到的视频长度为0
+      # 在部分情况下中这两个时间相等，会导致计算得到的视频长度为0
       min_video_duration: ~
     # 额外信息，暂时没用
     extra_info: ~

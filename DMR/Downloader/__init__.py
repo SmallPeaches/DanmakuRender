@@ -67,6 +67,9 @@ class Downloader():
         elif dltype == 'videos':
             from .video_downloader import VideoDownloadTask
             downloader_task = VideoDownloadTask
+        elif dltype == 'virtual':
+            from .virtual_downloader import VirtualDownloaderTask
+            downloader_task = VirtualDownloaderTask
         
         self.download_tasks[taskname] = downloader_task(taskname=taskname, send_queue=self.send_queue, **config)
         self.download_tasks[taskname].start()
