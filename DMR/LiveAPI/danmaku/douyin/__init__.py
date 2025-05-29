@@ -162,7 +162,7 @@ class Douyin:
                 msg_dict = SimpleDanmaku(
                     timestamp=now,
                     uname=name,
-                    content=content,
+                    content=f"{name}:{content}",
                     dtype='danmaku',
                     color='ffffff'
                 )
