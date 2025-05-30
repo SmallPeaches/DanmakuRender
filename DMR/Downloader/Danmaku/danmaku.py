@@ -178,7 +178,7 @@ class DanmakuDownloader():
                             color=dm.get('color', 'ffffff'),
                         )
                     # 将绝对时间转换为相对时间
-                    dm.time = dm.timestamp - self.start_time - self.dm_delay_fixed
+                    dm.time = dm.timestamp - self.part_start_time - self.dm_delay_fixed
                     # 载入弹幕模板
                     if dm_templ := self.dm_template.get(dm.dtype):
                         dm.text = replace_keywords(dm_templ, dm)
