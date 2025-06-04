@@ -127,8 +127,9 @@ class DanmakuDownloader():
                 or not dm.dtype:
             return False
 
-        if self.dm_filter.get('dm_type', 'danmaku') != 'all':
-            if dm.dtype not in self.dm_filter.get('dm_type', 'danmaku'):
+        dm_type = self.dm_filter.get('dm_type') or 'danmaku'
+        if dm_type != 'all':
+            if dm.dtype not in dm_type:
                 return False
 
         for keyword in self.dm_filter['keywords']:
