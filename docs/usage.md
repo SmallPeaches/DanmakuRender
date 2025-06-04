@@ -66,7 +66,9 @@
 **其他受streamlink支持的直播：** 可用平台请参考[官方文档](https://streamlink.github.io/plugins.html)，除前述平台外均不支持录制弹幕。     
 
 **B站视频：** 使用yutto录制主播的所有视频，不推荐录制收藏夹，视频合集。        
-**YouTube及其他受yt-dlp支持的视频：** 可用平台请参考[官方文档](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)，除YouTube视频外未经过严格测试。
+**YouTube及其他受yt-dlp支持的视频：** 可用平台请参考[官方文档](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)，除YouTube视频外未经过严格测试。     
+
+**特殊弹幕兼容性说明：**礼物弹幕、进场弹幕只支持抖音，superchat弹幕只支持B站。      
 
 
 ### 配置弹幕渲染参数（**非N卡用户必读！**）       
@@ -301,12 +303,13 @@ download_args:
     # 直播间链接
     # 请填写标准格式链接，例如：https://live.bilibili.com/123456
     url: 
-    # 录制程序引擎，可选ffmpeg, streamgears 或者 streamlink
-    # 在使用streamgears作为录制引擎时，录制视频格式可能会根据直播流的不同而不同
+    # 录制程序引擎，可选ffmpeg, streamgears, pyrequests 或者 streamlink
+    # 在使用streamgears作为录制引擎时不支持录制B站hls流
     # 建议PC推流的直播使用ffmpeg录制，手机推流的直播使用streamgears录制
     # 录制twitch等特殊平台建议使用streamlink
     # streamlink可用平台请参考 https://streamlink.github.io/plugins.html
-    engine: streamgears
+    # 默认为auto，由程序自动选择
+    engine: auto
     # 录制输出文件夹，设置为空则使用主播名称作为文件夹
     output_dir: ./直播回放
     # 录制文件名称模板
@@ -324,14 +327,19 @@ download_args:
     # 使用这个功能可以把主播短暂下播又开播认定为同一场直播
     stop_wait_time: 120
     # 直播流选项
+    # 使用streamlink录制时不生效
     stream_option:
       # 直播流CDN
-      # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写，默认tx
-      # 对于B站，可选特定的CDN域名前缀，例如 c1--cn-gotcha208
+      # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写
+      # 对于B站，可选特定的CDN域名前缀，例如：c1--cn-gotcha208
+      # 或者正则匹配特定CDN，例如：.*cn-gotcha.*
+      # 默认为空，由程序随机选择可用cdn
       stream_cdn: ~
-      # 直播流类型，可选flv, hls，默认flv
-      # 暂时只对B站生效（部分情况下B站的flv流是不可用的，只能用hls）
-      stream_type: flv 
+      # 直播流类型（暂时只对B站生效）可选flv，hls，avc，hevc，av1
+      # 注意hls流无法使用streamgears录制
+      # 如果需要同时指定codec类型，请使用'type-codec'的格式，例如：flv-avc
+      # 默认为空，由程序自动选择
+      stream_type: ~
       # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
       # 如果希望不登录录制最低画质，请设置为'None'
       bili_watch_cookies: .login_info/bili_watch_cookies.json
@@ -343,7 +351,20 @@ download_args:
       # 开播检测间隔，每隔这段时间检测一次是否开播
       start_check_interval: 60
       # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
-      stop_check_interval: 30
+      stop_check_interval: 60
+      # 视频文件名称最长长度，超过此长度的文件名称将会被裁剪，默认80（B站视频名称最大长度）
+      # 最大设置为256，否则文件无法被创建
+      max_fn_length: 80
+      # 视频文件最小大小（MB），小于此大小的视频文件将会被删除，默认1MB
+      # 此功能可用于删除因为录制错误导致的许多空视频文件
+      min_video_size: 1
+      # 视频文件最小录制时间（秒），小于此录制时间的视频文件将被删除，默认不启用
+      # 和最小大小配合使用时，只要有一个满足就会被删除
+      min_video_duration: ~
+      # 录制组编号，可用于多任务协同，详情请参考文档
+      group_id: ~
+      # 使用B站强制原画功能，仅适用于pyrequests引擎下的hls流
+      bili_force_origin: True
       # ffmpeg取流参数(仅ffmpeg下载引擎生效)
       ffmpeg_stream_args: [ '-rw_timeout','10000000',
                             '-analyzeduration','15000000',
@@ -355,8 +376,6 @@ download_args:
       disable_lowspeed_interrupt: false
       # streamlink 额外输入参数
       # 可用参数列表请参考 https://streamlink.github.io/cli.html
-      # 一个典型的使用方法是添加一个--twitch-api-header参数，用于取消twitch直播流的广告
-      # 特别提醒，使用此方法传入参数会在日志文件中明文显示，如果需要共享日志文件请确保删除了敏感信息！
       streamlink_extra_args: [
         "--twitch-disable-ads",     # 去广告，去掉、跳过嵌入的广告流
         "--twitch-disable-reruns",  # 如果该频道正在重放回放，不打开流
@@ -397,22 +416,30 @@ download_args:
       douyin_dm_cookies: ~
     # 弹幕过滤规则，满足其中任意条件的弹幕将被过滤
     dm_filter:
+      # 弹幕类型过滤，只获取指定类型的弹幕，支持情况请参考文档
+      # 可选值：all（所有）, danmaku（纯弹幕）, gift（礼物信息）, entry（进场信息）, superchat（超级弹幕）
+      # 默认只获取文字弹幕(danmaku)
+      dm_type: ~
       # 关键字过滤，只要有关键字的弹幕都会被过滤
       # 例如：[菜, fw]
       keywords: ~
       # 用户名称过滤，只有用户名称完全与发弹幕的用户名相同才会过滤
       # 例如：[虎牙小助手, TwitchBot]
       username: ~
-      # 最长弹幕长度，超过此长度的弹幕将被过滤
+      # 最长弹幕长度，超过此长度的弹幕将被过滤，0表示不限制
       max_length: 0
-    # 弹幕模板
+    # 弹幕模板，具体使用请参考文档
     dm_template:
-      # ASS文本模板，使用方法请参考文档
-      ass_text: ~
+      # 不同类型弹幕的模板
+      danmaku: ~
+      superchat: ~
+      gift: ~
+      entry: ~
     # 高级弹幕录制参数
     # 请确保你明白这些参数的含义后再修改
     advanced_dm_args:
       # 弹幕延迟补偿(秒)，将弹幕强行提前
+      # 也可以设置为负数延后弹幕
       dm_delay_fixed: 6
       # 弹幕超时自动重启（秒），超过一段时间无弹幕会自动重启弹幕录制，0表示关闭
       dm_auto_restart: 300
@@ -422,7 +449,7 @@ download_args:
       dm_extra_inputs: []
       # 弹幕文件最小录制时间（秒），小于此录制时间的弹幕文件将被删除
       # 此功能可用于删除因为录制错误导致的许多空弹幕文件
-      dm_file_min_time: 10
+      dm_file_min_time: 30
   
   # 视频下载
   videos:
@@ -474,6 +501,48 @@ download_args:
     # 附加参数列表
     # 此参数将直接传入下载引擎，可以用来设置一些特殊的下载参数
     extra_args: []
+  
+  # 虚拟下载（此功能暂不可用）
+  # 可以监控文件夹中的视频文件，用于和其他软件协同，详情请参考文档
+  virtual:
+    # 监控文件夹
+    input_dir: ~
+    # 输出文件夹
+    # 如果设置了输出文件夹，则视频会被复制到输出文件夹再处理
+    output_dir: ~
+    # 匹配视频文件的正则表达式
+    # 默认匹配可用视频文件
+    video_pattern: ~
+    # 匹配视频文件名称中视频信息
+    info_pattern:
+      # 匹配主播名称，默认为任务名称
+      name: ~
+      # 匹配视频标题，默认为视频文件名称
+      title: ~
+      # 匹配视频时间，默认为视频文件的创建时间
+      time_str: ~
+      # 匹配视频时间字符串转换为datetime对象的格式，用于datetime.strptime
+      # 必须与time_str同时使用
+      time_format:
+      # 是否匹配弹幕文件，仅支持同名的ass文件
+      danmaku: True
+    # 分段等待时间（分钟），如果视频在此时间内没有更新，则会被认为分段录制完成
+    segment_wait_time: 3
+    # 下播等待时间（分钟），如果没有视频在此时间内更新，则会被认为直播已经结束
+    stop_wait_time: 10
+    # 检测视频的起始时间，默认为当前时间
+    start_time: ~
+    # 高级视频参数
+    advanced_video_args: 
+      # 视频文件最小大小（MB），小于此大小的视频文件将会被忽略，默认1MB
+      min_video_size: 1
+      # 视频文件最小录制时间（秒），小于此录制时间的视频文件将被忽略，默认不启用
+      # 和最小大小配合使用时，只要有一个满足就会被忽略
+      # 此参数推荐不设置，因为虚拟下载中视频长度是由文件创建时间和修改时间计算得到的
+      # 在部分情况下中这两个时间相等，会导致计算得到的视频长度为0
+      min_video_duration: ~
+    # 额外信息，暂时没用
+    extra_info: ~
 
 # 渲染器核心参数
 render_kernel_args:
@@ -534,7 +603,7 @@ render_args:
     # 高级渲染参数
     # 请确保你明白这些参数的含义后再修改
     advanced_render_args: ~
-  # 自定义ffmpeg调用
+  # 自定义ffmpeg调用（暂不可用）
   rawffmpeg:
     # 输出文件类型，可选src_video或者dm_video
     output_dtype: ~
@@ -603,12 +672,13 @@ upload_args:
     tag: '直播回放'
     # 延迟发布，单位秒，如果需要的话至少设置14400秒（4个小时）
     dtime: 0
-    # 是否开启杜比音效? 0-关闭 1-开启
-    dolby: 0
     # 允许转载? 0-允许转载，1-禁止转载
     no_reprint: 1
     # 是否开启充电? 0-关闭 1-开启
     open_elec: 1
+    # 额外参数列表
+    # 此参数将直接传入biliup-rs，可以用来设置一些特殊的功能，例如仅自己可见
+    extra_args: ~
   
   # 上传到YouTube
   # 此功能使用较复杂，细节请参考文档
@@ -633,10 +703,11 @@ upload_args:
     timeout: 0
     # 实时上传（边录边传），每录制一个分段上传一次，youtube默认关闭
     realtime: False
-    # 是否合并视频（此功能暂不生效）
+    # 是否合并视频
     # 如果设置为True，那么会把所有分段视频合并成一个视频再上传，默认True
     # 使用实时上传时此功能不生效
     # 强烈建议关闭实时上传，并启动合并视频再上传，因为YouTube API默认每天只能上传6个视频
+    # 使用此功能请确保延迟下播时间设置较短，否则不同分辨率的视频合并会导致上传失败
     concat_video: True
     # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认120s
     min_length: 120
@@ -681,6 +752,8 @@ upload_args:
     retry: 3
     # 上传超时时间（秒），如果上传时间超过这个时间将会被强制终止（用于防止卡死），0表示不限制
     timeout: 0
+    # 实时上传，自定义时必须启用
+    realtime: True
     # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认120s
     min_length: 120
     # 上传命令行参数，可以使用关键字替换
@@ -725,6 +798,10 @@ clean_args:
     delay: 0
     w_srcfile: False
     w_srcpre: True
+
+# WebAPI
+webservice_kernel_args:
+  web_api: True
 ```
 
 </details>

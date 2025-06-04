@@ -80,7 +80,7 @@ class StreamgearsDownloader():
             if not self.stoped and Onair(self.url):
                 logfile.seek(0)
                 log = logfile.read().decode('utf8', errors='ignore')
-                raise RuntimeError(f'{self.taskname} Stream-gears 异常退出 {log}.')
+                raise RuntimeError(f'{self.taskname} Stream-gears 异常退出 {log[-1000:]}.')
 
     def start(self):
         # 生成一个uuid，用于标记这次录制的文件
