@@ -70,10 +70,12 @@ class SuperChatDanmaku(SimpleDanmaku):
         price: float = 0.0,
         price_unit: str = '',
         duration: int = 0,
+        name: str = '',
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+        self.uname = name
         self.price = price
         self.price_unit = price_unit
         self.duration = duration
