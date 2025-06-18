@@ -65,6 +65,9 @@ class PyRequestsFlvDownloader:
 
         with open(self.video_file, 'wb') as file_obj:
             for idx, chunk in enumerate(stream_iter):
+                if not chunk:
+                    raise RuntimeError(f'{self.taskname} stream end.')
+
                 file_obj.write(chunk)
                 if idx % 10 == 0:
                     file_obj.flush()
@@ -339,7 +342,7 @@ class PyRequestsHlsDownloader:
                             del self.future_to_segid[future]
                 raise e
             finally:
-                if self.video_file and exists(self.video_file):
+                if not self.stoped and self.video_file and exists(self.video_file):
                     new_file = rename_safe(self.video_file, self.video_file.replace('[正在录制]', ''))
                     if not new_file:
                         self.logger.error(f'{self.taskname} 重命名文件 {self.video_file} 失败!')
@@ -350,7 +353,17 @@ class PyRequestsHlsDownloader:
     def stop(self):
         self.stoped = True
         self.download_executor.shutdown(wait=False)
-        self.logger.debug('Pyrequests downloader stoped.')
+        try:
+            if self.video_file and exists(self.video_file):
+                new_file = rename_safe(self.video_file, self.video_file.replace('[正在录制]', ''))
+                if not new_file:
+                    self.logger.error(f'{self.taskname} 重命名文件 {self.video_file} 失败!')
+                    new_file = self.video_file
+                self.logger.debug(f'{self.taskname} 录制完成: {new_file}')
+                self.segment_callback(new_file)
+        except Exception as e:
+            self.logger.debug(e)
+        self.logger.debug(f'{self.taskname}：Pyrequests downloader stoped.')
 
 
 class PyRequestsDownloader:

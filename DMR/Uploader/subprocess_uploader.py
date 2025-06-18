@@ -48,3 +48,10 @@ class SubprocessUploader:
                 message += f'File {file.path} upload raise an error: {e}\n'
             
         return status, message.strip()
+    
+    def stop(self):
+        for pid, proc in self.procs.items():
+            try:
+                proc.kill()
+            except Exception as e:
+                self.logger.error(f'Error stopping process {pid}: {e}')
