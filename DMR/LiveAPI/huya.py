@@ -1,10 +1,5 @@
 import json
 import random
-
-try:
-    from .BaseAPI import BaseAPI
-except ImportError:
-    from BaseAPI import BaseAPI
 import requests
 import re
 import base64
@@ -14,7 +9,11 @@ import hashlib
 import time
 import logging
 
-from DMR.utils import random_user_agent
+try:
+    from .BaseAPI import BaseAPI
+except ImportError:
+    from BaseAPI import BaseAPI
+from DMR.utils import random_user_agent, multi_unescape
 
 
 logger = logging.getLogger(__name__)
@@ -82,7 +81,8 @@ class huya(BaseAPI):
                 f"{HUYA_MP_BASE_URL}/cache.php",
                 headers=self.header_mobile, params=params, timeout=5)
             resp.raise_for_status()
-            resp = json.loads(resp.text)
+            # 可能存在多次嵌套
+            resp = json.loads(multi_unescape(resp.text))
             if resp['status'] != 200:
                 raise Exception(f"{resp['message']}")
         else:
@@ -90,7 +90,7 @@ class huya(BaseAPI):
                 f"{HUYA_WEB_BASE_URL}/{self.rid}",
                 headers=self.headers, timeout=5)
             resp.raise_for_status()
-            resp = resp.text
+            resp = multi_unescape(resp.text)
             for err_key in ("找不到这个主播", "该主播涉嫌违规，正在整改中"):
                 if err_key in resp:
                     raise Exception(err_key)

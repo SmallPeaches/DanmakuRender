@@ -1,3 +1,4 @@
+import html
 import random
 import subprocess
 import json
@@ -31,8 +32,15 @@ __all__ = [
     'retry_safe',
     'get_tempfile',
     'merge_dict',
+    'multi_unescape',
 ]
 
+def multi_unescape(s):
+    prev = None
+    while prev != s:
+        prev = s
+        s = html.unescape(s)
+    return s
 
 def merge_dict(dict1:dict, dict2:dict) -> dict:
     """合并两个字典，dict2的值覆盖dict1的值"""
