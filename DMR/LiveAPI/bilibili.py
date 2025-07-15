@@ -121,10 +121,19 @@ class bilibili(BaseAPI):
         if best_urls:
             avail_urls = best_urls
 
-        # 如果没有指定cdn和流类型，并且没有找到原画流，则使用fmp4流用于强制原画
-        if not stream_cdn and not stream_type and not best_urls:
-            stream_cdn = '.*gotcha.*'
-            stream_type = 'fmp4'
+        # 如果没有指定cdn和流类型，使用自动选择
+        if not stream_cdn and not stream_type:
+            # 无原画流，使用hls用于强制原画
+            if not best_urls:
+                stream_cdn = '.*gotcha.*'
+                stream_type = 'fmp4'
+            # HEVC原画使用hls，H264使用flv
+            else:
+                if any('hevc' in url_info['stream_type'] for url_info in best_urls):
+                    stream_type = 'fmp4'
+                else:
+                    stream_type = 'flv'
+        # 使用指定的cdn和流类型
         else:
             stream_type = 'fmp4' if stream_type == 'hls' else 'flv'
 

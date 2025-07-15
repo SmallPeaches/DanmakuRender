@@ -73,6 +73,9 @@ download_args:
       start_check_interval: 60
       # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
       stop_check_interval: 60
+      # 重启间隔时间，可设置为 [起始间隔，步长，最大间隔]
+      # 设置为数字将会是定值
+      restart_interval: [0, 10, 60]
       # 视频文件名称最长长度，超过此长度的文件名称将会被裁剪，默认80（B站视频名称最大长度）
       # 最大设置为256，否则文件无法被创建
       max_fn_length: 80

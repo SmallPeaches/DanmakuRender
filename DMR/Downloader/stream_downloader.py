@@ -264,8 +264,14 @@ class StreamDownloadTask():
         stop_wait_time = self.stop_wait_time*60    # 设定的等待时间
         live_end = False
         restart_cnt = 0     # 出错重启次数
+        restart_interval = self.advanced_video_args.get('restart_interval', (0, 10, 60))  # 重启间隔时间
+        if isinstance(restart_interval, (int, float)):
+            restart_interval_min = restart_interval_step = restart_interval_max = restart_interval
+        else:
+            restart_interval_min, restart_interval_step, restart_interval_max = 0, 10, 60
         start_check_interval = self.advanced_video_args.get('start_check_interval', 60)  # 开播检测时间
         stop_check_interval = self.advanced_video_args.get('stop_check_interval', 30)   # 下播检测间隔
+        
         self.sess_id = uuid(8)
         self.segment_id = 1
 
@@ -306,7 +312,7 @@ class StreamDownloadTask():
                     self.logger.exception(e)
                     self.stop_once()
                     self._pipeSend('liveerror', f'录制过程出错:{e}', dtype='Exception', data=e)
-                    time.sleep(min(restart_cnt*10,60))
+                    time.sleep(min(restart_interval_min + restart_interval_step * restart_cnt, restart_interval_max))
                     restart_cnt += 1
                     continue
                 else:

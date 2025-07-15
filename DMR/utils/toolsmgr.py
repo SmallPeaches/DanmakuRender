@@ -94,7 +94,7 @@ def check_biliup():
             input("Biliup未正确安装, 回车自动安装:")
 
             import requests
-            r = requests.get('https://github.com/biliup/biliup-rs/releases/download/v0.2.0/biliupR-v0.2.0-x86_64-windows.zip', stream=True)
+            r = requests.get('https://github.com/biliup/biliup-rs/releases/download/v0.2.4/biliupR-v0.2.4-x86_64-windows.zip', stream=True)
 
             # 下载
             content = b''

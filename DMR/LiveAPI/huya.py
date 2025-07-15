@@ -115,14 +115,15 @@ class huya(BaseAPI):
             live_info = s_json['data'][0]['gameLiveInfo']
             streams_info = s_json['data'][0]['gameStreamInfoList']
         elif isinstance(data, dict):
+            data = data['data']
             if data['liveStatus'] != 'ON' or not data.get('liveData', {}).get('bitRateInfo'):
                 return {
                     'live': False,
                     'message': '未开播' if data['liveStatus'] != 'ON' else '未推流',
                 }
             live_info = data['liveData']
-            bitrate_info = live_info['bitRateInfo']
-            streams_info = live_info['streamsInfo']
+            bitrate_info = json.loads(live_info['bitRateInfo'])
+            streams_info = data['stream']['baseSteamInfoList']
         return {
             'artist': live_info['nick'],
             'artist_img': live_info['avatar180'].replace('http://', 'https://'),
