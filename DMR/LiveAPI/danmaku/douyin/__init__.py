@@ -22,32 +22,10 @@ from DMR.LiveAPI.douyin import douyin_utils
 from DMR.utils import split_url, cookiestr2dict, SimpleDanmaku, GiftDanmaku, EntryDanmaku
 from .dy_pb2 import PushFrame, Response, ChatMessage, GiftMessage, MemberMessage
 from .utils import DouyinDanmakuUtils
-
 import aiohttp
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
 
-
-def build_request_url(url: str) -> str:
-    parsed_url = urlparse(url)
-    existing_params = parse_qs(parsed_url.query)
-    existing_params['aid'] = ['6383']
-    existing_params['device_platform'] = ['web']
-    existing_params['browser_language'] = ['zh-CN']
-    existing_params['browser_platform'] = ['Win32']
-    existing_params['browser_name'] = ['Mozilla']
-    existing_params['browser_version'] = ['92.0.4515.159']
-    new_query_string = urlencode(existing_params, doseq=True)
-    new_url = urlunparse((
-        parsed_url.scheme,
-        parsed_url.netloc,
-        parsed_url.path,
-        parsed_url.params,
-        new_query_string,
-        parsed_url.fragment
-    ))
-    return new_url
 
 class Douyin:
     heartbeat = b':\x02hb'
@@ -72,7 +50,7 @@ class Douyin:
         async with aiohttp.ClientSession() as session:
             _, room_id = split_url(url)
             async with session.get(
-                    build_request_url(f"https://live.douyin.com/webcast/room/web/enter/?web_rid={room_id}"),
+                    douyin_utils.build_request_url(f"https://live.douyin.com/webcast/room/web/enter/?web_rid={room_id}"),
                     headers=self.headers, timeout=5) as resp:
                 room_info = json.loads(await resp.text())['data']['data'][0]
                 USER_UNIQUE_ID = DouyinDanmakuUtils.get_user_unique_id()
@@ -130,7 +108,7 @@ class Douyin:
                     "signature": signature,
                 }
                 wss_url = f"wss://webcast5-ws-web-lf.douyin.com/webcast/im/push/v2/?{'&'.join([f'{k}={v}' for k, v in webcast5_params.items()])}"
-                url = build_request_url(wss_url)
+                url = douyin_utils.build_request_url(wss_url)
                 return url, []
 
     @classmethod
