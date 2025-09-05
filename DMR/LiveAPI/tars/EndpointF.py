@@ -13,7 +13,7 @@
 # specific language governing permissions and limitations under the License.
 #
 
-from core import tarscore
+from biliup.Danmaku.tars.core import tarscore
 
 
 class EndpointF(tarscore.struct):
@@ -56,11 +56,14 @@ class EndpointF(tarscore.struct):
         value.timeout = ios.read(tarscore.int32, 2, True, value.timeout)
         value.istcp = ios.read(tarscore.int32, 3, True, value.istcp)
         value.grid = ios.read(tarscore.int32, 4, True, value.grid)
-        value.groupworkid = ios.read(tarscore.int32, 5, False, value.groupworkid)
-        value.grouprealid = ios.read(tarscore.int32, 6, False, value.grouprealid)
+        value.groupworkid = ios.read(
+            tarscore.int32, 5, False, value.groupworkid)
+        value.grouprealid = ios.read(
+            tarscore.int32, 6, False, value.grouprealid)
         value.setId = ios.read(tarscore.string, 7, False, value.setId)
         value.qos = ios.read(tarscore.int32, 8, False, value.qos)
         value.bakFlag = ios.read(tarscore.int32, 9, False, value.bakFlag)
         value.weight = ios.read(tarscore.int32, 11, False, value.weight)
-        value.weightType = ios.read(tarscore.int32, 12, False, value.weightType)
+        value.weightType = ios.read(
+            tarscore.int32, 12, False, value.weightType)
         return value

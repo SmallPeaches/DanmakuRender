@@ -47,7 +47,7 @@ class StreamlinkDownloader():
             "--player-external-http",  # 为外部程序提供流媒体数据
             "--player-external-http-port", str(port),  # 对外部输出流的端口
             *streamlink_extra_args,
-            self.url, "best"  # 流链接
+            self.url,
         ]
         self.logger.debug(f'{self.taskname} streamlink args: {streamlink_args}')
 

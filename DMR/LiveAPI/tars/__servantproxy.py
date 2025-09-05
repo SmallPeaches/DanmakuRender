@@ -18,29 +18,28 @@
 #
 
 
-"""
+'''
 @version: 0.01
 @brief: rpc抽离出servantproxy
-"""
+'''
 import threading
 import time
 
-from __logger import tarsLogger
-from __util import util
-from __packet import RequestPacket
-
 # from __packet import ResponsePacket
-from __TimeoutQueue import ReqMessage
-import exception
-from exception import TarsException
+from biliup.Danmaku.tars.__TimeoutQueue import ReqMessage
+from biliup.Danmaku.tars.__logger import tarsLogger
+from biliup.Danmaku.tars.__packet import RequestPacket
+from biliup.Danmaku.tars.__util import util
+from biliup.Danmaku.tars import exception
+from biliup.Danmaku.tars.exception import TarsException
 
 
 class ServantProxy(object):
-    """
+    '''
     @brief: 1、远程对象的本地代理
             2、同名servant在一个通信器中最多只有一个实例
             3、防止和用户在Tars中定义的函数名冲突，接口以tars_开头
-    """
+    '''
 
     # 服务器响应的错误码
     TARSSERVERSUCCESS = 0  # 服务器端处理成功
@@ -71,25 +70,25 @@ class ServantProxy(object):
     mapcls_context = util.mapclass(util.string, util.string)
 
     def __init__(self):
-        tarsLogger.debug("ServantProxy:__init__")
+        tarsLogger.debug('ServantProxy:__init__')
         self.__reactor = None
         self.__object = None
         self.__initialize = False
 
     def __del__(self):
-        tarsLogger.debug("ServantProxy:__del__")
+        tarsLogger.debug('ServantProxy:__del__')
 
     def _initialize(self, reactor, obj):
-        """
+        '''
         @brief: 初始化函数，需要调用才能使用ServantProxy
         @param reactor: 网络管理的reactor实例
         @type reactor: FDReactor
         @return: None
         @rtype: None
-        """
-        tarsLogger.debug("ServantProxy:_initialize")
+        '''
+        tarsLogger.debug('ServantProxy:_initialize')
 
-        assert reactor and obj
+        assert(reactor and obj)
         if self.__initialize:
             return
         self.__reactor = reactor
@@ -97,30 +96,30 @@ class ServantProxy(object):
         self.__initialize = True
 
     def _terminate(self):
-        """
+        '''
         @brief: 不再使用ServantProxy时调用，会释放相应资源
         @return: None
         @rtype: None
-        """
-        tarsLogger.debug("ServantProxy:_terminate")
+        '''
+        tarsLogger.debug('ServantProxy:_terminate')
         self.__object = None
         self.__reactor = None
         self.__initialize = False
 
     def tars_name(self):
-        """
+        '''
         @brief: 获取ServantProxy的名字
         @return: ServantProxy的名字
         @rtype: str
-        """
+        '''
         return self.__object.name()
 
     def tars_timeout(self):
-        """
+        '''
         @brief: 获取超时时间，单位是ms
         @return: 超时时间
         @rtype: int
-        """
+        '''
         # 默认的为3S = ObjectProxy.DEFAULT_TIMEOUT
         return int(self.__timeout() * 1000)
 
@@ -128,13 +127,13 @@ class ServantProxy(object):
         pass
 
     # def tars_initialize(self):
-    # pass
+        # pass
 
     # def tars_terminate(self):
-    # pass
+        # pass
 
     def tars_invoke(self, cPacketType, sFuncName, sBuffer, context, status):
-        """
+        '''
         @brief: TARS协议同步方法调用
         @param cPacketType: 请求包类型
         @type cPacketType: int
@@ -148,8 +147,8 @@ class ServantProxy(object):
         @type status:
         @return: 响应报文
         @rtype: ResponsePacket
-        """
-        tarsLogger.debug("ServantProxy:tars_invoke, func: %s", sFuncName)
+        '''
+        tarsLogger.debug('ServantProxy:tars_invoke, func: %s', sFuncName)
         req = RequestPacket()
         req.iVersion = ServantProxy.TARSVERSION
         req.cPacketType = cPacketType
@@ -181,15 +180,16 @@ class ServantProxy(object):
         except TarsException:
             raise
         except:
-            raise TarsException("ServantProxy::tars_invoke excpetion")
+            raise TarsException('ServantProxy::tars_invoke excpetion')
 
         if reqmsg.adapter:
             reqmsg.adapter.finishInvoke(False)
 
         return rsp
 
-    def tars_invoke_async(self, cPacketType, sFuncName, sBuffer, context, status, callback):
-        """
+    def tars_invoke_async(self, cPacketType, sFuncName, sBuffer,
+                          context, status, callback):
+        '''
         @brief: TARS协议同步方法调用
         @param cPacketType: 请求包类型
         @type cPacketType: int
@@ -205,8 +205,8 @@ class ServantProxy(object):
         @type callback: ServantProxyCallback的子类
         @return: 响应报文
         @rtype: ResponsePacket
-        """
-        tarsLogger.debug("ServantProxy:tars_invoke")
+        '''
+        tarsLogger.debug('ServantProxy:tars_invoke')
         req = RequestPacket()
         req.iVersion = ServantProxy.TARSVERSION
         req.cPacketType = cPacketType if callback else ServantProxy.TARSONEWAY
@@ -230,7 +230,7 @@ class ServantProxy(object):
         except TarsException:
             raise
         except Exception:
-            raise TarsException("ServantProxy::tars_invoke excpetion")
+            raise TarsException('ServantProxy::tars_invoke excpetion')
 
         if reqmsg.adapter:
             reqmsg.adapter.finishInvoke(False)
@@ -238,53 +238,42 @@ class ServantProxy(object):
         return rsp
 
     def __timeout(self):
-        """
+        '''
         @brief: 获取超时时间，单位是s
         @return: 超时时间
         @rtype: float
-        """
+        '''
         return self.__object.timeout()
 
     def __invoke(self, reqmsg):
-        """
+        '''
         @brief: 远程过程调用
         @param reqmsg: 请求数据
         @type reqmsg: ReqMessage
         @return: 调用成功或失败
         @rtype: bool
-        """
-        tarsLogger.debug("ServantProxy:invoke, func: %s", reqmsg.request.sFuncName)
+        '''
+        tarsLogger.debug('ServantProxy:invoke, func: %s',
+                         reqmsg.request.sFuncName)
         ret = self.__object.invoke(reqmsg)
         if ret == -2:
-            errmsg = (
-                "ServantProxy::invoke fail, no valid servant,"
-                + " servant name : %s, function name : %s"
-                % (
-                    reqmsg.request.sServantName,
-                    reqmsg.request.sFuncName,
-                )
-            )
+            errmsg = ('ServantProxy::invoke fail, no valid servant,' +
+                      ' servant name : %s, function name : %s' %
+                      (reqmsg.request.sServantName,
+                       reqmsg.request.sFuncName))
             raise TarsException(errmsg)
         if ret == -1:
-            errmsg = (
-                "ServantProxy::invoke connect fail,"
-                + " servant name : %s, function name : %s, adapter : %s"
-                % (
-                    reqmsg.request.sServantName,
-                    reqmsg.request.sFuncName,
-                    reqmsg.adapter.getEndPointInfo(),
-                )
-            )
+            errmsg = ('ServantProxy::invoke connect fail,' +
+                      ' servant name : %s, function name : %s, adapter : %s' %
+                      (reqmsg.request.sServantName,
+                       reqmsg.request.sFuncName,
+                       reqmsg.adapter.getEndPointInfo()))
             raise TarsException(errmsg)
         elif ret != 0:
-            errmsg = (
-                "ServantProxy::invoke unknown fail, "
-                + "Servant name : %s, function name : %s"
-                % (
-                    reqmsg.request.sServantName,
-                    reqmsg.request.sFuncName,
-                )
-            )
+            errmsg = ('ServantProxy::invoke unknown fail, ' +
+                      'Servant name : %s, function name : %s' %
+                      (reqmsg.request.sServantName,
+                       reqmsg.request.sFuncName))
             raise TarsException(errmsg)
 
         if reqmsg.type == ReqMessage.SYNC_CALL:
@@ -293,35 +282,29 @@ class ServantProxy(object):
             reqmsg.lock.release()
 
             if not reqmsg.response:
-                errmsg = (
-                    "ServantProxy::invoke timeout: %d, servant name"
-                    ": %s, adapter: %s, request id: %d"
-                    % (
-                        self.tars_timeout(),
-                        self.tars_name(),
-                        reqmsg.adapter.trans().getEndPointInfo(),
-                        reqmsg.request.iRequestId,
-                    )
-                )
+                errmsg = ('ServantProxy::invoke timeout: %d, servant name'
+                          ': %s, adapter: %s, request id: %d' % (
+                              self.tars_timeout(),
+                              self.tars_name(),
+                              reqmsg.adapter.trans().getEndPointInfo(),
+                              reqmsg.request.iRequestId))
                 raise exception.TarsSyncCallTimeoutException(errmsg)
             elif reqmsg.response.iRet == ServantProxy.TARSSERVERSUCCESS:
                 return reqmsg.response
             else:
-                errmsg = "servant name: %s, function name: %s" % (
-                    self.tars_name(),
-                    reqmsg.request.sFuncName,
-                )
+                errmsg = 'servant name: %s, function name: %s' % (
+                         self.tars_name(), reqmsg.request.sFuncName)
                 self.tarsRaiseException(reqmsg.response.iRet, errmsg)
 
     def _finished(self, reqmsg):
-        """
+        '''
         @brief: 通知远程过程调用线程响应报文到了
         @param reqmsg: 请求响应报文
         @type reqmsg: ReqMessage
         @return: 函数执行成功或失败
         @rtype: bool
-        """
-        tarsLogger.debug("ServantProxy:finished")
+        '''
+        tarsLogger.debug('ServantProxy:finished')
         if not reqmsg.lock:
             return False
         reqmsg.lock.acquire()
@@ -330,7 +313,7 @@ class ServantProxy(object):
         return True
 
     def tarsRaiseException(self, errno, desc):
-        """
+        '''
         @brief: 服务器调用失败，根据服务端给的错误码抛出异常
         @param errno: 错误码
         @type errno: int
@@ -338,46 +321,38 @@ class ServantProxy(object):
         @type desc: str
         @return: 没有返回值，函数会抛出异常
         @rtype:
-        """
+        '''
         if errno == ServantProxy.TARSSERVERSUCCESS:
             return
 
         elif errno == ServantProxy.TARSSERVERDECODEERR:
             raise exception.TarsServerDecodeException(
-                "server decode exception: errno: %d, msg: %s" % (errno, desc)
-            )
+                "server decode exception: errno: %d, msg: %s" % (errno, desc))
 
         elif errno == ServantProxy.TARSSERVERENCODEERR:
             raise exception.TarsServerEncodeException(
-                "server encode exception: errno: %d, msg: %s" % (errno, desc)
-            )
+                "server encode exception: errno: %d, msg: %s" % (errno, desc))
 
         elif errno == ServantProxy.TARSSERVERNOFUNCERR:
             raise exception.TarsServerNoFuncException(
-                "server function mismatch exception: errno: %d, msg: %s" % (errno, desc)
-            )
+                "server function mismatch exception: errno: %d, msg: %s" % (errno, desc))
 
         elif errno == ServantProxy.TARSSERVERNOSERVANTERR:
             raise exception.TarsServerNoServantException(
-                "server servant mismatch exception: errno: %d, msg: %s" % (errno, desc)
-            )
+                "server servant mismatch exception: errno: %d, msg: %s" % (errno, desc))
 
         elif errno == ServantProxy.TARSSERVERRESETGRID:
             raise exception.TarsServerResetGridException(
-                "server reset grid exception: errno: %d, msg: %s" % (errno, desc)
-            )
+                "server reset grid exception: errno: %d, msg: %s" % (errno, desc))
 
         elif errno == ServantProxy.TARSSERVERQUEUETIMEOUT:
             raise exception.TarsServerQueueTimeoutException(
-                "server queue timeout exception: errno: %d, msg: %s" % (errno, desc)
-            )
+                "server queue timeout exception: errno: %d, msg: %s" % (errno, desc))
 
         elif errno == ServantProxy.TARSPROXYCONNECTERR:
             raise exception.TarsServerQueueTimeoutException(
-                "server connection lost: errno: %d, msg: %s" % (errno, desc)
-            )
+                "server connection lost: errno: %d, msg: %s" % (errno, desc))
 
         else:
             raise exception.TarsServerUnknownException(
-                "server unknown exception: errno: %d, msg: %s" % (errno, desc)
-            )
+                "server unknown exception: errno: %d, msg: %s" % (errno, desc))

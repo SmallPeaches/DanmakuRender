@@ -17,28 +17,27 @@
 # specific language governing permissions and limitations under the License.
 #
 
-"""
+'''
 @version: 0.01
 @brief: 请求响应报文和超时队列
-"""
+'''
 
+import struct
 import threading
 import time
-import struct
 
 from .__logger import tarsLogger
-from .__tars import TarsInputStream
-from .__tars import TarsOutputStream
 from .__packet import RequestPacket
 from .__packet import ResponsePacket
-from .__util import NewLock, LockGuard
+from .__tars import TarsInputStream
+from .__tars import TarsOutputStream
+from .__util import (NewLock, LockGuard)
 
 
 class ReqMessage:
-    """
+    '''
     @brief: 请求响应报文，保存一个请求响应所需要的数据
-    """
-
+    '''
     SYNC_CALL = 1
     ASYNC_CALL = 2
     ONE_WAY = 3
@@ -58,30 +57,30 @@ class ReqMessage:
         self.hashCode = 0
 
     def packReq(self):
-        """
+        '''
         @brief: 序列化请求报文
         @return: 序列化后的请求报文
         @rtype: str
-        """
+        '''
         if not self.request:
-            return ""
+            return ''
         oos = TarsOutputStream()
         RequestPacket.writeTo(oos, self.request)
         reqpkt = oos.getBuffer()
         plen = len(reqpkt) + 4
-        reqpkt = struct.pack("!i", plen) + reqpkt
+        reqpkt = struct.pack('!i', plen) + reqpkt
         return reqpkt
 
     @staticmethod
     def unpackRspList(buf):
-        """
+        '''
         @brief: 解码响应报文
         @param buf: 多个序列化后的响应报文数据
         @type buf: str
         @return: 解码出来的响应报文和解码的buffer长度
         @rtype: rsplist: 装有ResponsePacket的list
                 unpacklen: int
-        """
+        '''
         rsplist = []
         if not buf:
             return rsplist
@@ -91,28 +90,27 @@ class ReqMessage:
         while True:
             if len(buf) - unpacklen < 4:
                 break
-            packsize = buf[unpacklen : unpacklen + 4]
-            (packsize,) = struct.unpack_from("!i", packsize)
+            packsize = buf[unpacklen: unpacklen+4]
+            packsize, = struct.unpack_from('!i', packsize)
             if len(buf) < unpacklen + packsize:
                 break
 
-            ios = TarsInputStream(buf[unpacklen + 4 : unpacklen + packsize])
+            ios = TarsInputStream(buf[unpacklen+4: unpacklen+packsize])
             rsp = ResponsePacket.readFrom(ios)
             rsplist.append(rsp)
             unpacklen += packsize
 
         return rsplist, unpacklen
 
-
 # 超时队列，加锁，线程安全
 
 
 class TimeoutQueue:
-    """
+    '''
     @brief: 超时队列，加锁，线程安全
             可以像队列一样FIFO，也可以像字典一样按key取item
     @todo: 限制队列长度
-    """
+    '''
 
     def __init__(self, timeout=3):
         self.__uniqId = 0
@@ -123,29 +121,29 @@ class TimeoutQueue:
         self.__timeout = timeout
 
     def getTimeout(self):
-        """
+        '''
         @brief: 获取超时时间，单位为s
         @return: 超时时间
         @rtype: float
-        """
+        '''
         return self.__timeout
 
     def setTimeout(self, timeout):
-        """
+        '''
         @brief: 设置超时时间，单位为s
         @param timeout: 超时时间
         @type timeout: float
         @return: None
         @rtype: None
-        """
+        '''
         self.__timeout = timeout
 
     def size(self):
-        """
+        '''
         @brief: 获取队列长度
         @return: 队列长度
         @rtype: int
-        """
+        '''
         # self.__lock.acquire()
         lock = LockGuard(self.__lock)
         ret = len(self.__data)
@@ -153,11 +151,11 @@ class TimeoutQueue:
         return ret
 
     def generateId(self):
-        """
+        '''
         @brief: 生成唯一id，0 < id < 2 ** 32
         @return: id
         @rtype: int
-        """
+        '''
         # self.__lock.acquire()
         lock = LockGuard(self.__lock)
         ret = self.__uniqId
@@ -169,7 +167,7 @@ class TimeoutQueue:
         return ret
 
     def pop(self, uniqId=0, erase=True):
-        """
+        '''
         @brief: 弹出item
         @param uniqId: item的id，如果为0，按FIFO弹出
         @type uniqId: int
@@ -177,7 +175,7 @@ class TimeoutQueue:
         @type erase: bool
         @return: item
         @rtype: any type
-        """
+        '''
         ret = None
 
         # self.__lock.acquire()
@@ -197,13 +195,13 @@ class TimeoutQueue:
         return ret[0] if ret else None
 
     def push(self, item, uniqId):
-        """
+        '''
         @brief: 数据入队列，如果队列已经有了uniqId，插入失败
         @param item: 插入的数据
         @type item: any type
         @return: 插入是否成功
         @rtype: bool
-        """
+        '''
         begtime = time.time()
         ret = True
         # self.__lock.acquire()
@@ -218,13 +216,13 @@ class TimeoutQueue:
         return ret
 
     def peek(self, uniqId):
-        """
+        '''
         @brief: 根据uniqId获取item，不会删除item
         @param uniqId: item的id
         @type uniqId: int
         @return: item
         @rtype: any type
-        """
+        '''
         # self.__lock.acquire()
         lock = LockGuard(self.__lock)
 
@@ -235,11 +233,11 @@ class TimeoutQueue:
         return ret[0]
 
     def timeout(self):
-        """
+        '''
         @brief: 检测是否有item超时，如果有就删除
         @return: None
         @rtype: None
-        """
+        '''
         endtime = time.time()
         # self.__lock.acquire()
         lock = LockGuard(self.__lock)
@@ -251,7 +249,8 @@ class TimeoutQueue:
                 if endtime - item[1] < self.__timeout:
                     new_data[uniqId] = item
                 else:
-                    tarsLogger.debug("TimeoutQueue:timeout remove id : %d" % uniqId)
+                    tarsLogger.debug(
+                        'TimeoutQueue:timeout remove id : %d' % uniqId)
             self.__data = new_data
         finally:
             # self.__lock.release()
@@ -265,7 +264,7 @@ class QueueTimeout(threading.Thread):
 
     def __init__(self, timeout=0.1):
         # threading.Thread.__init__(self)
-        tarsLogger.debug("QueueTimeout:__init__")
+        tarsLogger.debug('QueueTimeout:__init__')
         super(QueueTimeout, self).__init__()
         self.timeout = timeout
         self.__terminate = False
@@ -273,7 +272,7 @@ class QueueTimeout(threading.Thread):
         self.__lock = threading.Condition()
 
     def terminate(self):
-        tarsLogger.debug("QueueTimeout:terminate")
+        tarsLogger.debug('QueueTimeout:terminate')
         self.__terminate = True
         self.__lock.acquire()
         self.__lock.notifyAll()
@@ -292,10 +291,10 @@ class QueueTimeout(threading.Thread):
                     break
                 self.__handler()
             except Exception as msg:
-                tarsLogger.error("QueueTimeout:run exception : %s", msg)
+                tarsLogger.error('QueueTimeout:run exception : %s', msg)
 
-        tarsLogger.debug("QueueTimeout:run finished")
+        tarsLogger.debug('QueueTimeout:run finished')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     pass

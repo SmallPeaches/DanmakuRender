@@ -18,32 +18,32 @@
 # specific language governing permissions and limitations under the License.
 #
 
-"""
+'''
 @version: 0.01
 @brief: 日志模块
-"""
+'''
 
 # 仅用于调试
 
 import logging
-from logging.handlers import RotatingFileHandler
 import os
 import re
+from logging.handlers import RotatingFileHandler
 
-tarsLogger = logging.getLogger("TARS client")
+tarsLogger = logging.getLogger('TARS client')
 strToLoggingLevel = {
     "critical": logging.CRITICAL,
     "error": logging.ERROR,
     "warn": logging.WARNING,
     "info": logging.INFO,
     "debug": logging.DEBUG,
-    "none": logging.NOTSET,
+    "none": logging.NOTSET
 }
-# console = logging.StreamHandler()
+#console = logging.StreamHandler()
 # console.setLevel(logging.DEBUG)
-# filelog = logging.FileHandler('tars.log')
+#filelog = logging.FileHandler('tars.log')
 # filelog.setLevel(logging.DEBUG)
-# formatter = logging.Formatter('%(asctime)s | %(levelname)8s | [%(name)s] %(message)s', '%Y-%m-%d %H:%M:%S')
+#formatter = logging.Formatter('%(asctime)s | %(levelname)8s | [%(name)s] %(message)s', '%Y-%m-%d %H:%M:%S')
 # console.setFormatter(formatter)
 # filelog.setFormatter(formatter)
 # tarsLogger.addHandler(console)
@@ -54,14 +54,14 @@ strToLoggingLevel = {
 
 
 def createLogFile(filename):
-    if filename.endswith("/"):
+    if filename.endswith('/'):
         raise ValueError("The logfile is a dir not a file")
     if os.path.exists(filename) and os.path.isfile(filename):
         pass
     else:
-        fileComposition = str.split(filename, "/")
+        fileComposition = str.split(filename, '/')
         print(fileComposition)
-        currentFile = ""
+        currentFile = ''
         for item in fileComposition:
             if item == fileComposition[-1]:
                 currentFile += item
@@ -72,22 +72,21 @@ def createLogFile(filename):
                             break
                         except OSError as msg:
                             errno = re.findall(r"\d+", str(msg))
-                            if len(errno) > 0 and errno[0] == "17":
-                                currentFile += ".log"
+                            if len(errno) > 0 and errno[0] == '17':
+                                currentFile += '.log'
                                 continue
                 break
-            currentFile += item + "/"
+            currentFile += (item + '/')
             if not os.path.exists(currentFile):
                 os.mkdir(currentFile)
 
 
 def initLog(logpath, logsize, lognum, loglevel):
     createLogFile(logpath)
-    handler = RotatingFileHandler(filename=logpath, maxBytes=logsize, backupCount=lognum)
+    handler = RotatingFileHandler(filename=logpath, maxBytes=logsize,
+                                  backupCount=lognum)
     formatter = logging.Formatter(
-        "%(asctime)s | %(levelname)6s | [%(filename)18s:%(lineno)4d] | [%(thread)d] %(message)s",
-        "%Y-%m-%d %H:%M:%S",
-    )
+        '%(asctime)s | %(levelname)6s | [%(filename)18s:%(lineno)4d] | [%(thread)d] %(message)s', '%Y-%m-%d %H:%M:%S')
     handler.setFormatter(formatter)
     tarsLogger.addHandler(handler)
     if loglevel in strToLoggingLevel:
@@ -96,9 +95,9 @@ def initLog(logpath, logsize, lognum, loglevel):
         tarsLogger.setLevel(strToLoggingLevel["error"])
 
 
-if __name__ == "__main__":
-    tarsLogger.debug("debug log")
-    tarsLogger.info("info log")
-    tarsLogger.warning("warning log")
-    tarsLogger.error("error log")
-    tarsLogger.critical("critical log")
+if __name__ == '__main__':
+    tarsLogger.debug('debug log')
+    tarsLogger.info('info log')
+    tarsLogger.warning('warning log')
+    tarsLogger.error('error log')
+    tarsLogger.critical('critical log')

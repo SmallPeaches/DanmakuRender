@@ -17,25 +17,26 @@
 # specific language governing permissions and limitations under the License.
 #
 
-"""
+'''
 @version: 0.01
 @brief: 异步rpc实现
-"""
+'''
 
+import queue
 import threading
-import Queue
-from __logger import tarsLogger
-from __packet import ResponsePacket
-from __servantproxy import ServantProxy
+
+from biliup.Danmaku.tars.__logger import tarsLogger
+from biliup.Danmaku.tars.__packet import ResponsePacket
+from biliup.Danmaku.tars.__servantproxy import ServantProxy
 
 
 class AsyncProcThread:
-    """
+    '''
     @brief: 异步调用线程管理类
-    """
+    '''
 
     def __init__(self):
-        tarsLogger.debug("AsyncProcThread:__init__")
+        tarsLogger.debug('AsyncProcThread:__init__')
         self.__initialize = False
         self.__runners = []
         self.__queue = None
@@ -43,30 +44,30 @@ class AsyncProcThread:
         self.__popTimeout = 0.1
 
     def __del__(self):
-        tarsLogger.debug("AsyncProcThread:__del__")
+        tarsLogger.debug('AsyncProcThread:__del__')
 
     def initialize(self, nrunner=3):
-        """
+        '''
         @brief: 使用AsyncProcThread前必须先调用此函数
         @param nrunner: 异步线程个数
         @type nrunner: int
         @return: None
         @rtype: None
-        """
-        tarsLogger.debug("AsyncProcThread:initialize")
+        '''
+        tarsLogger.debug('AsyncProcThread:initialize')
         if self.__initialize:
             return
         self.__nrunner = nrunner
-        self.__queue = Queue.Queue()
+        self.__queue = queue.Queue()
         self.__initialize = True
 
     def terminate(self):
-        """
+        '''
         @brief: 关闭所有异步线程
         @return: None
         @rtype: None
-        """
-        tarsLogger.debug("AsyncProcThread:terminate")
+        '''
+        tarsLogger.debug('AsyncProcThread:terminate')
 
         for runner in self.__runners:
             runner.terminate()
@@ -76,14 +77,14 @@ class AsyncProcThread:
         self.__runners = []
 
     def put(self, reqmsg):
-        """
+        '''
         @brief: 处理数据入队列
         @param reqmsg: 待处理数据
         @type reqmsg: ReqMessage
         @return: None
         @rtype: None
-        """
-        tarsLogger.debug("AsyncProcThread:put")
+        '''
+        tarsLogger.debug('AsyncProcThread:put')
         # 异步请求超时
         if not reqmsg.response:
             reqmsg.response = ResponsePacket()
@@ -95,27 +96,27 @@ class AsyncProcThread:
         self.__queue.put(reqmsg)
 
     def pop(self):
-        """
+        '''
         @brief: 处理数据出队列
         @return: ReqMessage
         @rtype: ReqMessage
-        """
+        '''
         # tarsLogger.debug('AsyncProcThread:pop')
         ret = None
         try:
             ret = self.__queue.get(True, self.__popTimeout)
-        except Queue.Empty:
+        except queue.Empty:
             pass
         return ret
 
     def start(self):
-        """
+        '''
         @brief: 启动异步线程
         @return: None
         @rtype: None
-        """
-        tarsLogger.debug("AsyncProcThread:start")
-        for i in xrange(self.__nrunner):
+        '''
+        tarsLogger.debug('AsyncProcThread:start')
+        for i in range(self.__nrunner):
             runner = AsyncProcThreadRunner()
             runner.initialize(self)
             runner.start()
@@ -123,12 +124,12 @@ class AsyncProcThread:
 
 
 class AsyncProcThreadRunner(threading.Thread):
-    """
+    '''
     @brief: 异步调用线程
-    """
+    '''
 
     def __init__(self):
-        tarsLogger.debug("AsyncProcThreadRunner:__init__")
+        tarsLogger.debug('AsyncProcThreadRunner:__init__')
         super(AsyncProcThreadRunner, self).__init__()
         # threading.Thread.__init__(self)
         self.__terminate = False
@@ -136,33 +137,33 @@ class AsyncProcThreadRunner(threading.Thread):
         self.__procQueue = None
 
     def __del__(self):
-        tarsLogger.debug("AsyncProcThreadRunner:__del__")
+        tarsLogger.debug('AsyncProcThreadRunner:__del__')
 
     def initialize(self, queue):
-        """
+        '''
         @brief: 使用AsyncProcThreadRunner前必须调用此函数
         @param queue: 有pop()的类，用于提取待处理数据
         @type queue: AsyncProcThread
         @return: None
         @rtype: None
-        """
-        tarsLogger.debug("AsyncProcThreadRunner:initialize")
+        '''
+        tarsLogger.debug('AsyncProcThreadRunner:initialize')
         self.__procQueue = queue
 
     def terminate(self):
-        """
+        '''
         @brief: 关闭线程
         @return: None
         @rtype: None
-        """
-        tarsLogger.debug("AsyncProcThreadRunner:terminate")
+        '''
+        tarsLogger.debug('AsyncProcThreadRunner:terminate')
         self.__terminate = True
 
     def run(self):
-        """
+        '''
         @brief: 线程启动函数，执行异步调用
-        """
-        tarsLogger.debug("AsyncProcThreadRunner:run")
+        '''
+        tarsLogger.debug('AsyncProcThreadRunner:run')
         while not self.__terminate:
             if self.__terminate:
                 break
@@ -176,26 +177,26 @@ class AsyncProcThreadRunner(threading.Thread):
 
             try:
                 reqmsg.callback.onDispatch(reqmsg)
-            except Exception, msg:
-                tarsLogger.error("AsyncProcThread excepttion: %s", msg)
+            except Exception as msg:
+                tarsLogger.error('AsyncProcThread excepttion: %s', msg)
 
-        tarsLogger.debug("AsyncProcThreadRunner:run finished")
+        tarsLogger.debug('AsyncProcThreadRunner:run finished')
 
 
 class ServantProxyCallback(object):
-    """
+    '''
     @brief: 异步回调对象基类
-    """
+    '''
 
     def __init__(self):
-        tarsLogger.debug("ServantProxyCallback:__init__")
+        tarsLogger.debug('ServantProxyCallback:__init__')
 
     def onDispatch(reqmsg):
-        """
+        '''
         @brief: 分配响应报文到对应的回调函数
         @param queue: 有pop()的类，用于提取待处理数据
         @type queue: AsyncProcThread
         @return: None
         @rtype: None
-        """
+        '''
         raise NotImplementedError()

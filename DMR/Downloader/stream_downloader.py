@@ -174,9 +174,9 @@ class StreamDownloadTask():
                     this_engine = 'ffmpeg'
                 else:
                     this_engine = 'streamgears'
-            # 虎牙必须使用ffmpeg (https://github.com/SmallPeaches/DanmakuRender/issues/386)
-            elif self.plat == 'huya':
-                this_engine = 'ffmpeg'
+            # # 虎牙必须使用ffmpeg (https://github.com/SmallPeaches/DanmakuRender/issues/386)
+            # elif self.plat == 'huya':
+            #     this_engine = 'ffmpeg'
             # 其他原生支持的平台hls流使用ffmpeg，flv流使用streamgears
             elif self.plat in ['huya', 'douyu', 'douyin', 'cc']:
                 if '.m3u8' in stream_url:

@@ -13,16 +13,17 @@
 # specific language governing permissions and limitations under the License.
 #
 
+import time
+
+from .EndpointF import EndpointF
+from .__async import ServantProxyCallback
 # from tars.core import tarscore;
 # from tars.core import ServantProxy;
 # from tars.core import ServantProxyCallback;
 # from com.qq.register.EndpointF import *;
 from .__init__ import tarscore
 from .__servantproxy import ServantProxy
-from .__async import ServantProxyCallback
-from .EndpointF import EndpointF
 
-import time
 
 # proxy for client
 
@@ -32,30 +33,27 @@ class QueryFProxy(ServantProxy):
         oos = tarscore.TarsOutputStream()
         oos.write(tarscore.string, 1, id)
 
-        rsp = self.tars_invoke(
-            ServantProxy.TARSNORMAL, "findObjectById", oos.getBuffer(), context, None
-        )
+        rsp = self.tars_invoke(ServantProxy.TARSNORMAL,
+                               "findObjectById", oos.getBuffer(), context, None)
 
         ios = tarscore.TarsInputStream(rsp.sBuffer)
         ret = ios.read(tarscore.vctclass(EndpointF), 0, True)
 
-        return ret
+        return (ret)
 
     def async_findObjectById(self, callback, id, context=ServantProxy.mapcls_context()):
         oos = tarscore.TarsOutputStream()
         oos.write(tarscore.string, 1, id)
 
         self.tars_invoke_async(
-            ServantProxy.TARSNORMAL, "findObjectById", oos.getBuffer(), context, None, callback
-        )
+            ServantProxy.TARSNORMAL, "findObjectById", oos.getBuffer(), context, None, callback)
 
     def findObjectById4Any(self, id, context=ServantProxy.mapcls_context()):
         oos = tarscore.TarsOutputStream()
         oos.write(tarscore.string, 1, id)
 
         rsp = self.tars_invoke(
-            ServantProxy.TARSNORMAL, "findObjectById4Any", oos.getBuffer(), context, None
-        )
+            ServantProxy.TARSNORMAL, "findObjectById4Any", oos.getBuffer(), context, None)
 
         ios = tarscore.TarsInputStream(rsp.sBuffer)
         ret = ios.read(tarscore.int32, 0, True)
@@ -69,16 +67,14 @@ class QueryFProxy(ServantProxy):
         oos.write(tarscore.string, 1, id)
 
         self.tars_invoke_async(
-            ServantProxy.TARSNORMAL, "findObjectById4Any", oos.getBuffer(), context, None, callback
-        )
+            ServantProxy.TARSNORMAL, "findObjectById4Any", oos.getBuffer(), context, None, callback)
 
     def findObjectById4All(self, id, context=ServantProxy.mapcls_context()):
         oos = tarscore.TarsOutputStream()
         oos.write(tarscore.string, 1, id)
 
         rsp = self.tars_invoke(
-            ServantProxy.TARSNORMAL, "findObjectById4All", oos.getBuffer(), context, None
-        )
+            ServantProxy.TARSNORMAL, "findObjectById4All", oos.getBuffer(), context, None)
 
         ios = tarscore.TarsInputStream(rsp.sBuffer)
         ret = ios.read(tarscore.int32, 0, True)
@@ -92,15 +88,13 @@ class QueryFProxy(ServantProxy):
         oos.write(tarscore.string, 1, id)
 
         self.tars_invoke_async(
-            ServantProxy.TARSNORMAL, "findObjectById4All", oos.getBuffer(), context, None, callback
-        )
+            ServantProxy.TARSNORMAL, "findObjectById4All", oos.getBuffer(), context, None, callback)
 
     def findObjectByIdInSameGroup(self, id, context=ServantProxy.mapcls_context()):
         oos = tarscore.TarsOutputStream()
         oos.write(tarscore.string, 1, id)
         rsp = self.tars_invoke(
-            ServantProxy.TARSNORMAL, "findObjectByIdInSameGroup", oos.getBuffer(), context, None
-        )
+            ServantProxy.TARSNORMAL, "findObjectByIdInSameGroup", oos.getBuffer(), context, None)
 
         startDecodeTime = time.time()
         ios = tarscore.TarsInputStream(rsp.sBuffer)
@@ -115,13 +109,7 @@ class QueryFProxy(ServantProxy):
         oos.write(tarscore.string, 1, id)
 
         self.tars_invoke_async(
-            ServantProxy.TARSNORMAL,
-            "findObjectByIdInSameGroup",
-            oos.getBuffer(),
-            context,
-            None,
-            callback,
-        )
+            ServantProxy.TARSNORMAL, "findObjectByIdInSameGroup", oos.getBuffer(), context, None, callback)
 
     def findObjectByIdInSameStation(self, id, sStation, context=ServantProxy.mapcls_context()):
         oos = tarscore.TarsOutputStream()
@@ -129,8 +117,7 @@ class QueryFProxy(ServantProxy):
         oos.write(tarscore.string, 2, sStation)
 
         rsp = self.tars_invoke(
-            ServantProxy.TARSNORMAL, "findObjectByIdInSameStation", oos.getBuffer(), context, None
-        )
+            ServantProxy.TARSNORMAL, "findObjectByIdInSameStation", oos.getBuffer(), context, None)
 
         ios = tarscore.TarsInputStream(rsp.sBuffer)
         ret = ios.read(tarscore.int32, 0, True)
@@ -139,21 +126,13 @@ class QueryFProxy(ServantProxy):
 
         return (ret, activeEp, inactiveEp)
 
-    def async_findObjectByIdInSameStation(
-        self, callback, id, sStation, context=ServantProxy.mapcls_context()
-    ):
+    def async_findObjectByIdInSameStation(self, callback, id, sStation, context=ServantProxy.mapcls_context()):
         oos = tarscore.TarsOutputStream()
         oos.write(tarscore.string, 1, id)
         oos.write(tarscore.string, 2, sStation)
 
         self.tars_invoke_async(
-            ServantProxy.TARSNORMAL,
-            "findObjectByIdInSameStation",
-            oos.getBuffer(),
-            context,
-            None,
-            callback,
-        )
+            ServantProxy.TARSNORMAL, "findObjectByIdInSameStation", oos.getBuffer(), context, None, callback)
 
     def findObjectByIdInSameSet(self, id, setId, context=ServantProxy.mapcls_context()):
         oos = tarscore.TarsOutputStream()
@@ -161,8 +140,7 @@ class QueryFProxy(ServantProxy):
         oos.write(tarscore.string, 2, setId)
 
         rsp = self.tars_invoke(
-            ServantProxy.TARSNORMAL, "findObjectByIdInSameSet", oos.getBuffer(), context, None
-        )
+            ServantProxy.TARSNORMAL, "findObjectByIdInSameSet", oos.getBuffer(), context, None)
 
         ios = tarscore.TarsInputStream(rsp.sBuffer)
         ret = ios.read(tarscore.int32, 0, True)
@@ -171,21 +149,13 @@ class QueryFProxy(ServantProxy):
 
         return (ret, activeEp, inactiveEp)
 
-    def async_findObjectByIdInSameSet(
-        self, callback, id, setId, context=ServantProxy.mapcls_context()
-    ):
+    def async_findObjectByIdInSameSet(self, callback, id, setId, context=ServantProxy.mapcls_context()):
         oos = tarscore.TarsOutputStream()
         oos.write(tarscore.string, 1, id)
         oos.write(tarscore.string, 2, setId)
 
         self.tars_invoke_async(
-            ServantProxy.TARSNORMAL,
-            "findObjectByIdInSameSet",
-            oos.getBuffer(),
-            context,
-            None,
-            callback,
-        )
+            ServantProxy.TARSNORMAL, "findObjectByIdInSameSet", oos.getBuffer(), context, None, callback)
 
 
 # ========================================================
@@ -195,12 +165,12 @@ class QueryFPrxCallback(ServantProxyCallback):
     def __init__(self):
         ServantProxyCallback.__init__(self)
         self.callback_map = {
-            "findObjectById": self.__invoke_findObjectById,
-            "findObjectById4Any": self.__invoke_findObjectById4Any,
-            "findObjectById4All": self.__invoke_findObjectById4All,
-            "findObjectByIdInSameGroup": self.__invoke_findObjectByIdInSameGroup,
-            "findObjectByIdInSameStation": self.__invoke_findObjectByIdInSameStation,
-            "findObjectByIdInSameSet": self.__invoke_findObjectByIdInSameSet,
+            'findObjectById': self.__invoke_findObjectById,
+            'findObjectById4Any': self.__invoke_findObjectById4Any,
+            'findObjectById4All': self.__invoke_findObjectById4All,
+            'findObjectByIdInSameGroup': self.__invoke_findObjectByIdInSameGroup,
+            'findObjectByIdInSameStation': self.__invoke_findObjectByIdInSameStation,
+            'findObjectByIdInSameSet': self.__invoke_findObjectByIdInSameSet
         }
 
     def callback_findObjectById(self, ret):

@@ -19,10 +19,10 @@
 
 __version__ = "0.0.1"
 
-from .__util import util
-from .__tars import TarsInputStream
-from .__tars import TarsOutputStream
-from .__tup import TarsUniPacket
+from biliup.Danmaku.tars.__tars import TarsInputStream
+from biliup.Danmaku.tars.__tars import TarsOutputStream
+from biliup.Danmaku.tars.__tup import TarsUniPacket
+from biliup.Danmaku.tars.__util import util
 
 
 class tarscore:
@@ -75,13 +75,13 @@ class tarscore:
         pass
 
     @staticmethod
-    def mapclass(ktype, vtype):
-        return util.mapclass(ktype, vtype)
+    def mapclass(ktype, vtype): return util.mapclass(ktype, vtype)
 
     @staticmethod
-    def vctclass(vtype):
-        return util.vectorclass(vtype)
+    def vctclass(vtype): return util.vectorclass(vtype)
 
     @staticmethod
-    def printHex(buff):
-        util.printHex(buff)
+    def printHex(buff): util.printHex(buff)
+
+
+# 被用户引用

@@ -17,10 +17,11 @@
 #
 
 
+import hashlib
 import sys
 from threading import Lock
-import hashlib
 from xml.etree import cElementTree as ET
+
 from .exception import TarsException
 
 
@@ -39,28 +40,21 @@ class util:
     @staticmethod
     def mapclass(ktype, vtype):
         class mapklass(dict):
-            def size(self):
-                return len(self)
-
-        setattr(mapklass, "__tars_index__", 8)
-        setattr(
-            mapklass,
-            "__tars_class__",
-            "map<" + ktype.__tars_class__ + "," + vtype.__tars_class__ + ">",
-        )
-        setattr(mapklass, "ktype", ktype)
-        setattr(mapklass, "vtype", vtype)
+            def size(self): return len(self)
+        setattr(mapklass, '__tars_index__', 8)
+        setattr(mapklass, '__tars_class__', "map<" +
+                ktype.__tars_class__ + "," + vtype.__tars_class__ + ">")
+        setattr(mapklass, 'ktype', ktype)
+        setattr(mapklass, 'vtype', vtype)
         return mapklass
 
     @staticmethod
     def vectorclass(vtype):
         class klass(list):
-            def size(self):
-                return len(self)
-
-        setattr(klass, "__tars_index__", 9)
-        setattr(klass, "__tars_class__", "list<" + vtype.__tars_class__ + ">")
-        setattr(klass, "vtype", vtype)
+            def size(self): return len(self)
+        setattr(klass, '__tars_index__', 9)
+        setattr(klass, '__tars_class__', "list<" + vtype.__tars_class__ + ">")
+        setattr(klass, 'vtype', vtype)
         return klass
 
     class boolean:
@@ -116,7 +110,7 @@ class util:
 
 
 def xml2dict(node, dic={}):
-    """
+    '''
     @brief: 将xml解析树转成字典
     @param node: 树的根节点
     @type node: cElementTree.Element
@@ -124,23 +118,22 @@ def xml2dict(node, dic={}):
     @type dic: dict
     @return: 转换好的字典
     @rtype: dict
-    """
+    '''
     dic[node.tag] = ndic = {}
     [xml2dict(child, ndic) for child in node.getchildren() if child != node]
-    ndic.update(
-        [list(map(str.strip, exp.split("=")[:2])) for exp in node.text.splitlines() if "=" in exp]
-    )
+    ndic.update([list(map(str.strip, exp.split('=')[:2]))
+                 for exp in node.text.splitlines() if '=' in exp])
     return dic
 
 
 def configParse(filename):
-    """
+    '''
     @brief: 解析tars配置文件
     @param filename: 文件名
     @type filename: str
     @return: 解析出来的配置信息
     @rtype: dict
-    """
+    '''
     tree = ET.parse(filename)
     return xml2dict(tree.getroot())
 
@@ -234,10 +227,10 @@ class ConsistentHashNew(object):
         :param : hashNum or keyStr
         :return:
         """
-        keyStr = ""
+        keyStr = ''
         if isinstance(key, int):
             keyStr = "the keyStr is %d" % key
-        elif isinstance(key, type("a")):
+        elif isinstance(key, type('a')):
             keyStr = key
         else:
             raise TarsException("the hash code has wrong type")

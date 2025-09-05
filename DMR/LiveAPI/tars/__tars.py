@@ -14,6 +14,7 @@
 #
 
 import struct
+
 from .__util import util
 from .exception import *
 
@@ -53,10 +54,10 @@ class DataHead:
     def writeTo(buff, tag, vtype):
         if tag < 15:
             helper = (tag << 4) | vtype
-            buff.writeBuf(struct.pack("!B", helper))
+            buff.writeBuf(struct.pack('!B', helper))
         else:
             helper = (0xF0 | vtype) << 8 | tag
-            buff.writeBuf(struct.pack("!H", helper))
+            buff.writeBuf(struct.pack('!H', helper))
 
 
 class TarsOutputStream(object):
@@ -71,51 +72,51 @@ class TarsOutputStream(object):
             DataHead.writeTo(self.__buffer, tag, DataHead.EN_ZERO)
         else:
             DataHead.writeTo(self.__buffer, tag, DataHead.EN_INT8)
-            self.__buffer.writeBuf(struct.pack("!b", value))
+            self.__buffer.writeBuf(struct.pack('!b', value))
 
     def __writeInt16(self, tag, value):
         if value >= -128 and value <= 127:
             self.__writeInt8(tag, value)
         else:
             DataHead.writeTo(self.__buffer, tag, DataHead.EN_INT16)
-            self.__buffer.writeBuf(struct.pack("!h", value))
+            self.__buffer.writeBuf(struct.pack('!h', value))
 
     def __writeInt32(self, tag, value):
         if value >= -32768 and value <= 32767:
             self.__writeInt16(tag, value)
         else:
             DataHead.writeTo(self.__buffer, tag, DataHead.EN_INT32)
-            self.__buffer.writeBuf(struct.pack("!i", value))
+            self.__buffer.writeBuf(struct.pack('!i', value))
 
     def __writeInt64(self, tag, value):
         if value >= (-2147483648) and value <= 2147483647:
             self.__writeInt32(tag, value)
         else:
             DataHead.writeTo(self.__buffer, tag, DataHead.EN_INT64)
-            self.__buffer.writeBuf(struct.pack("!q", value))
+            self.__buffer.writeBuf(struct.pack('!q', value))
 
     def __writeFloat(self, tag, value):
         DataHead.writeTo(self.__buffer, tag, DataHead.EN_FLOAT)
-        self.__buffer.writeBuf(struct.pack("!f", value))
+        self.__buffer.writeBuf(struct.pack('!f', value))
 
     def __writeDouble(self, tag, value):
         DataHead.writeTo(self.__buffer, tag, DataHead.EN_DOUBLE)
-        self.__buffer.writeBuf(struct.pack("!d", value))
+        self.__buffer.writeBuf(struct.pack('!d', value))
 
     def __writeString(self, tag, value):
         length = len(value)
         if length <= 255:
             DataHead.writeTo(self.__buffer, tag, DataHead.EN_STRING1)
-            self.__buffer.writeBuf(struct.pack("!B", length))
+            self.__buffer.writeBuf(struct.pack('!B', length))
             self.__buffer.writeBuf(str.encode(value))
         else:
             DataHead.writeTo(self.__buffer, tag, DataHead.EN_STRING4)
-            self.__buffer.writeBuf(struct.pack("!I", length))
+            self.__buffer.writeBuf(struct.pack('!I', length))
             self.__buffer.writeBuf(str.encode(value))
 
     def __writeBytes(self, tag, value):
         DataHead.writeTo(self.__buffer, tag, DataHead.EN_BYTES)
-        DataHead.writeTo(self.__buffer, 0, DataHead.EN_INT8)
+        DataHead.writeTo(self.__buffer, 0,   DataHead.EN_INT8)
         length = len(value)
         self.__writeInt32(0, length)
         self.__buffer.buffer += value
@@ -138,7 +139,7 @@ class TarsOutputStream(object):
     def __writeStruct(self, coder, tag, value):
         DataHead.writeTo(self.__buffer, tag, DataHead.EN_STRUCTBEGIN)
         value.writeTo(self, value)
-        DataHead.writeTo(self.__buffer, 0, DataHead.EN_STRUCTEND)
+        DataHead.writeTo(self.__buffer, 0,   DataHead.EN_STRUCTEND)
 
     def write(self, coder, tag, value):
         if coder.__tars_index__ == 999:
@@ -166,7 +167,8 @@ class TarsOutputStream(object):
         elif coder.__tars_index__ == 1011:
             self.__writeStruct(coder, tag, value)
         else:
-            raise TarsTarsUnsupportType("tars unsupport data type:" % coder.__tars_index__)
+            raise TarsTarsUnsupportType(
+                "tars unsupport data type:" % coder.__tars_index__)
 
     def getBuffer(self):
         return self.__buffer.getBuffer()
@@ -180,13 +182,15 @@ class TarsInputStream(object):
         self.__buffer = BinBuffer(buff)
 
     def __peekFrom(self):
-        (helper,) = struct.unpack_from("!B", self.__buffer.buffer, self.__buffer.position)
+        helper, = struct.unpack_from(
+            '!B', self.__buffer.buffer, self.__buffer.position)
         t = (helper & 0xF0) >> 4
-        p = helper & 0x0F
+        p = (helper & 0x0F)
         l = 1
         if t >= 15:
             l = 2
-            (t,) = struct.unpack_from("!B", self.__buffer.buffer, self.__buffer.position + 1)
+            t, = struct.unpack_from(
+                '!B', self.__buffer.buffer, self.__buffer.position + 1)
         return (t, p, l)
 
     def __readFrom(self):
@@ -214,10 +218,12 @@ class TarsInputStream(object):
         elif p == DataHead.EN_DOUBLE:
             self.__buffer.position += 8
         elif p == DataHead.EN_STRING1:
-            (length,) = struct.unpack_from("!B", self.__buffer.buffer, self.__buffer.position)
+            length, = struct.unpack_from(
+                '!B', self.__buffer.buffer, self.__buffer.position)
             self.__buffer.position += length + 1
         elif p == DataHead.EN_STRING4:
-            (length,) = struct.unpack_from("!i", self.__buffer.buffer, self.__buffer.position)
+            length, = struct.unpack_from(
+                '!i', self.__buffer.buffer, self.__buffer.position)
             self.__buffer.position += length + 4
         elif p == DataHead.EN_MAP:
             size = self.__readInt32(0, True)
@@ -233,20 +239,20 @@ class TarsInputStream(object):
             ti, pi, li = self.__readFrom()
             if pi != DataHead.EN_INT8:
                 raise TarsTarsDecodeInvalidValue(
-                    "skipField with invalid type, type value: %d, %d." % (p, pi)
-                )
+                    "skipField with invalid type, type value: %d, %d." % (p, pi))
             size = self.__readInt32(0, True)
             self.__buffer.position += size
         elif p == DataHead.EN_STRUCTBEGIN:
             self.__skipToStructEnd()
         elif p == DataHead.EN_STRUCTEND:
             pass
-            # self.__buffer.position += length + 1;
+            #self.__buffer.position += length + 1;
         elif p == DataHead.EN_ZERO:
             pass
-            # self.__buffer.position += length + 1;
+            #self.__buffer.position += length + 1;
         else:
-            raise TarsTarsDecodeMismatch("skipField with invalid type, type value:%d" % p)
+            raise TarsTarsDecodeMismatch(
+                "skipField with invalid type, type value:%d" % p)
 
     def __skipToTag(self, tag):
         length = self.__buffer.length()
@@ -264,7 +270,7 @@ class TarsInputStream(object):
         if v is None:
             return default
         else:
-            return v != 0
+            return (v != 0)
 
     def __readInt8(self, tag, require, default=None):
         if self.__skipToTag(tag):
@@ -272,15 +278,16 @@ class TarsInputStream(object):
             if p == DataHead.EN_ZERO:
                 return 0
             elif p == DataHead.EN_INT8:
-                (value,) = struct.unpack_from("!b", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!b', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 1
                 return value
             else:
                 raise TarsTarsDecodeMismatch(
-                    "read 'Char' type mismatch, tag: %d , get type: %d." % (tag, p)
-                )
+                    "read 'Char' type mismatch, tag: %d , get type: %d." % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readInt16(self, tag, require, default=None):
@@ -289,19 +296,21 @@ class TarsInputStream(object):
             if p == DataHead.EN_ZERO:
                 return 0
             elif p == DataHead.EN_INT8:
-                (value,) = struct.unpack_from("!b", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!b', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 1
                 return value
             elif p == DataHead.EN_INT16:
-                (value,) = struct.unpack_from("!h", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!h', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 2
                 return value
             else:
                 raise TarsTarsDecodeMismatch(
-                    "read 'Short' type mismatch, tag: %d , get type: %d." % (tag, p)
-                )
+                    "read 'Short' type mismatch, tag: %d , get type: %d." % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readInt32(self, tag, require, default=None):
@@ -310,23 +319,26 @@ class TarsInputStream(object):
             if p == DataHead.EN_ZERO:
                 return 0
             elif p == DataHead.EN_INT8:
-                (value,) = struct.unpack_from("!b", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!b', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 1
                 return value
             elif p == DataHead.EN_INT16:
-                (value,) = struct.unpack_from("!h", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!h', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 2
                 return value
             elif p == DataHead.EN_INT32:
-                (value,) = struct.unpack_from("!i", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!i', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 4
                 return value
             else:
                 raise TarsTarsDecodeMismatch(
-                    "read 'Int32' type mismatch, tag: %d, get type: %d." % (tag, p)
-                )
+                    "read 'Int32' type mismatch, tag: %d, get type: %d." % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readInt64(self, tag, require, default=None):
@@ -335,54 +347,58 @@ class TarsInputStream(object):
             if p == DataHead.EN_ZERO:
                 return 0
             elif p == DataHead.EN_INT8:
-                (value,) = struct.unpack_from("!b", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!b', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 1
                 return value
             elif p == DataHead.EN_INT16:
-                (value,) = struct.unpack_from("!h", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!h', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 2
                 return value
             elif p == DataHead.EN_INT32:
-                (value,) = struct.unpack_from("!i", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!i', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 4
                 return value
             elif p == DataHead.EN_INT64:
-                (value,) = struct.unpack_from("!q", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!q', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 8
                 return value
             else:
                 raise TarsTarsDecodeMismatch(
-                    "read 'Int64' type mismatch, tag: %d, get type: %d." % (tag, p)
-                )
+                    "read 'Int64' type mismatch, tag: %d, get type: %d." % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readString(self, tag, require, default=None):
         if self.__skipToTag(tag):
             t, p, l = self.__readFrom()
             if p == DataHead.EN_STRING1:
-                (length,) = struct.unpack_from("!B", self.__buffer.buffer, self.__buffer.position)
+                length, = struct.unpack_from(
+                    '!B', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 1
-                (value,) = struct.unpack_from(
-                    str(length) + "s", self.__buffer.buffer, self.__buffer.position
-                )
+                value, = struct.unpack_from(
+                    str(length) + "s", self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += length
                 return value
             elif p == DataHead.EN_STRING4:
-                (length,) = struct.unpack_from("!i", self.__buffer.buffer, self.__buffer.position)
+                length, = struct.unpack_from(
+                    '!i', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 4
-                (value,) = struct.unpack_from(
-                    str(length) + "s", self.__buffer.buffer, self.__buffer.position
-                )
+                value, = struct.unpack_from(
+                    str(length) + "s", self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += length
                 return value
             else:
                 raise TarsTarsDecodeMismatch(
-                    "read 'string' type mismatch, tag: %d, get type: %d." % (tag, p)
-                )
+                    "read 'string' type mismatch, tag: %d, get type: %d." % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readBytes(self, tag, require, default=None):
@@ -392,18 +408,18 @@ class TarsInputStream(object):
                 ti, pi, li = self.__readFrom()
                 if pi != DataHead.EN_INT8:
                     raise TarsTarsDecodeMismatch(
-                        "type mismatch, tag: %d, type: %d, %d" % (tag, p, pi)
-                    )
+                        "type mismatch, tag: %d, type: %d, %d" % (tag, p, pi))
                 size = self.__readInt32(0, True)
-                (value,) = struct.unpack_from(
-                    str(size) + "s", self.__buffer.buffer, self.__buffer.position
-                )
+                value, = struct.unpack_from(
+                    str(size) + 's', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += size
                 return value
             else:
-                raise TarsTarsDecodeMismatch("type mismatch, tag: %d, type: %d" % (tag, p))
+                raise TarsTarsDecodeMismatch(
+                    "type mismatch, tag: %d, type: %d" % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readFloat(self, tag, require, default=None):
@@ -412,15 +428,16 @@ class TarsInputStream(object):
             if p == DataHead.EN_ZERO:
                 return 0
             elif p == DataHead.EN_FLOAT:
-                (value,) = struct.unpack_from("!f", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!f', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 4
                 return value
             else:
                 raise TarsTarsDecodeMismatch(
-                    "read 'Float' type mismatch, tag: %d, get type: %d." % (tag, p)
-                )
+                    "read 'Float' type mismatch, tag: %d, get type: %d." % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readDouble(self, tag, require, default=None):
@@ -429,19 +446,21 @@ class TarsInputStream(object):
             if p == DataHead.EN_ZERO:
                 return 0
             elif p == DataHead.EN_FLOAT:
-                (value,) = struct.unpack_from("!f", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!f', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 4
                 return value
             elif p == DataHead.EN_DOUBLE:
-                (value,) = struct.unpack_from("!d", self.__buffer.buffer, self.__buffer.position)
+                value, = struct.unpack_from(
+                    '!d', self.__buffer.buffer, self.__buffer.position)
                 self.__buffer.position += 8
                 return value
             else:
                 raise TarsTarsDecodeMismatch(
-                    "read 'Double' type mismatch, tag: %d, get type: %d." % (tag, p)
-                )
+                    "read 'Double' type mismatch, tag: %d, get type: %d." % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readStruct(self, coder, tag, require, default=None):
@@ -449,13 +468,13 @@ class TarsInputStream(object):
             t, p, l = self.__readFrom()
             if p != DataHead.EN_STRUCTBEGIN:
                 raise TarsTarsDecodeMismatch(
-                    "read 'struct' type mismatch, tag: %d, get type: %d." % (tag, p)
-                )
+                    "read 'struct' type mismatch, tag: %d, get type: %d." % (tag, p))
             value = coder.readFrom(self)
             self.__skipToStructEnd()
             return value
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readMap(self, coder, tag, require, default=None):
@@ -471,10 +490,10 @@ class TarsInputStream(object):
                 return omap
             else:
                 raise TarsTarsDecodeMismatch(
-                    "read 'map' type mismatch, tag: %d, get type: %d." % (tag, p)
-                )
+                    "read 'map' type mismatch, tag: %d, get type: %d." % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def __readVector(self, coder, tag, require, default=None):
@@ -489,10 +508,10 @@ class TarsInputStream(object):
                 return value
             else:
                 raise TarsTarsDecodeMismatch(
-                    "read 'vector' type mismatch, tag: %d, get type: %d." % (tag, p)
-                )
+                    "read 'vector' type mismatch, tag: %d, get type: %d." % (tag, p))
         elif require:
-            raise TarsTarsDecodeRequireNotExist("require field not exist, tag: %d" % tag)
+            raise TarsTarsDecodeRequireNotExist(
+                "require field not exist, tag: %d" % tag)
         return default
 
     def read(self, coder, tag, require, default=None):
@@ -521,7 +540,8 @@ class TarsInputStream(object):
         elif coder.__tars_index__ == 1011:
             return self.__readStruct(coder, tag, require, default)
         else:
-            raise TarsTarsUnsupportType("tars unsupport data type:" % coder.__tars_index__)
+            raise TarsTarsUnsupportType(
+                "tars unsupport data type:" % coder.__tars_index__)
 
     def printHex(self):
         util.printHex(self.__buffer.buffer)

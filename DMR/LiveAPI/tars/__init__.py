@@ -19,10 +19,10 @@
 
 __version__ = "0.0.1"
 
-from __util import util
-from __tars import TarsInputStream
-from __tars import TarsOutputStream
-from __tup import TarsUniPacket
+from .__tars import TarsInputStream
+from .__tars import TarsOutputStream
+from .__tup import TarsUniPacket
+from .__util import util
 
 
 class tarscore:
@@ -75,20 +75,11 @@ class tarscore:
         pass
 
     @staticmethod
-    def mapclass(ktype, vtype):
-        return util.mapclass(ktype, vtype)
+    def mapclass(ktype, vtype): return util.mapclass(ktype, vtype)
 
     @staticmethod
-    def vctclass(vtype):
-        return util.vectorclass(vtype)
+    def vctclass(vtype): return util.vectorclass(vtype)
 
     @staticmethod
-    def printHex(buff):
-        util.printHex(buff)
+    def printHex(buff): util.printHex(buff)
 
-
-# 被用户引用
-from __util import configParse
-from __rpc import Communicator
-from exception import *
-from __logger import tarsLogger

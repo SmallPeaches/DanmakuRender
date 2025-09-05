@@ -13,12 +13,13 @@
 # specific language governing permissions and limitations under the License.
 #
 
-import struct
 import string
-from .__util import util
-from .__tars import TarsOutputStream
-from .__tars import TarsInputStream
+import struct
+
 from .__packet import RequestPacket
+from .__tars import TarsInputStream
+from .__tars import TarsOutputStream
+from .__util import util
 
 
 class TarsUniPacket(object):
@@ -70,7 +71,7 @@ class TarsUniPacket(object):
     @property
     def result_desc(self):
         if ("STATUS_RESULT_DESC" in self.__code.status) == False:
-            return ""
+            return ''
 
         return self.__code.status["STATUS_RESULT_DESC"]
 
@@ -81,11 +82,13 @@ class TarsUniPacket(object):
 
     def get(self, vtype, name):
         if (name in self.__buffer) == False:
-            raise Exception("UniAttribute not found key:%s,type:%s" % (name, vtype.__tars_class__))
+            raise Exception("UniAttribute not found key:%s,type:%s" %
+                            (name, vtype.__tars_class__))
 
         t = self.__buffer[name]
         if (vtype.__tars_class__ in t) == False:
-            raise Exception("UniAttribute not found type:" + vtype.__tars_class__)
+            raise Exception("UniAttribute not found type:" +
+                            vtype.__tars_class__)
 
         o = TarsInputStream(t[vtype.__tars_class__])
         return o.read(vtype, 0, True)
@@ -100,7 +103,7 @@ class TarsUniPacket(object):
         sos = TarsOutputStream()
         RequestPacket.writeTo(sos, self.__code)
 
-        return struct.pack("!i", 4 + len(sos.getBuffer())) + sos.getBuffer()
+        return struct.pack('!i', 4 + len(sos.getBuffer())) + sos.getBuffer()
 
     def decode(self, buf):
         ois = TarsInputStream(buf[4:])
