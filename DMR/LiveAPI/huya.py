@@ -37,7 +37,7 @@ HUYA_WEB_ROOM_DATA_REGEX = r"var TT_ROOM_DATA = (.*?);"
 class huya(BaseAPI):
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
-        "User-Agent": random_user_agent(),
+        "user-agent": random_user_agent(),
     }
     header_mobile = {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -222,7 +222,6 @@ class huya(BaseAPI):
         token_info_rsp = wup_rsp.get(HuyaGetCdnTokenRsp,"tRsp")
         # print(token_info_rsp.as_dict())
         token_info = token_info_rsp.as_dict()
-        logger.debug(f"{self.plugin_msg}: wup token_info {token_info}")
         return token_info[f'{proto}AntiCode']
     
     def build_query(self, stream_name, anti_code, uid: int) -> str:
@@ -301,10 +300,7 @@ class huya(BaseAPI):
             cdn = stream['sCdnType'].lower()
             suffix = stream[f's{proto}UrlSuffix']
             anti_code = stream[f's{proto}AntiCode']
-            if not is_xingxiu:
-                anti_code = self.build_query(stream_name, anti_code, self.__get_uid(stream_name))
-            else:
-                anti_code = self.get_true_anticode(cdn, stream_name, self.get_uid(stream['lPresenterUid']), proto)
+            anti_code = self.get_true_anticode(cdn, stream_name, self.get_uid(stream['lPresenterUid']), proto)
             anti_code = anti_code + f"&codec={codec}"
             base_url = stream[f's{proto}Url'].replace('http://', 'https://')
             uri = f"{base_url}/{stream_name}.{suffix}?{anti_code}"
@@ -338,8 +334,8 @@ class huya(BaseAPI):
     def update_headers(self, headers: dict):
         user_agent = UAGenerator.build_user_agent(UAType.HYSDK, Platform.WINDOWS)
         # user_agent = f"{Huya.get_hysdk_ua()}_APP({Huya.get_hyapp_ua()})_SDK({Huya.get_hy_trans_mod_ua()})"
-        headers['user-agent'] = user_agent
-        headers['origin'] = HUYA_WEB_BASE_URL
+        self.headers['user-agent'] = user_agent
+        self.headers['origin'] = HUYA_WEB_BASE_URL
 
     @staticmethod
     def get_uid(uid = None) -> int:
