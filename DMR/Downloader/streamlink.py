@@ -42,12 +42,14 @@ class StreamlinkDownloader():
 
         port = random.randint(10000, 65535)
         streamlink_extra_args = self.advanced_video_args.get('streamlink_extra_args') or []
+        streamlink_quality = self.advanced_video_args.get('streamlink_quality') or 'best'
         streamlink_args = [
             "streamlink",
             "--player-external-http",  # 为外部程序提供流媒体数据
             "--player-external-http-port", str(port),  # 对外部输出流的端口
             *streamlink_extra_args,
             self.url,
+            streamlink_quality,
         ]
         self.logger.debug(f'{self.taskname} streamlink args: {streamlink_args}')
 

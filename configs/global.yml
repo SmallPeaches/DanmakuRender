@@ -98,6 +98,8 @@ download_args:
       ffmpeg_output_args: [ '-movflags','faststart+frag_keyframe+empty_moov']
       # 禁用下载速度慢时自动重启(仅ffmpeg下载引擎生效)
       disable_lowspeed_interrupt: false
+      # streamlink画质选项（默认best）
+      streamlink_quality: ~
       # streamlink 额外输入参数
       # 可用参数列表请参考 https://streamlink.github.io/cli.html
       streamlink_extra_args: [
