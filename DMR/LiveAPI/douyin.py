@@ -9,8 +9,13 @@ try:
     from .BaseAPI import BaseAPI
 except ImportError:
     from BaseAPI import BaseAPI
+try:
+    from .abogus import ABogus
+except ImportError:
+    from abogus import ABogus
 from DMR.utils import random_user_agent
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,20 +63,34 @@ class douyin_utils():
     @classmethod
     def build_request_url(cls, url:str, query:dict=None) -> str:
         headers = cls.get_headers()
+        user_agent = headers.get('user-agent')
+        
         parsed_url = urlparse(url)
-        existing_params = query or parse_qs(parsed_url.query)
-        browser_info = headers['user-agent'].split(' ')[-1]
-        existing_params.update({
+        params_to_encode = (query or parse_qs(parsed_url.query)).copy()
+        
+        try:
+            browser_info = user_agent.split(' ')[-1]
+            browser_name = browser_info.split('/')[0]
+            browser_version = browser_info.split('/')[1]
+        except IndexError:
+            browser_name = "Edge"
+            browser_version = "124.0.0.0"
+        params_to_encode.update({
             'aid': '6383',
             'enter_from': random.choice(['link_share', 'web_live']),
-            'a_bogus': '0',
             'device_platform': 'web',
             'browser_language': 'zh-CN',
             'browser_platform': 'Win32',
-            'browser_name': browser_info.split('/')[0],
-            'browser_version': browser_info.split('/')[1],
+            'browser_name': browser_name,
+            'browser_version': browser_version,
         })
-        new_query_string = urlencode(existing_params, doseq=True)
+        
+        encoded_params_str = urlencode(params_to_encode, doseq=True)
+        abogus_generator = ABogus(user_agent=user_agent)
+        abogus_value = abogus_generator.generate_abogus(params=encoded_params_str, body="")[1]
+        final_params = params_to_encode
+        final_params['a_bogus'] = abogus_value
+        new_query_string = urlencode(final_params, doseq=True)
         new_url = urlunparse((
             parsed_url.scheme,
             parsed_url.netloc,
