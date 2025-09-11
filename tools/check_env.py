@@ -41,6 +41,7 @@ def check_pypi():
         import easydict
         import streamlink
         import m3u8
+        import gmssl
         return True
     except ImportError:
         input('Python 包未正确安装，回车自动安装:')
