@@ -12,4 +12,5 @@ yt-dlp
 yutto
 easydict
 streamlink
+gmssl
 m3u8
