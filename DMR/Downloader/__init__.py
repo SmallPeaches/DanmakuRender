@@ -62,8 +62,12 @@ class Downloader():
             raise ValueError(f'下载任务 {taskname} 已存在。')
         
         if dltype == 'live':
-            from .stream_downloader import StreamDownloadTask
-            downloader_task = StreamDownloadTask
+            if config.get('sync', False):
+                from .sync_stream_downloader import SyncStreamDownloadTask
+                downloader_task = SyncStreamDownloadTask
+            else:
+                from .stream_downloader import StreamDownloadTask
+                downloader_task = StreamDownloadTask
         elif dltype == 'videos':
             from .video_downloader import VideoDownloadTask
             downloader_task = VideoDownloadTask

@@ -51,8 +51,8 @@ class StreamDownloadTask():
         self.advanced_video_args = advanced_video_args if advanced_video_args else {}
         self.advanced_dm_args = advanced_dm_args if advanced_dm_args else {}
 
-        if self.engine not in ['ffmpeg', 'streamlink', 'streamgears', 'pyrequests', 'auto']:
-            raise NotImplementedError(f'No Downloader Named {self.engine}.')
+        # if self.engine not in ['ffmpeg', 'streamlink', 'streamgears', 'pyrequests', 'auto']:
+        #     raise NotImplementedError(f'No Downloader Named {self.engine}.')
 
         os.makedirs(self.output_dir,exist_ok=True)
     
@@ -242,7 +242,7 @@ class StreamDownloadTask():
             )
             self.downloader.start()
 
-        self.executor = ThreadPoolExecutor(max_workers=2)
+        self.executor = ThreadPoolExecutor(max_workers=int(self.danmaku) + int(self.video))
         futures = []
         if self.danmaku:
             futures.append(self.executor.submit(danmaku_thread))

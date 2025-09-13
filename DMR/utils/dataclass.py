@@ -1,8 +1,14 @@
 import copy
+import easydict
 from typing import Tuple
 from datetime import datetime
 
 class cpdict(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for key, value in self.items():
+            setattr(self, key, value)
+
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
         super().__setitem__(name, value)
@@ -56,7 +62,6 @@ class StreamerInfo(cpdict):
         self.room_id = room_id
         self.url = url
         self.face_url = face_url
-        self.cover_url = cover_url
         super().__init__(
                 name=name,
                 uid=uid,
@@ -64,6 +69,31 @@ class StreamerInfo(cpdict):
                 room_id=room_id,
                 url=url,
                 face_url=face_url,
+                **kwargs
+                )
+
+
+class StreamInfo(cpdict):
+    def __init__(self, 
+                 streamer:StreamerInfo,
+                 title:str=None,
+                 description:str=None,
+                 stream_start_time:datetime=None,
+                 resolution:Tuple[int, int]=None,
+                 cover_url:str=None,
+                 **kwargs):
+        self.streamer = streamer
+        self.title = title
+        self.description = description
+        self.stream_start_time = stream_start_time
+        self.resolution = resolution
+        self.cover_url = cover_url
+        super().__init__(
+                streamer=streamer,
+                title=title,
+                description=description,
+                stream_start_time=stream_start_time,
+                resolution=resolution,
                 cover_url=cover_url,
                 **kwargs
                 )

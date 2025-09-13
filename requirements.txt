@@ -14,3 +14,5 @@ easydict
 streamlink
 gmssl
 m3u8
+rsa
+pillow

@@ -68,19 +68,26 @@ class Uploader():
     def add_task(self, msg:PipeMessage):
         with self._lock:
             config = msg.data
+            file = config.get('files')[0]
+            stream_queue = None
+            if hasattr(file, 'stream_queue') and file.stream_queue is not None:
+                stream_queue = file.stream_queue
             task = {
                 'uuid': uuid(),
                 'source': msg.source,
                 'request_id': msg.request_id,
-                'stateless': config.get('stateless', True),
                 'upload_group': config.get('upload_group'),
                 'engine': config.get('engine', 'biliuprs'),
                 'args': config.get('args', {}),
                 'files': config.get('files'),
+                'stream_queue': stream_queue,
                 'config': config,
             }
             self.upload_tasks[task['uuid']] = task
-            self.upload_executors.submit(self._upload_subprocess, task)
+            if stream_queue:
+                threading.Thread(target=self._upload_subprocess, args=(task,), daemon=True).start()
+            else:
+                self.upload_executors.submit(self._upload_subprocess, task)
 
     def _gather(self, task, status, desc=''):
         with self._lock:
@@ -109,7 +116,6 @@ class Uploader():
     def _upload_subprocess(self, task):
         try:
             upload_args = task['args']
-            stateless = task['stateless']
             upload_group:str = task['upload_group']
 
             with self._lock:
@@ -124,6 +130,8 @@ class Uploader():
                         from .subprocess_uploader import SubprocessUploader as TargetUploader
                     elif engine == 'youtubev3':
                         from .youtubev3 import youtubev3 as TargetUploader
+                    elif engine == 'biliwebapi':
+                        from .biliwebapi import BiliWebApi as TargetUploader
                     else:
                         raise ValueError(f'Unknown engine: {engine}')
                     
@@ -135,13 +143,19 @@ class Uploader():
                     }
 
             files = task['files']
+            stream_queue = task.get('stream_queue', None)
             retry = upload_args.get('retry', 0)
+            if stream_queue:
+                retry = 0       # 流式上传无法重试
             status = info = None
             while retry >= 0:
                 try:
-                    self.logger.info(f"正在上传 {[f.path for f in files]} 至 {upload_args.get('account')}")
+                    if stream_queue:
+                        self.logger.info(f"正在同步上传 {files[0].title} 至 {upload_args.get('account')}")
+                    else:
+                        self.logger.info(f"正在上传 {[f.path for f in files]} 至 {upload_args.get('account')}")
                     # logging.debug(task)
-                    status, info = target_uploader.upload(files=files, **upload_args)
+                    status, info = target_uploader.upload(files=files, stream_queue=stream_queue, **upload_args)
                 except KeyboardInterrupt:
                     target_uploader.stop()
                     self.stop()
