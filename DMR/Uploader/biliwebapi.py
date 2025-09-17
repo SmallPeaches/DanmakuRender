@@ -12,13 +12,12 @@ import sys
 import threading
 import time
 import queue
-import urllib.parse
+import copy
 from dataclasses import asdict, dataclass, field, InitVar
 from json import JSONDecodeError
 from os.path import splitext, basename
 from typing import Callable, Dict, Union, Any, List
 from urllib import parse
-from urllib.parse import quote
 
 # import aiohttp
 from DMR.utils import VideoInfo, replace_keywords
@@ -38,20 +37,20 @@ class BiliWebApi:
     def __init__(self,
         cookies:str=None,
         account:str=None,
-        threads=3,
+        limit=3,
         sort_videos:bool=False,
         **kwargs,
     ):
         self.cookies = cookies
         self.account = account
-        self.threads = threads
+        self.limit = limit
         self.sort_videos = sort_videos
 
         self.app_key = 'ae57252b0c09105d'
         self.appsec = 'c75875c596a69eb55bd119e74b07cfe3'
-        self.__session = requests.Session()
-        self.__session.mount('https://', HTTPAdapter(max_retries=Retry(total=5)))
-        self.__session.headers.update({
+        self._session = requests.Session()
+        self._session.mount('https://', HTTPAdapter(max_retries=Retry(total=5)))
+        self._session.headers.update({
             'user-agent': "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/63.0.3239.108",
             'referer': "https://www.bilibili.com/",
             'connection': 'keep-alive'
@@ -62,7 +61,7 @@ class BiliWebApi:
         for item in login_info['cookie_info']['cookies']:
             self.cookies[item['name']] = item['value']
         self.__bili_jct = self.cookies['bili_jct']
-        self.__session.cookies = requests.utils.cookiejar_from_dict(self.cookies)
+        self._session.cookies = requests.utils.cookiejar_from_dict(self.cookies)
         self.access_token = login_info['token_info']['access_token']
         self.refresh_token = login_info['token_info']['refresh_token']
 
@@ -85,13 +84,13 @@ class BiliWebApi:
             'appkey': f'{self.app_key}',
             'sign': self.sign(f"appkey={self.app_key}"),
         }
-        response = self.__session.get(url, data=payload, timeout=5)
+        response = self._session.get(url, data=payload, timeout=5)
         r = response.json()
         if r and r["code"] == 0:
             return r['data']['hash'], rsa.PublicKey.load_pkcs1_openssl_pem(r['data']['key'].encode())
 
     def probe(self):
-        ret = self.__session.get('https://member.bilibili.com/preupload?r=probe', timeout=5).json()
+        ret = self._session.get('https://member.bilibili.com/preupload?r=probe', timeout=5).json()
         logger.debug(f"线路:{ret['lines']}")
         data, auto_os = None, None
         min_cost = 0
@@ -102,7 +101,7 @@ class BiliWebApi:
             data = bytes(int(1024 * 0.1 * 1024))
         for line in ret['lines']:
             start = time.perf_counter()
-            test = self.__session.request(method, f"https:{line['probe_url']}", data=data, timeout=30)
+            test = self._session.request(method, f"https:{line['probe_url']}", data=data, timeout=30)
             cost = time.perf_counter() - start
             # logger.debug(line['query'], cost)
             if test.status_code != 200:
@@ -208,7 +207,6 @@ class BiliWebApi:
                     filepath=file.path,
                     lines=kwargs.get('line', 'AUTO'),
                     videos=self.videos,
-                    auto_submit=True,
                     submit_api='web'
                 )
             # self.submit(submit_api='web', videos=self.videos)
@@ -220,7 +218,6 @@ class BiliWebApi:
                 total_size=30*1024*1024*1024,
                 lines=kwargs.get('line', 'AUTO'),
                 videos=self.videos,
-                auto_submit=True,
                 submit_api='web'
             )
         return status, info
@@ -244,7 +241,7 @@ class BiliWebApi:
                 region = im.crop((0, delta / 2, xsize, ysize - delta / 2))
             buffered = BytesIO()
             region.save(buffered, format=im.format)
-        r = self.__session.post(
+        r = self._session.post(
             url='https://member.bilibili.com/x/vu/web/cover/up',
             data={
                 'cover': b'data:image/jpeg;base64,' + (base64.b64encode(buffered.getvalue())),
@@ -261,7 +258,6 @@ class BiliWebApi:
         self,
         filepath:str,
         lines='AUTO',
-        auto_submit: bool=True,
         videos: 'Data'=None,
         submit_api: Callable[[str], None] = None,
     ):
@@ -270,7 +266,6 @@ class BiliWebApi:
             file_name=os.path.basename(filepath),
             total_size=os.path.getsize(filepath),
             lines=lines,
-            auto_submit=auto_submit,
             videos=videos,
             submit_api=submit_api,
         )
@@ -282,7 +277,6 @@ class BiliWebApi:
         file_name,
         total_size,
         lines='AUTO',
-        auto_submit: bool=True,
         videos: 'Data'=None,
         submit_api: Callable[[str], None] = None,
     ):
@@ -319,7 +313,7 @@ class BiliWebApi:
             'name': file_name,
             'size': total_size,
         }
-        resp = self.__session.get(
+        resp = self._session.get(
             f"https://member.bilibili.com/preupload?{self._auto_os['query']}", params=query,
             timeout=5)
         ret = resp.json()
@@ -343,15 +337,15 @@ class BiliWebApi:
             return False, '分P上传失败'
         video_part['title'] = video_part['title'][:80]
 
+        if new_videos := self.get_remote_data(videos.bvid):
+            videos = new_videos
         videos.append(video_part)  # 添加已经上传的视频
-        if auto_submit:
-            ret = self.submit(submit_api=submit_api, videos=videos)
-            logger.info(f"上传成功: {ret}")
-            bvid = ret['data']['bvid']
-            videos.bvid = bvid
-            return True, bvid
-        else:
-            return True, f'分P上传成功{video_part}，等待提交'
+
+        ret = self.submit(submit_api=submit_api, videos=videos)
+        logger.info(f"上传成功: {ret}")
+        bvid = ret['data']['bvid']
+        videos.bvid = bvid
+        return True, bvid
 
     async def upos_stream(self, stream_queue, file_name, total_size, ret):
         # print("--------------, ", file_name)
@@ -365,7 +359,7 @@ class BiliWebApi:
             "X-Upos-Auth": auth
         }
         # 向上传地址申请上传，得到上传id等信息
-        upload_id = self.__session.post(f'{url}?uploads&output=json', timeout=15,
+        upload_id = self._session.post(f'{url}?uploads&output=json', timeout=15,
                                         headers=headers).json()["upload_id"]
         # 开始上传
         parts = []  # 分块信息
@@ -389,10 +383,11 @@ class BiliWebApi:
         
         n = 0
         st = time.perf_counter()
-        max_workers = 3
+        max_workers = self.limit
         semaphore = threading.Semaphore(max_workers)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
+            sessions = [copy.deepcopy(self._session) for _ in range(max_workers)]
             for index, chunk in enumerate(chunk_generator):
                 if not chunk:
                     break
@@ -412,7 +407,7 @@ class BiliWebApi:
                 }
                 params_clone = params.copy()
                 semaphore.acquire()
-                future = executor.submit(self.upload_chunk_thread,
+                future = executor.submit(self.upload_chunk_thread, sessions[index % max_workers],
                                          url, chunk, params_clone, headers, file_name)
                 future.add_done_callback(lambda x: semaphore.release())
                 futures.append(future)
@@ -446,9 +441,9 @@ class BiliWebApi:
         attempt = 1
         while attempt <= 3:  # 一旦放弃就会丢失前面所有的进度，多试几次吧
             try:
-                r = self.__session.post(url, params=p, json={"parts": parts}, headers=headers, timeout=15).json()
+                r = self._session.post(url, params=p, json={"parts": parts}, headers=headers, timeout=15).json()
                 if r.get('OK') == 1:
-                    # logger.info(f'{file_name} uploaded >> {total_size / 1000 / 1000 / cost:.2f}MB/s. {r}')
+                    logger.info(f'{file_name} uploaded >> {n / 1000 / 1000:.2f}MB, {n / 1000 / 1000 / cost:.2f}MB/s. {r}')
                     return {"title": splitext(file_name)[0], "filename": splitext(basename(upos_uri))[0], "desc": ""}
                 raise IOError(r)
             except IOError:
@@ -457,12 +452,12 @@ class BiliWebApi:
                 time.sleep(10)
         pass
 
-    def upload_chunk_thread(self, url, chunk, params_clone, headers, file_name, max_retries=3, backoff_factor=1):
+    def upload_chunk_thread(self, session, url, chunk, params_clone, headers, file_name, max_retries=3, backoff_factor=1):
         st = time.perf_counter()
         retries = 0
         while retries < max_retries:
             try:
-                r = requests.put(url=url, params=params_clone, data=chunk, headers=headers)
+                r = session.put(url=url, params=params_clone, data=chunk, headers=headers, timeout=20)
 
                 # 如果上传成功，退出重试循环
                 if r.status_code == 200:
@@ -580,6 +575,46 @@ class BiliWebApi:
         save_file and save_file.close()
         yield None
 
+    def get_remote_data(self, bvid):
+        if not bvid:
+            return None
+
+        url = f'https://member.bilibili.com/x/vupre/web/archive/view?bvid={bvid}'
+        try:
+            r = self._session.get(url, timeout=5).json()
+            if r['code'] == 0:
+                data = r['data']
+                info = data['archive']
+                video_data = Data(
+                    bvid=info['bvid'],
+                    copyright=info['copyright'],
+                    source=info['source'],
+                    tid=info['tid'],
+                    cover=info['cover'],
+                    title=info['title'],
+                    desc=info['desc'],
+                    desc_v2=info['desc_v2'],
+                    dynamic=info['dynamic'],
+                    tag=info['tag'],
+                    dtime=info['dtime'],
+                    open_subtitle=data['subtitle']['allow'],
+                    dolby=info['attrs']['is_dolby'],
+                    no_reprint=info['no_reprint'],
+                    is_only_self=info['is_only_self'],
+                    charging_pay=info['charging_pay'],
+                )
+                for video in data['videos']:
+                    video_data.append({
+                        'title': video['title'],
+                        'filename': video['filename'],
+                        'cid': video['cid'],
+                        'desc': '',
+                    })
+                return video_data
+        except Exception as e:
+            logger.error(f'获取远程稿件{bvid}数据失败: {e}')
+        return None
+
     def submit(self, submit_api=None, videos:'Data'=None):
         edit = videos.bvid is not None
         if self.sort_videos:
@@ -606,7 +641,7 @@ class BiliWebApi:
         api = 'https://member.bilibili.com/x/vu/web/add?csrf=' + self.__bili_jct
         if edit:
             api = 'https://member.bilibili.com/x/vu/web/edit?csrf=' + self.__bili_jct
-        return self.__session.post(api, timeout=5,
+        return self._session.post(api, timeout=5,
                                    json=post_data).json()
     
     def stop(self):

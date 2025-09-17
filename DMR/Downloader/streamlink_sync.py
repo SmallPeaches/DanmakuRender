@@ -87,10 +87,10 @@ class StreamlinkSyncDownloader():
                         self.logger.info(f"{self.taskname}: ffmpeg 进程结束")
                         ffmpeg_err = ffmpeg_proc.stderr.read()
                         if ffmpeg_err:
-                            self.logger.debug(f"{self.taskname} ffmpeg: " + ffmpeg_err.decode("utf-8", errors="replace"))
+                            self.logger.debug(f"{self.taskname} ffmpeg: " + ffmpeg_err.decode("utf-8", errors="replace")[-300:])
                         streamlink_err = streamlink_proc.stderr.read()
                         if streamlink_err:
-                            self.logger.debug(f"{self.taskname} streamlink: " + ffmpeg_err.decode("utf-8", errors="replace"))
+                            self.logger.debug(f"{self.taskname} streamlink: " + ffmpeg_err.decode("utf-8", errors="replace")[-300:])
                         break
 
                     if not wait_to_stop and time.time() - segment_start_time > self.segment - 10:
@@ -119,6 +119,14 @@ class StreamlinkSyncDownloader():
                 ffmpeg_proc.kill()
                 streamlink_proc.kill()
                 video_queue.put(None)
+
+                ffmpeg_err = ffmpeg_proc.stderr.read()
+                if ffmpeg_err:
+                    self.logger.debug(f"{self.taskname} ffmpeg output: " + ffmpeg_err.decode("utf-8", errors="replace"))
+                streamlink_err = streamlink_proc.stderr.read()
+                if streamlink_err:
+                    self.logger.debug(f"{self.taskname} streamlink output: " + ffmpeg_err.decode("utf-8", errors="replace"))
+                
         return True
 
     def start(self):
