@@ -175,6 +175,8 @@ class BiliWebApi:
         if config.get('tag'):
             if isinstance(config['tag'], list):
                 video.tag = ','.join(config['tag'])
+            else:
+                video.tag = config['tag']
             video.tag = replace_keywords(video.tag, video_info)
         if config.get('source'):
             video.source = replace_keywords(config['source'], video_info)

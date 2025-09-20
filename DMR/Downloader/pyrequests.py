@@ -177,14 +177,17 @@ class PyRequestsHlsDownloader:
         sess.headers.update(self.header)
         headfile = b''
         # B站的fmp4头以10位时间戳命名，往前扫描100s试出真实的头文件
-        for bias in range(100):
-            idx = base_idx - bias
-            uri = base_uri.format(idx=idx)
-            resp = sess.get(uri, timeout=3)
-            if resp.status_code == 200:
-                # print(f'idx: {idx}')
-                headfile = resp.content
-                break
+        try:
+            for bias in range(100):
+                idx = base_idx - bias
+                uri = base_uri.format(idx=idx)
+                resp = sess.get(uri, timeout=3)
+                if resp.status_code == 200:
+                    # print(f'idx: {idx}')
+                    headfile = resp.content
+                    break
+        except Exception as e:
+            self.logger.debug(f'Error finding headfile: {e}')
         return headfile
     
     def _download_segment(self, uri, retry=5):
