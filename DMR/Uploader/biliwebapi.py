@@ -620,7 +620,7 @@ class BiliWebApi:
     def submit(self, submit_api=None, videos:'Data'=None):
         edit = videos.bvid is not None
         if self.sort_videos:
-            videos.videos.sort(key=lambda x: x['title'], reverse=True)
+            videos.videos.sort(key=lambda x: x['title'])
         # 不能提交 extra_kwargs 字段，提前处理
         post_data = asdict(videos)
         if post_data.get('extra_kwargs'):

@@ -392,8 +392,6 @@ upload_args:
       ————————————
       由DanmakuRender录制：
       https://github.com/SmallPeaches/DanmakuRender
-    # 简介中的at信息，设置方法请参考biliup
-    credits: ~
     # 动态内容，可以使用关键字替换
     dynamic: '{STREAMER.NAME} 的直播回放，{CTIME.YEAR}年{CTIME.MONTH:02d}月{CTIME.DAY:02d}日'
     # 标签（一定要有！多个标签逗号分割）
@@ -421,7 +419,9 @@ upload_args:
     charging_pay: 0
     # 开放字幕投稿?
     open_subtitle: False
-    # 额外请求参数（仅biliwebapi生效）
+    # 简介中的at信息，设置方法请参考biliup
+    credits: ~
+    # 额外请求参数（此功能暂不生效）
     # 此参数将直接作为上传请求提交的参数
     extra_kwargs: {}
   
