@@ -282,8 +282,8 @@ class huya(BaseAPI):
             pass
         return random.randint(1400000000000, 1499999999999)
 
-    def get_stream_urls(self, stream_type=None, stream_codec=None, **kwargs) -> str:
-        room_profile = self.get_room_profile()
+    def get_stream_urls(self, stream_type=None, stream_codec=None, huya_mobile_api=False, **kwargs) -> str:
+        room_profile = self.get_room_profile(use_api=huya_mobile_api)
         is_xingxiu = (room_profile['gid'] == 1663)
         streams_info = room_profile['streams_info']
 

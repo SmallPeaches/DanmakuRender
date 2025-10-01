@@ -2,6 +2,7 @@ import logging
 import random
 import re
 import os
+from typing import Optional
 import requests
 import urllib
 import json
@@ -28,33 +29,47 @@ class douyin_utils():
     }
     cookies = {}
 
-    @classmethod
-    def refresh_cookies(cls):
-        with requests.Session() as sess:
-            try:
-                response = sess.get(f'https://live.douyin.com/462574904325',headers=cls.base_headers,timeout=5)
-                assert response.cookies.get('__ac_nonce')
-                cls.cookies['__ac_nonce'] = response.cookies.get('__ac_nonce')
-            except Exception as e:
-                logger.exception(f'获取抖音cookies错误: {e}')
-            
-            try:
-                response = sess.get(f'https://live.douyin.com',headers=cls.base_headers,timeout=5)
-                assert response.cookies.get('ttwid')
-                cls.cookies['ttwid'] = response.cookies.get('ttwid')
-            except Exception as e:
-                logger.exception(f'获取抖音cookies错误: {e}')
+    _douyin_ttwid: Optional[str] = None
+    # DOUYIN_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'
+    CHARSET = "abcdef0123456789"
+    LONG_CHATSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
 
-    @classmethod
-    def get_cookies(cls) -> dict:
-        if not cls.cookies:
-            cls.refresh_cookies()
-        return cls.cookies.copy()
+    @staticmethod
+    def get_ttwid() -> Optional[str]:
+        if not douyin_utils._douyin_ttwid:
+            try:
+                page = requests.get("https://live.douyin.com/1-2-3-4-5-6-7-8-9-0", timeout=15)
+                douyin_utils._douyin_ttwid = page.cookies.get("ttwid")
+            except Exception as e:
+                logger.exception(f'获取抖音ttwid失败: {e}')
+                raise e
+        return douyin_utils._douyin_ttwid
+
+    @staticmethod
+    def generate_ms_token() -> str:
+        '''生成随机 msToken'''
+        return ''.join(random.choice(douyin_utils.LONG_CHATSET) for _ in range(184))
+
+
+    @staticmethod
+    def generate_nonce() -> str:
+        """生成 21 位随机十六进制小写 nonce"""
+        return ''.join(random.choice(douyin_utils.CHARSET) for _ in range(21))
+
+
+    @staticmethod
+    def generate_odin_ttid() -> str:
+        """生成 160 位随机十六进制小写 odin_ttid"""
+        return ''.join(random.choice(douyin_utils.CHARSET) for _ in range(160))
     
     @classmethod
     def get_headers(cls, extra_cookies:dict=None) -> dict:
         headers = cls.base_headers.copy()
-        cookies = cls.get_cookies()
+        cookies = {
+            'ttwid': cls.get_ttwid(),
+            '__ac_nonce': cls.generate_nonce(),
+            'odin_ttid': cls.generate_odin_ttid(),
+        }
         if extra_cookies:
             cookies.update(extra_cookies)
         headers['cookie'] = '; '.join(f'{k}={v}' for k,v in cookies.items())
@@ -127,6 +142,7 @@ class douyin(BaseAPI):
         params = {
             'web_rid': self.web_rid,
         }
+        self.headers = douyin_utils.get_headers()
         url = douyin_utils.build_request_url(url, query=params)
         text = self.sess.get(url, headers=self.headers, params=params, timeout=5).text
         data = json.loads(text)['data']

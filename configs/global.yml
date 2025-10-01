@@ -67,6 +67,8 @@ download_args:
       # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
       # 如果希望不登录录制最低画质，请设置为'None'
       bili_watch_cookies: .login_info/bili_watch_cookies.json
+      # 虎牙使用mobile api获取流(https://github.com/SmallPeaches/DanmakuRender/issues/490#issuecomment-3322342040)
+      huya_mobile_api: False
     # 高级视频录制参数
     # 请确保你明白这些参数的含义后再修改
     advanced_video_args: 
