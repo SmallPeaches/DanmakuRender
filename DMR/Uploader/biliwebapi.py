@@ -454,7 +454,7 @@ class BiliWebApi:
                 time.sleep(10)
         pass
 
-    def upload_chunk_thread(self, session, url, chunk, params_clone, headers, file_name, max_retries=3, backoff_factor=1):
+    def upload_chunk_thread(self, session, url, chunk, params_clone, headers, file_name, max_retries=5, backoff_factor=2):
         st = time.perf_counter()
         retries = 0
         while retries < max_retries:
@@ -465,9 +465,9 @@ class BiliWebApi:
                 if r.status_code == 200:
                     const_time = time.perf_counter() - st
                     speed = len(chunk) * 8 / 1024 / 1024 / const_time
-                    logger.info(
-                        f"{file_name} - chunks-{params_clone['chunk'] +1 } - up status: {r.status_code} - speed: {speed:.2f}Mbps"
-                    )
+                    # logger.info(
+                    #     f"{file_name} - chunks-{params_clone['chunk'] +1 } - up status: {r.status_code} - speed: {speed:.2f}Mbps"
+                    # )
                     return {
                         "partNumber": params_clone['chunk'] + 1,
                         "eTag": "etag"
