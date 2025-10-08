@@ -158,6 +158,7 @@ class biliuprs():
         
             out_bvid = None
             log = ''
+            is_locked = False
             logfile.seek(0)
             for line in logfile.readlines():
                 line = line.decode('utf-8', errors='ignore').strip()
@@ -165,12 +166,16 @@ class biliuprs():
                 if '\"bvid\"' in line:
                     res = re.search(r'(BV[0-9A-Za-z]{10})', line)
                     if res:  out_bvid = res[0]
+                elif '当前稿件已锁定' in line:
+                    is_locked = True
         
         if out_bvid:
-            return True, out_bvid
+            return 0, out_bvid  # 状态 0: 成功
+        elif is_locked:
+            return 10010, log   # 状态 10010: 失败（稿件已锁定,用户删除）
         else:
-            return False, log
-
+            return 1, log       # 状态 1: 失败（其他）
+            
     def format_config(self, config, video_info=None, replace_invalid=False):
         config = config.copy()
 
@@ -215,13 +220,15 @@ class biliuprs():
             self.logger.warning('上传速度慢于录制速度，可能导致上传队列阻塞！')
         
         video_files = [f.path for f in files]
-        status, bvid = False, ''
+        status, bvid = -1, ''
 
         if self.task_upload_lock:       # 使用串行上传
             with self._upload_lock:
                 status, bvid = self.upload_once(video=video_files, bvid=self.task_info.get('bvid'), **config)
-                if status:
+                if status == 0:
                     self.task_info['bvid'] = bvid
+                elif status == 10010:   # (稿件锁定,用户删除)创建一个全新的稿件
+                    self.task_info['bvid'] = None
 
         else:                           # 完全并行上传
             if self.task_info.get('bvid') is None:      # 说明第一个任务还未上传，需要阻塞
@@ -232,7 +239,7 @@ class biliuprs():
                         self._upload_lock.release()
                         lock_released = True
                     status, bvid = self.upload_once(video=video_files, bvid=None, **config)
-                    if status:
+                    if status == 0:
                         self.task_info['bvid'] = bvid
                 finally:
                     if not lock_released:
@@ -240,10 +247,12 @@ class biliuprs():
 
             else:
                 status, bvid = self.upload_once(video=video_files, bvid=self.task_info.get('bvid'), **config)
-                if status:
+                if status == 0:
                     self.task_info['bvid'] = bvid
+                elif status == 10010:
+                    self.task_info['bvid'] = None
 
-        return status, bvid
+        return status == 0, bvid
 
     def end_upload(self):
         self.task_info = {}
