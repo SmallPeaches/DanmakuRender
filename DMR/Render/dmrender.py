@@ -74,6 +74,7 @@ class DmRender(BaseRender):
             *self.vencoder_args,
             '-c:a', self.aencoder,
             *self.aencoder_args,
+            "-noautoscale", # 添加 -noautoscale 参数，解决在特定情况下错误缩放的问题
             *scale_args,
             output,
         ]
