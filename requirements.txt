@@ -1,6 +1,5 @@
 requests
 aiohttp
-pyexecjs
 jsengine
 lxml
 pyyaml

@@ -56,6 +56,7 @@ download_args:
       # 直播流CDN
       # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写
       # 对于B站，可选特定的CDN域名前缀，例如：c1--cn-gotcha208
+      # 斗鱼可选 hs-h5 或者默认 (https://github.com/SmallPeaches/DanmakuRender/issues/506)
       # 或者正则匹配特定CDN，例如：.*cn-gotcha.*
       # 默认为空，由程序随机选择可用cdn
       stream_cdn: ~

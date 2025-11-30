@@ -23,13 +23,9 @@ def compare_version(ver1, ver2):
         return 1
 
 def check_pypi():
-    if compare_version(platform.python_version(),'3.10.0') >= 0:
-        warnings.warn('程序正运行在Python 3.10及以上版本, 此版本有可能导致斗鱼弹幕录制错误, 如果出现此情况可以切换到Python 3.9版本.')
-    
     try:
         import requests
         import aiohttp
-        import execjs
         import jsengine
         import lxml
         import yaml
