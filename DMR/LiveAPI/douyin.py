@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 class douyin_utils():
     base_headers = {
         'authority': 'live.douyin.com',
+        'accept-encoding': 'gzip, deflate',         # brotli 会导致返回内容无法解码
         'Referer': "https://live.douyin.com/",
         'user-agent': random_user_agent(),
     }
@@ -38,7 +39,8 @@ class douyin_utils():
     def get_ttwid() -> Optional[str]:
         if not douyin_utils._douyin_ttwid:
             try:
-                page = requests.get("https://live.douyin.com/1-2-3-4-5-6-7-8-9-0", timeout=15)
+                page = requests.get("https://live.douyin.com/1-2-3-4-5-6-7-8-9-0", timeout=15, 
+                                    headers=douyin_utils.base_headers)
                 douyin_utils._douyin_ttwid = page.cookies.get("ttwid")
             except Exception as e:
                 logger.exception(f'获取抖音ttwid失败: {e}')
