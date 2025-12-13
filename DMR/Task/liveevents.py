@@ -123,7 +123,9 @@ class LiveEvents(BaseEvents):
 
         if self.config['common_event_args'].get('auto_upload'):
             ret_msgs += self._check_for_upload(video.group_id, len(self.state_dict[video.group_id])-1)
-                
+        elif self.config['common_event_args'].get('auto_clean'):
+            ret_msgs += self._check_for_clean(video.group_id)    
+
         return ret_msgs
     
     def onLiveEnd(self, message:PipeMessage):
@@ -141,6 +143,9 @@ class LiveEvents(BaseEvents):
         if self.config['common_event_args'].get('auto_upload'):
             upload_msgs = self._check_for_upload(group_id)
             ret_msgs += upload_msgs
+        elif self.config['common_event_args'].get('auto_clean'):
+            clean_msgs = self._check_for_clean(group_id)
+            ret_msgs += clean_msgs
 
         self._free_state_memory()
         
@@ -252,6 +257,9 @@ class LiveEvents(BaseEvents):
         if self.config['common_event_args'].get('auto_upload'):
             upload_msgs = self._check_for_upload(video.group_id)
             ret_msgs += upload_msgs
+        elif self.config['common_event_args'].get('auto_clean'):
+            clean_msgs = self._check_for_clean(video.group_id)
+            ret_msgs += clean_msgs
 
         return ret_msgs
     
@@ -261,8 +269,14 @@ class LiveEvents(BaseEvents):
         for group_id, video_states in self.state_dict.items():
             for idx, video_state in enumerate(video_states):
                 for vtype, info in video_state.items():
-                    if info['status'] != 'uploaded':
-                        continue
+                    # 1. 如果开启自动上传，必须等状态为 'uploaded'
+                    # 2. 如果没开启自动上传，只要状态是 'ready' 就可以清理
+                    if self.config['common_event_args'].get('auto_upload', False):
+                        if info['status'] != 'uploaded':
+                            continue
+                    else:
+                        if info['status'] != 'ready':
+                            continue
                     for clean_file_types, clean_arg in clean_args.items():
                         # 判断当前视频是否需要清理
                         if vtype in clean_file_types.split('+') or clean_file_types == 'all':
