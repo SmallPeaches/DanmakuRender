@@ -34,6 +34,8 @@ HUYA_MP_BASE_URL = "https://mp.huya.com"
 HUYA_WUP_BASE_URL = "https://wup.huya.com"
 HUYA_WEB_ROOM_DATA_REGEX = r"var TT_ROOM_DATA = (.*?);"
 
+WUP_UA = "HYSDK(Windows,30000002)_APP(pc_exe&7030003&official)_SDK(trans&2.29.0.5493)"
+
 class huya(BaseAPI):
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -329,13 +331,13 @@ class huya(BaseAPI):
             return random.choice(selected_urls)
         
     def get_stream_header(self) -> dict:
-        return self.headers
+        return {"User-Agent": WUP_UA}
     
     def update_headers(self, headers: dict):
-        user_agent = UAGenerator.build_user_agent(UAType.HYSDK, Platform.WINDOWS)
-        # user_agent = f"{Huya.get_hysdk_ua()}_APP({Huya.get_hyapp_ua()})_SDK({Huya.get_hy_trans_mod_ua()})"
-        self.headers['user-agent'] = user_agent
-        self.headers['origin'] = HUYA_WEB_BASE_URL
+        headers['User-Agent'] = WUP_UA
+        headers['Origin'] = HUYA_WEB_BASE_URL
+        headers['Referer'] = HUYA_WEB_BASE_URL
+
 
     @staticmethod
     def get_uid(uid = None) -> int:
