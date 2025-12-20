@@ -11,7 +11,7 @@ executable_tools_path:
 # DMR引擎参数
 dmr_engine_args: 
   # 选择组件
-  enabled_plugins: ['downloader', 'render', 'uploader', 'cleaner']
+  enabled_plugins: ['downloader', 'render', 'uploader', 'cleaner', 'webservice']
   # 是否动态更新配置文件
   dynamic_config: True
   # 动态更新的配置文件路径
@@ -33,7 +33,7 @@ download_args:
     # 录制twitch等特殊平台建议使用streamlink
     # streamlink可用平台请参考 https://streamlink.github.io/plugins.html
     # 默认为auto，由程序自动选择
-    engine: auto
+    engine: ffmpeg
     # 录制输出文件夹，设置为空则使用主播名称作为文件夹
     output_dir: ./直播回放
     # 录制文件名称模板
@@ -348,6 +348,21 @@ uploader_kernel_args:
   # 指定同时执行的上传任务数，默认1
   nuploaders: 1
 
+# WebService核心参数
+webservice_kernel_args:
+  # 是否开启WebAPI
+  web_api: True
+  # 监听地址
+  host: '0.0.0.0'
+  # 监听端口
+  port: 5000
+  # 用户名
+  username: 'admin'
+  # 密码
+  password: 'admin'
+  # 密钥（用于Session加密，建议修改）
+  secret_key: 'change_me_please'
+
 # 上传器默认参数
 upload_args:
   # 上传到B站
@@ -547,5 +562,15 @@ clean_args:
     w_srcfile: False
     w_srcpre: True
 
+# WebUI参数
 webservice_kernel_args:
+  # 启用 Web API
   web_api: True
+  # 服务端口
+  port: 5000
+  # 绑定地址
+  host: '0.0.0.0'
+  # 管理员用户名
+  username: 'admin'
+  # 管理员密码
+  password: 'admin'

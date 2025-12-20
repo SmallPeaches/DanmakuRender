@@ -3,6 +3,7 @@
 /logs/
 /venv/
 /test**
+输出/
 
 replay-**.yml
 DMR-**.yml

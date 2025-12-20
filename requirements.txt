@@ -16,4 +16,5 @@ gmssl
 m3u8
 rsa
 pillow
+flask
 
