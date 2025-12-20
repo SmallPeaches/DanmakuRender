@@ -124,7 +124,7 @@ class biliuprs():
             upload_proc.kill()
             self._upload_procs.pop(upload_proc.pid)
         
-        return logfile
+        return logfile, upload_args
     
     def islogin(self):
         renew_args = self.base_args + ['renew']
@@ -152,9 +152,9 @@ class biliuprs():
 
     def upload_once(self, video, bvid=None, **config):
         with tempfile.TemporaryFile(dir='.temp') as logfile:
-            self.call_biliuprs(video=video, bvid=bvid, logfile=logfile, **config)
+            _, command = self.call_biliuprs(video=video, bvid=bvid, logfile=logfile, **config)
             if self.debug:
-                return True, ''
+                return True, '', command
         
             out_bvid = None
             log = ''
@@ -167,9 +167,9 @@ class biliuprs():
                     if res:  out_bvid = res[0]
         
         if out_bvid:
-            return True, out_bvid
+            return True, out_bvid, command
         else:
-            return False, log
+            return False, log, command
 
     def format_config(self, config, video_info=None, replace_invalid=False):
         config = config.copy()
@@ -219,7 +219,7 @@ class biliuprs():
 
         if self.task_upload_lock:       # 使用串行上传
             with self._upload_lock:
-                status, bvid = self.upload_once(video=video_files, bvid=self.task_info.get('bvid'), **config)
+                status, bvid, command = self.upload_once(video=video_files, bvid=self.task_info.get('bvid'), **config)
                 if status:
                     self.task_info['bvid'] = bvid
 
@@ -231,7 +231,7 @@ class biliuprs():
                     if self.task_info.get('bvid'):      # 说明第一个任务已经上传完成
                         self._upload_lock.release()
                         lock_released = True
-                    status, bvid = self.upload_once(video=video_files, bvid=None, **config)
+                    status, bvid, command = self.upload_once(video=video_files, bvid=None, **config)
                     if status:
                         self.task_info['bvid'] = bvid
                 finally:
@@ -239,11 +239,11 @@ class biliuprs():
                         self._upload_lock.release()
 
             else:
-                status, bvid = self.upload_once(video=video_files, bvid=self.task_info.get('bvid'), **config)
+                status, bvid, command = self.upload_once(video=video_files, bvid=self.task_info.get('bvid'), **config)
                 if status:
                     self.task_info['bvid'] = bvid
 
-        return status, bvid
+        return status, bvid, command
 
     def end_upload(self):
         self.task_info = {}

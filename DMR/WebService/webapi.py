@@ -201,6 +201,30 @@ class WebApi:
                     flash(f'File {filename} not found.', 'error')
             return redirect(url_for('config_list'))
 
+        @app.route('/api/failed_uploads/retry/<uuid>', methods=['POST'])
+        @self.login_required
+        def failed_uploads_retry(uuid):
+            if self.engine and 'uploader' in self.engine.plugin_dict:
+                uploader = self.engine.plugin_dict['uploader']['class']
+                if uploader:
+                    if uploader.retry_task(uuid):
+                        return {'status': 'success', 'message': 'Task retry scheduled.'}
+                    else:
+                        return {'status': 'error', 'message': 'Task not found or failed to retry.'}
+            return {'status': 'error', 'message': 'Uploader not available.'}
+
+        @app.route('/api/failed_uploads/delete/<uuid>', methods=['POST'])
+        @self.login_required
+        def failed_uploads_delete(uuid):
+            if self.engine and 'uploader' in self.engine.plugin_dict:
+                uploader = self.engine.plugin_dict['uploader']['class']
+                if uploader:
+                    if uploader.delete_failed_task(uuid):
+                        return {'status': 'success', 'message': 'Task deleted.'}
+                    else:
+                        return {'status': 'error', 'message': 'Task not found.'}
+            return {'status': 'error', 'message': 'Uploader not available.'}
+
         return app
 
     def get_tasks_data(self):
@@ -229,6 +253,7 @@ class WebApi:
 
         # Get Upload Tasks
         upload_tasks_list = []
+        failed_tasks_list = []
         if self.engine and 'uploader' in self.engine.plugin_dict:
             uploader = self.engine.plugin_dict['uploader']['class']
             if uploader:
@@ -239,7 +264,20 @@ class WebApi:
                         'engine': task.get('engine', 'Unknown'),
                         'is_sync': bool(task.get('stream_queue'))
                     })
-        return {'recording_tasks': recording_tasks, 'upload_tasks': upload_tasks_list}
+                
+                for uuid, task in uploader.failed_tasks.items():
+                    failed_tasks_list.append({
+                        'uuid': uuid,
+                        'files': [{'name': os.path.basename(f.path)} for f in task.get('files', [])],
+                        'account': task.get('args', {}).get('account', 'Unknown'),
+                        'engine': task.get('engine', 'Unknown'),
+                    })
+        
+        return {
+            'recording_tasks': recording_tasks, 
+            'upload_tasks': upload_tasks_list, 
+            'failed_tasks': failed_tasks_list
+        }
 
     def start_helper(self):
         self.webapp = self.create_app()
