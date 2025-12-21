@@ -271,6 +271,7 @@ class WebApi:
                         'files': [{'name': os.path.basename(f.path)} for f in task.get('files', [])],
                         'account': task.get('args', {}).get('account', 'Unknown'),
                         'engine': task.get('engine', 'Unknown'),
+                        'command': task.get('command'),
                     })
         
         return {
