@@ -21,7 +21,7 @@
                     <td>{{ task.name }}</td>
                     <td>{{ task.platform }}</td>
                     <td><a href="{{ task.url }}" target="_blank">链接</a></td>
-                    <td><span class="status-badge status-{{ 'running' if task.status == 1 else 'stopped' }}">{{ '录制中' if task.status == 1 else '停止' }}</span></td>
+                    <td><span class="status-badge status-{{ 'running' if task.status == 1 else 'stopped' }}">{{ '录制中' if task.status == 1 else '未开播' }}</span></td>
                     <td>{{ task.duration }}</td>
                 </tr>
                 {% endfor %}
@@ -33,125 +33,8 @@
     </div>
 </div>
 
-<div class="card">
-    <h2>上传队列</h2>
-    <div id="upload-tasks">
-        {% if upload_tasks %}
-        <table>
-            <thead>
-                <tr>
-                    <th>文件</th>
-                    <th>上传至</th>
-                    <th>进度/信息</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for task in upload_tasks %}
-                <tr>
-                    <td>
-                        {% for f in task.files %}
-                            <div>{{ f.name }}</div>
-                        {% endfor %}
-                    </td>
-                    <td>{{ task.account }} ({{ task.engine }})</td>
-                    <td>
-                        {% if task.is_sync %}
-                            <span style="color: var(--secondary-color)">同步上传中...</span>
-                        {% else %}
-                            上传中...
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p>当前没有正在上传的任务。</p>
-        {% endif %}
-    </div>
-</div>
-
-<div class="card">
-    <h2>上传失败任务</h2>
-    <div id="failed-tasks">
-        {% if failed_tasks %}
-        <table>
-            <thead>
-                <tr>
-                    <th>文件</th>
-                    <th>上传至</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for task in failed_tasks %}
-                <tr>
-                    <td>
-                        {% for f in task.files %}
-                            <div>{{ f.name }}</div>
-                        {% endfor %}
-                    </td>
-                    <td>{{ task.account }} ({{ task.engine }})
-                        {% if task.command %}
-                            <details id="details-{{ task.uuid }}">
-                                <summary style="cursor: pointer; color: #666; font-size: 0.8em;">[查看指令]</summary>
-                                <textarea readonly style="width: 100%; height: 60px; font-family: monospace; font-size: 0.8em; margin-top: 5px;" onclick="this.select()">{{ task.command | join(' ') if task.command is iterable and task.command is not string else task.command }}</textarea>
-                            </details>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <button onclick="retryTask('{{ task.uuid }}')">重试</button>
-                        <button onclick="deleteTask('{{ task.uuid }}')" style="background-color: #dc3545;">删除</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p>没有失败的任务。</p>
-        {% endif %}
-    </div>
-</div>
-
 <script>
-    function retryTask(uuid) {
-        if (!confirm('确定要重试此任务吗？')) return;
-        fetch(`/api/failed_uploads/retry/${uuid}`, { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    alert('任务已重新加入队列');
-                    refreshTasks();
-                } else {
-                    alert('重试失败: ' + data.message);
-                }
-            })
-            .catch(error => console.error('Error:', error));
-    }
-
-    function deleteTask(uuid) {
-        if (!confirm('确定要删除此失败任务吗？')) return;
-        fetch(`/api/failed_uploads/delete/${uuid}`, { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    refreshTasks();
-                } else {
-                    alert('删除失败: ' + data.message);
-                }
-            })
-            .catch(error => console.error('Error:', error));
-    }
-
     function refreshTasks() {
-        // Capture open states of details elements before refreshing
-        const openDetails = new Set();
-        document.querySelectorAll('details[id^="details-"]').forEach(el => {
-            if (el.open) {
-                openDetails.add(el.id);
-            }
-        });
-
         fetch('/api/tasks')
             .then(response => response.json())
             .then(data => {
@@ -161,7 +44,7 @@
                     let html = '<table><thead><tr><th>任务名</th><th>平台</th><th>直播间</th><th>状态</th><th>时长</th></tr></thead><tbody>';
                     data.recording_tasks.forEach(task => {
                         const statusClass = task.status === 1 ? 'status-running' : 'status-stopped';
-                        const statusText = task.status === 1 ? '录制中' : '停止';
+                        const statusText = task.status === 1 ? '录制中' : '未开播';
                         html += `<tr>
                             <td>${task.name}</td>
                             <td>${task.platform}</td>
@@ -174,67 +57,6 @@
                     recordingDiv.innerHTML = html;
                 } else {
                     recordingDiv.innerHTML = '<p>当前没有正在录制的任务。</p>';
-                }
-
-                // Refresh Upload Tasks
-                const uploadDiv = document.getElementById('upload-tasks');
-                if (data.upload_tasks.length > 0) {
-                    let html = '<table><thead><tr><th>文件</th><th>上传至</th><th>进度/信息</th></tr></thead><tbody>';
-                    data.upload_tasks.forEach(task => {
-                        let filesHtml = '';
-                        task.files.forEach(f => {
-                            filesHtml += `<div>${f.name}</div>`;
-                        });
-                        const infoHtml = task.is_sync ? '<span style="color: var(--secondary-color)">同步上传中...</span>' : '上传中...';
-                        html += `<tr>
-                            <td>${filesHtml}</td>
-                            <td>${task.account} (${task.engine})</td>
-                            <td>${infoHtml}</td>
-                        </tr>`;
-                    });
-                    html += '</tbody></table>';
-                    uploadDiv.innerHTML = html;
-                } else {
-                    uploadDiv.innerHTML = '<p>当前没有正在上传的任务。</p>';
-                }
-
-                // Refresh Failed Tasks
-                const failedDiv = document.getElementById('failed-tasks');
-                if (data.failed_tasks && data.failed_tasks.length > 0) {
-                    let html = '<table><thead><tr><th>文件</th><th>上传至</th><th>操作</th></tr></thead><tbody>';
-                    data.failed_tasks.forEach(task => {
-                        let filesHtml = '';
-                        task.files.forEach(f => {
-                            filesHtml += `<div>${f.name}</div>`;
-                        });
-                        let commandHtml = '';
-                        if (task.command) {
-                            let cmdStr = Array.isArray(task.command) ? task.command.join(' ') : task.command;
-                            commandHtml = `
-                            <details id="details-${task.uuid}">
-                                <summary style="cursor: pointer; color: #666; font-size: 0.8em;">[查看指令]</summary>
-                                <textarea readonly style="width: 100%; height: 60px; font-family: monospace; font-size: 0.8em; margin-top: 5px;" onclick="this.select()">${cmdStr}</textarea>
-                            </details>`;
-                        }
-                        html += `<tr>
-                            <td>${filesHtml}</td>
-                            <td>${task.account} (${task.engine})${commandHtml}</td>
-                            <td>
-                                <button onclick="retryTask('${task.uuid}')">重试</button>
-                                <button onclick="deleteTask('${task.uuid}')" style="background-color: #dc3545;">删除</button>
-                            </td>
-                        </tr>`;
-                    });
-                    html += '</tbody></table>';
-                    failedDiv.innerHTML = html;
-                    
-                    // Restore open states
-                    openDetails.forEach(id => {
-                        const el = document.getElementById(id);
-                        if (el) el.open = true;
-                    });
-                } else {
-                    failedDiv.innerHTML = '<p>没有失败的任务。</p>';
                 }
             })
             .catch(error => console.error('Error refreshing tasks:', error));

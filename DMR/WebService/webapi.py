@@ -76,6 +76,11 @@ class WebApi:
                 return self.get_tasks_data()
             return render_template('index.html', **self.get_tasks_data())
 
+        @app.route('/tasks')
+        @self.login_required
+        def tasks_page():
+            return render_template('tasks.html', **self.get_tasks_data())
+
         @app.route('/api/tasks')
         @self.login_required
         def tasks_api():
@@ -225,6 +230,30 @@ class WebApi:
                         return {'status': 'error', 'message': 'Task not found.'}
             return {'status': 'error', 'message': 'Uploader not available.'}
 
+        @app.route('/api/failed_renders/retry/<uuid>', methods=['POST'])
+        @self.login_required
+        def failed_renders_retry(uuid):
+            if self.engine and 'render' in self.engine.plugin_dict:
+                render = self.engine.plugin_dict['render']['class']
+                if render:
+                    if render.retry_task(uuid):
+                        return {'status': 'success', 'message': 'Task retry scheduled.'}
+                    else:
+                        return {'status': 'error', 'message': 'Task not found or failed to retry.'}
+            return {'status': 'error', 'message': 'Render not available.'}
+
+        @app.route('/api/failed_renders/delete/<uuid>', methods=['POST'])
+        @self.login_required
+        def failed_renders_delete(uuid):
+            if self.engine and 'render' in self.engine.plugin_dict:
+                render = self.engine.plugin_dict['render']['class']
+                if render:
+                    if render.delete_failed_task(uuid):
+                        return {'status': 'success', 'message': 'Task deleted.'}
+                    else:
+                        return {'status': 'error', 'message': 'Task not found.'}
+            return {'status': 'error', 'message': 'Render not available.'}
+
         return app
 
     def get_tasks_data(self):
@@ -262,7 +291,8 @@ class WebApi:
                         'files': [{'name': os.path.basename(f.path)} for f in task.get('files', [])],
                         'account': task.get('args', {}).get('account', 'Unknown'),
                         'engine': task.get('engine', 'Unknown'),
-                        'is_sync': bool(task.get('stream_queue'))
+                        'is_sync': bool(task.get('stream_queue')),
+                        'status': task.get('status', 'waiting')
                     })
                 
                 for uuid, task in uploader.failed_tasks.items():
@@ -273,11 +303,37 @@ class WebApi:
                         'engine': task.get('engine', 'Unknown'),
                         'command': task.get('command'),
                     })
+
+        # Get Render Tasks
+        render_tasks_list = []
+        failed_renders_list = []
+        if self.engine and 'render' in self.engine.plugin_dict:
+            render = self.engine.plugin_dict['render']['class']
+            if render:
+                for uuid, task in render.render_tasks.items():
+                    video_path = task.get('video').path if task.get('video') else 'Unknown'
+                    render_tasks_list.append({
+                        'video': os.path.basename(video_path),
+                        'output': os.path.basename(task.get('output', 'Unknown')),
+                        'mode': task.get('mode', 'Unknown'),
+                        'status': task.get('status', 'waiting')
+                    })
+                
+                for uuid, task in render.failed_tasks.items():
+                    video_path = task.get('video').path if task.get('video') else 'Unknown'
+                    failed_renders_list.append({
+                        'uuid': uuid,
+                        'video': os.path.basename(video_path),
+                        'output': os.path.basename(task.get('output', 'Unknown')),
+                        'mode': task.get('mode', 'Unknown'),
+                    })
         
         return {
             'recording_tasks': recording_tasks, 
             'upload_tasks': upload_tasks_list, 
-            'failed_tasks': failed_tasks_list
+            'failed_tasks': failed_tasks_list,
+            'render_tasks': render_tasks_list,
+            'failed_renders': failed_renders_list
         }
 
     def start_helper(self):

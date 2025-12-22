@@ -110,6 +110,7 @@ class Uploader():
                          task['files'] = [task['files'][0]]
                 
                 # Re-submit
+                task['status'] = 'waiting'
                 self.upload_tasks[task['uuid']] = task
                 if task.get('stream_queue'):
                     threading.Thread(target=self._upload_subprocess, args=(task,), daemon=True).start()
@@ -182,6 +183,7 @@ class Uploader():
                 'files': config.get('files'),
                 'stream_queue': stream_queue,
                 'config': config,
+                'status': 'waiting',
             }
             self.upload_tasks[task['uuid']] = task
             if stream_queue:
@@ -191,7 +193,7 @@ class Uploader():
 
     def _gather(self, task, status, desc='', command=None):
         with self._lock:
-            self.upload_tasks.pop(task['uuid'])
+            self.upload_tasks.pop(task['uuid'], None)
             if status == 'error':
                 # Save to failed tasks
                 # If it was a stream upload, we remove the stream_queue for retry
@@ -227,6 +229,7 @@ class Uploader():
                 )
 
     def _upload_subprocess(self, task):
+        task['status'] = 'uploading'
         try:
             upload_args = task['args']
             upload_group:str = task['upload_group']
@@ -313,4 +316,11 @@ class Uploader():
         self.upload_executors.shutdown(wait=False)
         for upload_group in self._uploader_pool:
             self._uploader_pool[upload_group]['class'].stop()
+        
+        with self._lock:
+            for uuid, task in self.upload_tasks.items():
+                if uuid not in self.failed_tasks:
+                    self.failed_tasks[uuid] = task
+            self.save_failed_tasks()
+
         self.logger.info('Uploader stopped.')

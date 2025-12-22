@@ -86,7 +86,7 @@ button:hover { opacity: 0.9; }
     font-weight: bold;
 }
 .status-running { background-color: #4caf50; color: white; }
-.status-stopped { background-color: #f44336; color: white; }
+.status-stopped { background-color: #000000; color: #888888; border: 1px solid #333333; }
 
 .flash-messages {
     margin-bottom: 20px;
