@@ -100,15 +100,6 @@ class Uploader():
                 task = self.failed_tasks.pop(uuid)
                 self.save_failed_tasks()
                 
-                # If command is available (single command string or list of strings), use it with subprocess engine
-                if task.get('command') and isinstance(task['command'], list) and len(task['command']) > 0 and isinstance(task['command'][0], str):
-                    self.logger.info(f"Retrying task {uuid} using captured command: {task['command']}")
-                    task['engine'] = 'subprocess'
-                    task['args'] = {'command': task['command']}
-                    # Ensure only one iteration in SubprocessUploader by passing a single file
-                    if task.get('files'):
-                         task['files'] = [task['files'][0]]
-                
                 # Re-submit
                 task['status'] = 'waiting'
                 self.upload_tasks[task['uuid']] = task
@@ -191,7 +182,7 @@ class Uploader():
             else:
                 self.upload_executors.submit(self._upload_subprocess, task)
 
-    def _gather(self, task, status, desc='', command=None):
+    def _gather(self, task, status, desc=''):
         with self._lock:
             self.upload_tasks.pop(task['uuid'], None)
             if status == 'error':
@@ -201,9 +192,6 @@ class Uploader():
                 if task.get('stream_queue'):
                     task['stream_queue'] = None
                     task['config']['stream_queue'] = None
-                
-                if command:
-                    task['command'] = command
                 
                 self.failed_tasks[task['uuid']] = task
                 self.save_failed_tasks()
@@ -264,7 +252,6 @@ class Uploader():
             if stream_queue:
                 retry = 0       # 流式上传无法重试
             status = info = None
-            command = None
             
             while retry >= 0:
                 try:
@@ -276,17 +263,16 @@ class Uploader():
                     res = target_uploader.upload(files=files, stream_queue=stream_queue, **upload_args)
                     
                     if len(res) == 3:
-                        status, info, command = res
+                        status, info, _ = res
                     else:
                         status, info = res
-                        command = None
 
                 except KeyboardInterrupt:
                     target_uploader.stop()
                     self.stop()
                     return
                 except Exception as e:
-                    status, info, command = False, e, None
+                    status, info = False, e
                     self.logger.exception(e)
                 
                 retry -= 1
@@ -301,9 +287,9 @@ class Uploader():
                     time.sleep(60)
             
             if status:
-                self._gather(task, 'info', desc=info, command=command)
+                self._gather(task, 'info', desc=info)
             else:
-                self._gather(task, 'error', desc=info, command=command)
+                self._gather(task, 'error', desc=info)
 
             self._free_uploader_pool()
         

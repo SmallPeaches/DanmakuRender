@@ -28,18 +28,16 @@ class SubprocessUploader:
             message = f'Process {cmds} timeout after {timeout} seconds'
         finally:
             self.procs.pop(proc.pid)
-        return status, message, cmds
+        return status, message
 
     def upload(self, files:list[VideoInfo], **kwargs):
         if not isinstance(files, list):
             files = [files]
 
         status, message = True, ''
-        commands = []
         for file in files:
             try:
-                sts, msg, cmd = self.call_subprocess(file, **kwargs)
-                commands.append(cmd)
+                sts, msg = self.call_subprocess(file, **kwargs)
                 status = status and sts
                 if sts:
                     message += f'File {file.path} upload success.\n'
@@ -49,9 +47,7 @@ class SubprocessUploader:
                 status= False
                 message += f'File {file.path} upload raise an error: {e}\n'
         
-        # Return single command if only one file, else list of commands
-        cmd_result = commands[0] if len(commands) == 1 else commands
-        return status, message.strip(), cmd_result
+        return status, message.strip()
     
     def stop(self):
         for pid, proc in self.procs.items():

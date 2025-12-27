@@ -130,14 +130,7 @@
                             <div>{{ f.name }}</div>
                         {% endfor %}
                     </td>
-                    <td>{{ task.account }} ({{ task.engine }})
-                        {% if task.command %}
-                            <details id="details-{{ task.uuid }}">
-                                <summary style="cursor: pointer; color: #666; font-size: 0.8em;">[查看指令]</summary>
-                                <textarea readonly style="width: 100%; height: 60px; font-family: monospace; font-size: 0.8em; margin-top: 5px;" onclick="this.select()">{{ task.command | join(' ') if task.command is iterable and task.command is not string else task.command }}</textarea>
-                            </details>
-                        {% endif %}
-                    </td>
+                    <td>{{ task.account }} ({{ task.engine }})</td>
                     <td>
                         <button onclick="retryTask('{{ task.uuid }}')">重试</button>
                         <button onclick="deleteTask('{{ task.uuid }}')" style="background-color: #dc3545;">删除</button>
@@ -306,18 +299,9 @@
                         task.files.forEach(f => {
                             filesHtml += `<div>${f.name}</div>`;
                         });
-                        let commandHtml = '';
-                        if (task.command) {
-                            let cmdStr = Array.isArray(task.command) ? task.command.join(' ') : task.command;
-                            commandHtml = `
-                            <details id="details-${task.uuid}">
-                                <summary style="cursor: pointer; color: #666; font-size: 0.8em;">[查看指令]</summary>
-                                <textarea readonly style="width: 100%; height: 60px; font-family: monospace; font-size: 0.8em; margin-top: 5px;" onclick="this.select()">${cmdStr}</textarea>
-                            </details>`;
-                        }
                         html += `<tr>
                             <td>${filesHtml}</td>
-                            <td>${task.account} (${task.engine})${commandHtml}</td>
+                            <td>${task.account} (${task.engine})</td>
                             <td>
                                 <button onclick="retryTask('${task.uuid}')">重试</button>
                                 <button onclick="deleteTask('${task.uuid}')" style="background-color: #dc3545;">删除</button>
@@ -326,12 +310,6 @@
                     });
                     html += '</tbody></table>';
                     failedDiv.innerHTML = html;
-                    
-                    // Restore open states
-                    openDetails.forEach(id => {
-                        const el = document.getElementById(id);
-                        if (el) el.open = true;
-                    });
                 } else {
                     failedDiv.innerHTML = '<p>没有失败的任务。</p>';
                 }
