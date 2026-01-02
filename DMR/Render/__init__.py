@@ -6,15 +6,10 @@ import threading
 import queue
 from concurrent.futures import ThreadPoolExecutor
 from os.path import join, exists
+from typing import Tuple
 
-from DMR.LiveAPI import *
-from DMR.utils import *
+from DMR.utils import VideoInfo, DateTimeEncoder, DateTimeDecoder, uuid, PipeMessage
 
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-        return super().default(o)
 
 class Render():
     def __init__(self,
@@ -32,7 +27,7 @@ class Render():
         self._piperecvprocess = None
         self.render_tasks = {}
         self.failed_tasks = {}
-        self.failed_tasks_file = 'failed_renders.json'
+        self.failed_tasks_file = '.temp/failed_renders.json'
         self.load_failed_tasks()
 
         self._render_class = {}
@@ -43,17 +38,13 @@ class Render():
         if exists(self.failed_tasks_file):
             try:
                 with open(self.failed_tasks_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+                    data = json.load(f, cls=DateTimeDecoder)
                     for uuid, task in data.items():
-                        if 'video' in task and task['video']:
-                            v = task['video']
-                            # Restore datetime
-                            if 'ctime' in v and v['ctime']:
-                                v['ctime'] = datetime.fromisoformat(v['ctime'])
-                            task['video'] = VideoInfo(**v)
+                        if task.get('video'):
+                            task['video'] = VideoInfo(**task['video'])
                             # Update config as well
-                            if 'config' in task and 'video' in task['config']:
-                                task['config']['video'] = task['video']
+                            # if 'config' in task and 'video' in task['config']:
+                            #     task['config']['video'] = task['video']
                         self.failed_tasks[uuid] = task
                 self.logger.info(f'Loaded {len(self.failed_tasks)} failed render tasks.')
             except Exception as e:
@@ -129,7 +120,7 @@ class Render():
                 'args': config.get('args', {}),
                 'video': config.get('video'),
                 'output': config.get('output'),
-                'config': config,
+                # 'config': config,
                 'status': 'waiting',
             }
             self.render_tasks[task['uuid']] = task

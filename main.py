@@ -15,18 +15,17 @@ from os.path import exists, splitext
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
 
-VERSION = '2025.12.20'
+VERSION = '2026.01.01'
 
 from DMR import DanmakuRender
 from DMR.Config import Config
 
 if __name__ == '__main__':    
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default='configs')
-    parser.add_argument('--global_config',default='configs/global.yml')
-    parser.add_argument('--debug',action='store_true')
-    parser.add_argument('--version',action='store_true')
-    parser.add_argument('--skip_update',action='store_true')
+    parser.add_argument('--config', default='configs/global.yml')
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--version', action='store_true')
+    parser.add_argument('--skip_update', action='store_true')
     args = parser.parse_args()
 
     if args.version:
@@ -37,7 +36,7 @@ if __name__ == '__main__':
     if not args.skip_update:
         check_update(VERSION)
     
-    config = Config(args.global_config, args.config)
+    config = Config(args.config)
 
     logger = logging.getLogger('DMR')
     logger.setLevel(logging.DEBUG)

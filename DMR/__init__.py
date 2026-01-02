@@ -5,27 +5,11 @@ import threading
 import json
 import time
 import logging
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 
 from .engine import DMREngine
 from .Config import Config
+from .utils import filename_to_taskname
 
-class ConfigEventHandler(FileSystemEventHandler):
-    def __init__(self, dmr):
-        self.dmr = dmr
-        self.last_check = 0
-        self.debounce_interval = 1.0
-
-    def on_any_event(self, event):
-        if event.is_directory:
-            return
-        filename = os.path.basename(event.src_path)
-        if filename == 'global.yml' or (filename.startswith('DMR-') and filename.endswith('.yml')):
-            if time.time() - self.last_check < self.debounce_interval:
-                return
-            self.last_check = time.time()
-            self.dmr.check_config_update()
 
 class DanmakuRender():
     def __init__(self, config:Config, **kwargs) -> None:
@@ -53,38 +37,7 @@ class DanmakuRender():
             replay_config = self.config.get_replay_config(taskname)
             self.engine.add_task(taskname, replay_config)
 
-        if self.engine_args['dynamic_config']:
-            self.start_watchdog()
-
         threading.Thread(target=self._monintor, daemon=True).start()
-
-    def start_watchdog(self):
-        self.observer = Observer()
-        event_handler = ConfigEventHandler(self)
-        
-        # Watch global config directory (parent of global.yml)
-        global_config_dir = os.path.dirname(os.path.abspath(self.config.global_config_path))
-        self.observer.schedule(event_handler, global_config_dir, recursive=False)
-        
-        # Watch task config directory
-        if isinstance(self.config.replay_config_path_raw, str):
-            task_config_dir = self.config.replay_config_path_raw
-            if task_config_dir != global_config_dir:
-                 self.observer.schedule(event_handler, task_config_dir, recursive=False)
-        else:
-             # If list of paths, watch directories of those paths
-             # This is a bit complex if they are scattered. 
-             # Assuming they are in the same dir or we watch common parents.
-             # For simplicity, if raw is list, we iterate and watch unique dirs.
-             watched_dirs = set()
-             for path in self.config.replay_config_path_raw:
-                 d = os.path.dirname(os.path.abspath(path))
-                 if d not in watched_dirs:
-                     self.observer.schedule(event_handler, d, recursive=False)
-                     watched_dirs.add(d)
-
-        self.observer.start()
-        self.logger.info("Config watchdog started.")
 
     def check_config_update(self):
         try:
@@ -95,28 +48,23 @@ class DanmakuRender():
             
             elif update_type == 'tasks':
                 for config_path in update_info['new']:
-                    taskname = self.config.update_task_config(config_path)
-                    if taskname:
-                        self.logger.info(f'检测到新任务配置文件: {taskname}，正在添加任务...')
-                        self.engine.add_task(taskname, self.config.get_replay_config(taskname))
+                    taskname = filename_to_taskname(config_path)
+                    self.logger.info(f'检测到新任务配置文件: {taskname}，正在添加任务...')
+                    self.engine.add_task(taskname, self.config.get_replay_config(taskname))
                 
                 for config_path in update_info['deleted']:
-                    taskname = os.path.splitext(os.path.basename(config_path))[0].split('-', 1)[-1]
+                    taskname = filename_to_taskname(config_path)
                     self.logger.info(f'检测到任务配置文件删除: {taskname}，正在停止任务...')
                     self.engine.del_task(taskname)
-                    if taskname in self.config.replay_config:
-                        del self.config.replay_config[taskname]
 
                 for config_path in update_info['updated']:
-                    taskname = os.path.splitext(os.path.basename(config_path))[0].split('-', 1)[-1]
+                    taskname = filename_to_taskname(config_path)
                     self.logger.info(f'检测到任务配置文件更新: {taskname}，正在重启任务...')
                     
                     self.engine.del_task(taskname)
-                    time.sleep(5) 
-                    
-                    new_taskname = self.config.update_task_config(config_path)
-                    if new_taskname:
-                        self.engine.add_task(new_taskname, self.config.get_replay_config(new_taskname))
+                    time.sleep(5)
+                    new_taskname = filename_to_taskname(config_path)
+                    self.engine.add_task(new_taskname, self.config.get_replay_config(new_taskname))
 
         except Exception as e:
             self.logger.error(f'动态载入配置文件错误:')
@@ -126,6 +74,7 @@ class DanmakuRender():
         REFRESH_INTERVAL = 60
         time.sleep(REFRESH_INTERVAL)
         while not self.stoped:
+            self.check_config_update()
             # clean temp file
             files = os.listdir('.temp')
             for file in files:

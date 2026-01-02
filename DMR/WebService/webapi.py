@@ -12,33 +12,41 @@ from datetime import datetime
 from DMR.utils import *
 
 class WebApi:
-    def __init__(self,
-                 pipe:Tuple[queue.Queue, queue.Queue],
-                 engine=None,
-                 **kwargs,
-                 ) -> None:
+    def __init__(
+            self,
+            pipe:Tuple[queue.Queue, queue.Queue],
+            engine=None,
+            host='0.0.0.0',
+            port=5000,
+            force_login=True,
+            username='admin',
+            password='admin',
+            **kwargs,
+        ) -> None:
         self.send_queue, self.recv_queue = pipe
         self.engine = engine
-        self.logger = logging.getLogger('DMR.WebService')
         self.kwargs = kwargs
+        
+        # WebAPI Config
+        self.host = host
+        self.port = port
+        self.force_login = force_login
+        self.username = username
+        self.password = password
+        
+        # 强制使用高强度随机密钥，每次启动自动生成，极大提高安全性
+        # 注意：这意味着每次重启程序后，所有已登录用户都需要重新登录
+        self.secret_key = secrets.token_hex(32)
+        self.logger = logging.getLogger(__name__)
         self.stoped = True
 
         self.webapp = None
         self.webapp_thread = None
-        
-        # WebUI Config
-        self.host = self.kwargs.get('host', '0.0.0.0')
-        self.port = self.kwargs.get('port', 5000)
-        self.username = self.kwargs.get('username', 'admin')
-        self.password = self.kwargs.get('password', 'admin')
-        # 强制使用高强度随机密钥，每次启动自动生成，极大提高安全性
-        # 注意：这意味着每次重启程序后，所有已登录用户都需要重新登录
-        self.secret_key = secrets.token_hex(32)
 
     def login_required(self, f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if 'logged_in' not in session:
+            if self.force_login and 'logged_in' not in session:
                 return redirect(url_for('login', next=request.url))
             return f(*args, **kwargs)
         return decorated_function
@@ -75,6 +83,15 @@ class WebApi:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return self.get_tasks_data()
             return render_template('index.html', **self.get_tasks_data())
+
+        # 保留之前的兼容性
+        @app.route('/api/put_message', methods=['POST'])
+        @self.login_required
+        def api_v1_func():
+            req_data = request.get_json()
+            message = PipeMessage(**req_data['data'])
+            self.send_queue.put(message)
+            return 'success', 200
 
         @app.route('/tasks')
         @self.login_required

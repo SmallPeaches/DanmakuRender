@@ -6,14 +6,10 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from os.path import join, exists
 from datetime import datetime
-from DMR.LiveAPI import *
-from DMR.utils import *
+from typing import Tuple
 
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-        return super().default(o)
+from DMR.utils import VideoInfo, PipeMessage, DateTimeEncoder, DateTimeDecoder, uuid
+
 
 class Uploader():
     def __init__(self,
@@ -32,7 +28,7 @@ class Uploader():
         self._uploader_pool = {}
         self.upload_tasks = {}
         self.failed_tasks = {}
-        self.failed_tasks_file = 'failed_uploads.json'
+        self.failed_tasks_file = '.temp/failed_uploads.json'
         self.load_failed_tasks()
         
         self.upload_executors = ThreadPoolExecutor(max_workers=self.nuploaders)
@@ -42,23 +38,18 @@ class Uploader():
         if exists(self.failed_tasks_file):
             try:
                 with open(self.failed_tasks_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+                    data = json.load(f, cls=DateTimeDecoder)
                     # Restore datetime objects and VideoInfo objects
                     for uuid, task in data.items():
                         if 'files' in task:
                             restored_files = []
+                            # Wrap in VideoInfo
                             for f in task['files']:
-                                # Restore datetime fields in VideoInfo dict
-                                if 'ctime' in f and f['ctime']:
-                                    f['ctime'] = datetime.fromisoformat(f['ctime'])
-                                if 'stream_start_time' in f and f['stream_start_time']:
-                                    f['stream_start_time'] = datetime.fromisoformat(f['stream_start_time'])
-                                # Wrap in VideoInfo
                                 restored_files.append(VideoInfo(**f))
                             task['files'] = restored_files
                             # Also update files in config
-                            if 'config' in task and 'files' in task['config']:
-                                task['config']['files'] = restored_files
+                            # if 'config' in task and 'files' in task['config']:
+                            #     task['config']['files'] = restored_files
                         self.failed_tasks[uuid] = task
                 self.logger.info(f'Loaded {len(self.failed_tasks)} failed upload tasks.')
             except Exception as e:
@@ -66,29 +57,6 @@ class Uploader():
 
     def save_failed_tasks(self):
         try:
-            # We need to serialize VideoInfo objects which might contain datetime
-            # VideoInfo is a dict subclass, so we can convert it to dict.
-            # But deepcopy or just relying on DateTimeEncoder for datetime is enough if we pass dicts.
-            # However, task['files'] are VideoInfo objects.
-            
-            # Helper to prepare data for serialization
-            def prepare_data(data):
-                if isinstance(data, dict):
-                    return {k: prepare_data(v) for k, v in data.items()}
-                elif isinstance(data, list):
-                    return [prepare_data(i) for i in data]
-                elif isinstance(data, (datetime, int, float, str, bool, type(None))):
-                    return data
-                elif hasattr(data, '__dict__'):
-                     return prepare_data(data.__dict__)
-                elif isinstance(data, tuple): # NamedTuple or tuple
-                    return tuple(prepare_data(i) for i in data)
-                # VideoInfo inherits from dict, so isinstance(data, dict) covers it.
-                return str(data)
-
-            # Wait, VideoInfo inherits from cpdict -> dict. So json.dump will treat it as dict.
-            # But we need DateTimeEncoder.
-            
             with open(self.failed_tasks_file, 'w', encoding='utf-8') as f:
                 json.dump(self.failed_tasks, f, cls=DateTimeEncoder, ensure_ascii=False, indent=4)
         except Exception as e:
@@ -173,7 +141,7 @@ class Uploader():
                 'args': config.get('args', {}),
                 'files': config.get('files'),
                 'stream_queue': stream_queue,
-                'config': config,
+                # 'config': config,
                 'status': 'waiting',
             }
             self.upload_tasks[task['uuid']] = task
@@ -187,14 +155,13 @@ class Uploader():
             self.upload_tasks.pop(task['uuid'], None)
             if status == 'error':
                 # Save to failed tasks
-                # If it was a stream upload, we remove the stream_queue for retry
-                # because we want to retry as a normal file upload
+                # ignore stream uploads
                 if task.get('stream_queue'):
                     task['stream_queue'] = None
                     task['config']['stream_queue'] = None
-                
-                self.failed_tasks[task['uuid']] = task
-                self.save_failed_tasks()
+                else:
+                    self.failed_tasks[task['uuid']] = task
+                    self.save_failed_tasks()
 
                 self._pipeSend(
                     event='error',
