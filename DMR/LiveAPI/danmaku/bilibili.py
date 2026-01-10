@@ -48,13 +48,15 @@ class Bilibili(DMAPI):
                 token = room_json['data']['token']
             
         data = json.dumps({
-            "roomid": room_id, 
-            "uid": 0, 
-            "protover": 3, 
-            "key": token, 
-            "type":2, 
+            "roomid": room_id,
+            "uid": 0,
+            "protover": 3,
+            "buvid": current_cookie.split('buvid3=')[1].split(';')[0],
+            "key": token,
+            "type":2,
             "platform": "web",
         },separators=(",", ":"),).encode("ascii")
+
         data = (
             pack(">i", len(data) + 16)
             + pack(">h", 16)
