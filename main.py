@@ -15,7 +15,7 @@ from os.path import exists, splitext
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('./tools')
 
-VERSION = '2025.12.20'
+VERSION = '2026.01.10'
 
 from DMR import DanmakuRender
 from DMR.Config import Config
@@ -68,3 +68,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         dmr.stop()
         exit(0)
+
