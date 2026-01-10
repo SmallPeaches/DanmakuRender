@@ -19,7 +19,6 @@ class DanmakuRender():
         self.stoped = True
         self.engine_args = self.config.get_config('dmr_engine_args')
         self.engine = DMREngine()
-        self.observer = None
 
     def start(self):
         self.stoped = False
@@ -101,7 +100,4 @@ class DanmakuRender():
 
     def stop(self):
         self.stoped = True
-        if self.observer:
-            self.observer.stop()
-            self.observer.join()
         self.engine.stop()

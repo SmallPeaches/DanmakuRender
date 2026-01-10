@@ -11,11 +11,11 @@ executable_tools_path:
 # DMR引擎参数
 dmr_engine_args: 
   # 选择组件
-  enabled_plugins: ['downloader', 'render', 'uploader', 'cleaner', 'webservice']
+  # 可选组件： downloader（下载器）, render（渲染器）, uploader（上传器）, cleaner（清理器），webservice（WebUI服务，默认不启用）
+  enabled_plugins: ['downloader', 'render', 'uploader', 'cleaner']
   # 配置文件路径
+  # 可设置为文件/文件夹列表
   config_path: ./configs
-  # 是否动态更新配置文件
-  dynamic_config: True
 
 # 默认下载参数
 download_args:
@@ -234,7 +234,7 @@ download_args:
     # 此参数将直接传入下载引擎，可以用来设置一些特殊的下载参数
     extra_args: []
   
-  # 虚拟下载（此功能暂不可用）
+  # 虚拟下载
   # 可以监控文件夹中的视频文件，用于和其他软件协同，详情请参考文档
   virtual:
     # 监控文件夹
