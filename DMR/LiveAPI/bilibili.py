@@ -5,6 +5,8 @@ import re
 import requests
 import json
 import random
+
+from DMR.utils import match1, random_user_agent
 try:
     from .BaseAPI import BaseAPI
 except ImportError:
@@ -18,8 +20,12 @@ class bilibili(BaseAPI):
         self.sess = requests.Session()
         self.header = {
             'Referer': 'https://live.bilibili.com',
-            'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.54',
+            'User-Agent': random_user_agent(),
         }
+
+        # 获取标准房间号
+        room_json = self._get_response()
+        self.rid = room_json["data"]["room_id"]
 
     def _get_response(self):
         r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
@@ -72,7 +78,7 @@ class bilibili(BaseAPI):
             'protocol': '0,1',
             'format': '0,1,2',
             'codec': '0,1,2',   # 0:avc, 1:hevc, 2:av1
-            'qn': 20000,
+            'qn': 25000,
             'ptype': 8,
             'dolby': 5,
             'panorama': 1
@@ -117,7 +123,7 @@ class bilibili(BaseAPI):
         avail_urls = [max_res_urls for max_res_urls in avail_urls if max_res_urls['quality'] == max_quality]
 
         # 找出URL里面不带bluray字样的原画流
-        best_urls = [best_urls for best_urls in avail_urls if not re.search(r'live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z]{1,10}', best_urls['stream_url'])]
+        best_urls = [best_urls for best_urls in avail_urls if not re.search(r'live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z1-2]{1,10}', best_urls['stream_url'])]
         if best_urls:
             avail_urls = best_urls
 
@@ -127,9 +133,9 @@ class bilibili(BaseAPI):
             if not best_urls:
                 stream_cdn = '.*gotcha.*'
                 stream_type = 'fmp4'
-            # HEVC原画使用hls，H264使用flv
+            # HEVC,av1原画使用hls，H264使用flv
             else:
-                if any('hevc' in url_info['stream_type'] for url_info in best_urls):
+                if any('avc' not in url_info['stream_type'] for url_info in best_urls):
                     stream_type = 'fmp4'
                 else:
                     stream_type = 'flv'
@@ -147,6 +153,19 @@ class bilibili(BaseAPI):
                 continue
             uri = url_info['stream_url']
             selected_urls.append(uri)
+
+        # 尝试使用不带后缀的原始流地址
+        for uri in selected_urls:
+            try:
+                stream_name = match1(uri, r'(live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z1-2]{1,10})')
+                ori_stream_name = '_'.join(stream_name.split('_')[:-1])
+                uri = uri.replace(stream_name, ori_stream_name)
+                resp = self.sess.get(uri, headers=self.header, timeout=5, stream=True)
+                if resp.status_code == 200:
+                    logger.debug(f'find origin stream {stream_name}->{ori_stream_name}')
+                    return uri
+            except Exception:
+                pass
 
         if not selected_urls:
             logger.warning(f'Bilibili{self.rid}没有满足 {stream_cdn},{stream_type} 的流，将使用默认选项.')
@@ -179,7 +198,3 @@ class bilibili(BaseAPI):
     
     def get_stream_header(self) -> dict:
         return self.header
-
-if __name__ == '__main__':
-    api = bilibili('13308358')    
-    print(api.get_stream_url()) 
