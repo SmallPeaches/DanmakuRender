@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>渲染队列</h2>
+    <div id="render-tasks">
+        {% if render_tasks %}
+        <table>
+            <thead>
+                <tr>
+                    <th>视频</th>
+                    <th>输出</th>
+                    <th>模式</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in render_tasks %}
+                <tr>
+                    <td>{{ task.video }}</td>
+                    <td>{{ task.output }}</td>
+                    <td>{{ task.mode }}</td>
+                    <td>
+                        {% if task.status == 'waiting' %}
+                            <span style="color: #666">等待中...</span>
+                        {% else %}
+                            渲染中...
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>当前没有正在渲染的任务。</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h2>渲染失败任务</h2>
+    <div id="failed-renders">
+        {% if failed_renders %}
+        <table>
+            <thead>
+                <tr>
+                    <th>视频</th>
+                    <th>输出</th>
+                    <th>模式</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in failed_renders %}
+                <tr>
+                    <td>{{ task.video }}</td>
+                    <td>{{ task.output }}</td>
+                    <td>{{ task.mode }}</td>
+                    <td>
+                        <button onclick="retryRenderTask('{{ task.uuid }}')">重试</button>
+                        <button onclick="deleteRenderTask('{{ task.uuid }}')" style="background-color: #dc3545;">删除</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>没有失败的渲染任务。</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h2>上传队列</h2>
+    <div id="upload-tasks">
+        {% if upload_tasks %}
+        <table>
+            <thead>
+                <tr>
+                    <th>文件</th>
+                    <th>上传至</th>
+                    <th>进度/信息</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in upload_tasks %}
+                <tr>
+                    <td>
+                        {% for f in task.files %}
+                            <div>{{ f.name }}</div>
+                        {% endfor %}
+                    </td>
+                    <td>{{ task.account }} ({{ task.engine }})</td>
+                    <td>
+                        {% if task.is_sync %}
+                            <span style="color: var(--secondary-color)">同步上传中...</span>
+                        {% elif task.status == 'waiting' %}
+                            <span style="color: #666">等待中...</span>
+                        {% else %}
+                            上传中...
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>当前没有正在上传的任务。</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h2>上传失败任务</h2>
+    <div id="failed-tasks">
+        {% if failed_tasks %}
+        <table>
+            <thead>
+                <tr>
+                    <th>文件</th>
+                    <th>上传至</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in failed_tasks %}
+                <tr>
+                    <td>
+                        {% for f in task.files %}
+                            <div>{{ f.name }}</div>
+                        {% endfor %}
+                    </td>
+                    <td>{{ task.account }} ({{ task.engine }})</td>
+                    <td>
+                        <button onclick="retryTask('{{ task.uuid }}')">重试</button>
+                        <button onclick="deleteTask('{{ task.uuid }}')" style="background-color: #dc3545;">删除</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>没有失败的任务。</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function retryTask(uuid) {
+        if (!confirm('确定要重试此任务吗？')) return;
+        fetch(`/api/failed_uploads/retry/${uuid}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('任务已重新加入队列');
+                    refreshTasks();
+                } else {
+                    alert('重试失败: ' + data.message);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function deleteTask(uuid) {
+        if (!confirm('确定要删除此失败任务吗？')) return;
+        fetch(`/api/failed_uploads/delete/${uuid}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    refreshTasks();
+                } else {
+                    alert('删除失败: ' + data.message);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function retryRenderTask(uuid) {
+        if (!confirm('确定要重试此渲染任务吗？')) return;
+        fetch(`/api/failed_renders/retry/${uuid}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('渲染任务已重新加入队列');
+                    refreshTasks();
+                } else {
+                    alert('重试失败: ' + data.message);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function deleteRenderTask(uuid) {
+        if (!confirm('确定要删除此失败渲染任务吗？')) return;
+        fetch(`/api/failed_renders/delete/${uuid}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    refreshTasks();
+                } else {
+                    alert('删除失败: ' + data.message);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function refreshTasks() {
+        // Capture open states of details elements before refreshing
+        const openDetails = new Set();
+        document.querySelectorAll('details[id^="details-"]').forEach(el => {
+            if (el.open) {
+                openDetails.add(el.id);
+            }
+        });
+
+        fetch('/api/tasks')
+            .then(response => response.json())
+            .then(data => {
+                // Refresh Render Tasks
+                const renderDiv = document.getElementById('render-tasks');
+                if (data.render_tasks && data.render_tasks.length > 0) {
+                    let html = '<table><thead><tr><th>视频</th><th>输出</th><th>模式</th><th>状态</th></tr></thead><tbody>';
+                    data.render_tasks.forEach(task => {
+                        let statusHtml = '';
+                        if (task.status === 'waiting') {
+                            statusHtml = '<span style="color: #666">等待中...</span>';
+                        } else {
+                            statusHtml = '渲染中...';
+                        }
+                        html += `<tr>
+                            <td>${task.video}</td>
+                            <td>${task.output}</td>
+                            <td>${task.mode}</td>
+                            <td>${statusHtml}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    renderDiv.innerHTML = html;
+                } else {
+                    renderDiv.innerHTML = '<p>当前没有正在渲染的任务。</p>';
+                }
+
+                // Refresh Failed Renders
+                const failedRenderDiv = document.getElementById('failed-renders');
+                if (data.failed_renders && data.failed_renders.length > 0) {
+                    let html = '<table><thead><tr><th>视频</th><th>输出</th><th>模式</th><th>操作</th></tr></thead><tbody>';
+                    data.failed_renders.forEach(task => {
+                        html += `<tr>
+                            <td>${task.video}</td>
+                            <td>${task.output}</td>
+                            <td>${task.mode}</td>
+                            <td>
+                                <button onclick="retryRenderTask('${task.uuid}')">重试</button>
+                                <button onclick="deleteRenderTask('${task.uuid}')" style="background-color: #dc3545;">删除</button>
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    failedRenderDiv.innerHTML = html;
+                } else {
+                    failedRenderDiv.innerHTML = '<p>没有失败的渲染任务。</p>';
+                }
+
+                // Refresh Upload Tasks
+                const uploadDiv = document.getElementById('upload-tasks');
+                if (data.upload_tasks.length > 0) {
+                    let html = '<table><thead><tr><th>文件</th><th>上传至</th><th>进度/信息</th></tr></thead><tbody>';
+                    data.upload_tasks.forEach(task => {
+                        let filesHtml = '';
+                        task.files.forEach(f => {
+                            filesHtml += `<div>${f.name}</div>`;
+                        });
+                        let infoHtml = '';
+                        if (task.is_sync) {
+                            infoHtml = '<span style="color: var(--secondary-color)">同步上传中...</span>';
+                        } else if (task.status === 'waiting') {
+                            infoHtml = '<span style="color: #666">等待中...</span>';
+                        } else {
+                            infoHtml = '上传中...';
+                        }
+                        html += `<tr>
+                            <td>${filesHtml}</td>
+                            <td>${task.account} (${task.engine})</td>
+                            <td>${infoHtml}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    uploadDiv.innerHTML = html;
+                } else {
+                    uploadDiv.innerHTML = '<p>当前没有正在上传的任务。</p>';
+                }
+
+                // Refresh Failed Tasks
+                const failedDiv = document.getElementById('failed-tasks');
+                if (data.failed_tasks && data.failed_tasks.length > 0) {
+                    let html = '<table><thead><tr><th>文件</th><th>上传至</th><th>操作</th></tr></thead><tbody>';
+                    data.failed_tasks.forEach(task => {
+                        let filesHtml = '';
+                        task.files.forEach(f => {
+                            filesHtml += `<div>${f.name}</div>`;
+                        });
+                        html += `<tr>
+                            <td>${filesHtml}</td>
+                            <td>${task.account} (${task.engine})</td>
+                            <td>
+                                <button onclick="retryTask('${task.uuid}')">重试</button>
+                                <button onclick="deleteTask('${task.uuid}')" style="background-color: #dc3545;">删除</button>
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    failedDiv.innerHTML = html;
+                } else {
+                    failedDiv.innerHTML = '<p>没有失败的任务。</p>';
+                }
+            })
+            .catch(error => console.error('Error refreshing tasks:', error));
+    }
+
+    // Refresh every 1 second
+    setInterval(refreshTasks, 1000);
+</script>
+{% endblock %}

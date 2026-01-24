@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>正在录制</h2>
+    <div id="recording-tasks">
+        {% if recording_tasks %}
+        <table>
+            <thead>
+                <tr>
+                    <th>任务名</th>
+                    <th>平台</th>
+                    <th>直播间</th>
+                    <th>状态</th>
+                    <th>时长</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in recording_tasks %}
+                <tr>
+                    <td>{{ task.name }}</td>
+                    <td>{{ task.platform }}</td>
+                    <td><a href="{{ task.url }}" target="_blank">链接</a></td>
+                    <td><span class="status-badge status-{{ 'running' if task.status == 1 else 'stopped' }}">{{ '录制中' if task.status == 1 else '未开播' }}</span></td>
+                    <td>{{ task.duration }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>当前没有正在录制的任务。</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function refreshTasks() {
+        fetch('/api/tasks')
+            .then(response => response.json())
+            .then(data => {
+                // Refresh Recording Tasks
+                const recordingDiv = document.getElementById('recording-tasks');
+                if (data.recording_tasks.length > 0) {
+                    let html = '<table><thead><tr><th>任务名</th><th>平台</th><th>直播间</th><th>状态</th><th>时长</th></tr></thead><tbody>';
+                    data.recording_tasks.forEach(task => {
+                        const statusClass = task.status === 1 ? 'status-running' : 'status-stopped';
+                        const statusText = task.status === 1 ? '录制中' : '未开播';
+                        html += `<tr>
+                            <td>${task.name}</td>
+                            <td>${task.platform}</td>
+                            <td><a href="${task.url}" target="_blank">链接</a></td>
+                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                            <td>${task.duration}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    recordingDiv.innerHTML = html;
+                } else {
+                    recordingDiv.innerHTML = '<p>当前没有正在录制的任务。</p>';
+                }
+            })
+            .catch(error => console.error('Error refreshing tasks:', error));
+    }
+
+    // Refresh every 1 second
+    setInterval(refreshTasks, 1000);
+</script>
+{% endblock %}

@@ -40,6 +40,7 @@ def check_pypi():
         import gmssl
         import rsa
         import PIL
+        import flask
         return True
     except ImportError:
         input('Python 包未正确安装，回车自动安装:')

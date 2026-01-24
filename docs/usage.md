@@ -6,10 +6,10 @@
 [简易使用](#简易使用)      
 [常见问题](#常见问题)       
 [完全使用说明](#完全使用说明)      
-[特殊功能](#特殊功能)
+[高级功能](#高级功能)
 
 
-更新日期：2025.9.21。     
+更新日期：2026.01.10。     
 
 ## 简介     
 **本程序的主要功能包括：**
@@ -290,11 +290,11 @@ executable_tools_path:
 # DMR引擎参数
 dmr_engine_args: 
   # 选择组件
+  # 可选组件： downloader（下载器）, render（渲染器）, uploader（上传器）, cleaner（清理器），webservice（WebUI服务，默认不启用）
   enabled_plugins: ['downloader', 'render', 'uploader', 'cleaner']
-  # 是否动态更新配置文件
-  dynamic_config: True
-  # 动态更新的配置文件路径
-  dynamic_config_path: ./configs
+  # 配置文件路径
+  # 可设置为文件/文件夹列表
+  config_path: ./configs
 
 # 默认下载参数
 download_args:
@@ -513,7 +513,7 @@ download_args:
     # 此参数将直接传入下载引擎，可以用来设置一些特殊的下载参数
     extra_args: []
   
-  # 虚拟下载（此功能暂不可用）
+  # 虚拟下载
   # 可以监控文件夹中的视频文件，用于和其他软件协同，详情请参考文档
   virtual:
     # 监控文件夹
@@ -682,8 +682,6 @@ upload_args:
     dtime: 0
     # 允许转载? 0-允许转载，1-禁止转载
     no_reprint: 1
-    # 是否开启充电? 0-关闭 1-开启
-    open_elec: 1
     # 额外参数列表（仅biliuprs生效）
     # 此参数将直接传入biliup-rs
     extra_args: ~
@@ -826,14 +824,25 @@ clean_args:
     w_srcfile: False
     w_srcpre: True
 
-# WebAPI
+# WebUI参数
 webservice_kernel_args:
+  # 启用 Web API
   web_api: True
+  # 服务端口
+  port: 5000
+  # 绑定地址
+  host: '0.0.0.0'
+  # 是否强制登录
+  force_login: True
+  # 管理员用户名
+  username: 'admin'
+  # 管理员密码
+  password: 'admin'
 ```
 
 </details>
 
-## 特殊功能
+## 高级功能
 本节介绍一些不常用的高级功能，这些功能可能随版本更新随时更改。    
 
 ### 弹幕模板(download_args.dm_template)
@@ -954,3 +963,8 @@ advanced_video_args:
   min_video_duration: ~
 ```
 如果设置了自动清理，那么使用虚拟录制处理的所有文件都将被正常清理，如果希望保留源文件或者完全分离不同软件之间的处理逻辑，可以设置output_dir让程序复制文件后处理。      
+
+
+### WebUI可视化操作(webservice_kernel_args)
+**注意：此功能正在测试，默认为关**      
+由[haha252](https://github.com/haha252)开发的WebUI界面([#522](https://github.com/SmallPeaches/DanmakuRender/pull/522))，需要启用此功能需要设置`dmr_engine_args.enabled_plugins`包含`webservice`，且`webservice_kernel_args.web_api=True`。在启用此功能后，可以通过浏览器访问`<IP>:<Port>`（默认`localhost:5000`）可视化编辑配置文件。       

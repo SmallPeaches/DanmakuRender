@@ -90,7 +90,7 @@ class DMREngine():
         elif name == 'downloader':
             plugin = Downloader((self.recv_queue, send_queue), **config)
         elif name == 'webservice':
-            plugin = WebService((self.recv_queue, send_queue), **config)
+            plugin = WebService((self.recv_queue, send_queue), engine=self, **config)
         else:
             self.logger.error(f'Unknown plugin {name}.')
             # raise Exception(f'Unknown plugin {name}.')

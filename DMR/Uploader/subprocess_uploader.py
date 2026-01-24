@@ -46,7 +46,7 @@ class SubprocessUploader:
             except Exception as e:
                 status= False
                 message += f'File {file.path} upload raise an error: {e}\n'
-            
+        
         return status, message.strip()
     
     def stop(self):

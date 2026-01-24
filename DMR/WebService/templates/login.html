@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - DanmakuRender 5</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+    <div class="login-card">
+        <h2>DanmakuRender 5</h2>
+        {% if error %}
+        <div class="login-error">{{ error }}</div>
+        {% endif %}
+        <form method="post">
+            <input type="text" name="username" placeholder="用户名" required>
+            <input type="password" name="password" placeholder="密码" required>
+            <button type="submit">登录</button>
+        </form>
+    </div>
+</body>
+</html>

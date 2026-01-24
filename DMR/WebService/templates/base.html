@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DanmakuRender 5</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo" style="font-size: 1.5rem; font-weight: bold; color: var(--accent-color);">DanmakuRender 5</div>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}">概况</a>
+                <a href="{{ url_for('tasks_page') }}">任务</a>
+                <a href="{{ url_for('config_list') }}">配置</a>
+                <a href="{{ url_for('logout') }}" style="color: #ff6b6b;">退出</a>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-messages">
+              {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

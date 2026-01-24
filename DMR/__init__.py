@@ -8,6 +8,7 @@ import logging
 
 from .engine import DMREngine
 from .Config import Config
+from .utils import filename_to_taskname
 
 
 class DanmakuRender():
@@ -37,52 +38,42 @@ class DanmakuRender():
 
         threading.Thread(target=self._monintor, daemon=True).start()
 
+    def check_config_update(self):
+        try:
+            update_type, update_info = self.config.check_update()
+            
+            if update_type == 'global':
+                self.logger.info('检测到全局配置更新，请重启程序以生效。')
+            
+            elif update_type == 'tasks':
+                for config_path in update_info['new']:
+                    taskname = filename_to_taskname(config_path)
+                    self.logger.info(f'检测到新任务配置文件: {taskname}，正在添加任务...')
+                    self.engine.add_task(taskname, self.config.get_replay_config(taskname))
+                
+                for config_path in update_info['deleted']:
+                    taskname = filename_to_taskname(config_path)
+                    self.logger.info(f'检测到任务配置文件删除: {taskname}，正在停止任务...')
+                    self.engine.del_task(taskname)
+
+                for config_path in update_info['updated']:
+                    taskname = filename_to_taskname(config_path)
+                    self.logger.info(f'检测到任务配置文件更新: {taskname}，正在重启任务...')
+                    
+                    self.engine.del_task(taskname)
+                    time.sleep(5)
+                    new_taskname = filename_to_taskname(config_path)
+                    self.engine.add_task(new_taskname, self.config.get_replay_config(new_taskname))
+
+        except Exception as e:
+            self.logger.error(f'动态载入配置文件错误:')
+            self.logger.exception(e)
+
     def _monintor(self):
         REFRESH_INTERVAL = 60
         time.sleep(REFRESH_INTERVAL)
-        task_buffer = {}
         while not self.stoped:
-            # dynamic load config
-            if self.engine_args['dynamic_config']:
-                try:
-                    new_config = Config(self.config.global_config_path, self.engine_args.get('dynamic_config_path'))
-                    new_tasks = set(new_config.get_replaytasks()) - set(self.config.get_replaytasks())
-                    del_tasks = set(self.config.get_replaytasks()) - set(new_config.get_replaytasks())
-                    for nt in new_tasks:
-                        if task_buffer.get(nt) is None:
-                            task_buffer[nt] = 1
-                        else:
-                            task_buffer[nt] += 1
-                    for dt in del_tasks:
-                        if task_buffer.get(dt) is None:
-                            task_buffer[dt] = -1
-                        else:
-                            task_buffer[dt] -= 1
-                    
-                    for taskname, count in list(task_buffer.items()):
-                        if taskname not in new_tasks and count > 0:
-                            task_buffer[taskname] -= 1
-                        if taskname not in del_tasks and count < 0:
-                            task_buffer[taskname] += 1
-                        if count > 2:
-                            self.logger.info(f'即将动态载入任务 {taskname}.')
-                            new_task_config = new_config.get_replay_config(taskname)
-                            self.logger.debug(f'New Task {taskname} Config:\n{json.dumps(new_task_config, indent=4, ensure_ascii=False)}')
-                            self.config.replay_config[taskname] = new_task_config
-                            self.engine.add_task(taskname, new_task_config)
-                            task_buffer.pop(taskname)
-                        elif count < -2:
-                            self.logger.info(f'即将动态取消任务 {taskname}.')
-                            self.engine.del_task(taskname)
-                            self.config.replay_config.pop(taskname)
-                            task_buffer.pop(taskname)
-                        elif count == 0:
-                            task_buffer.pop(taskname)
-
-                except Exception as e:
-                    self.logger.error(f'动态载入配置文件错误:')
-                    self.logger.exception(e)
-
+            self.check_config_update()
             # clean temp file
             files = os.listdir('.temp')
             for file in files:
