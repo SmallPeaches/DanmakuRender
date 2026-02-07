@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>配置文件管理</h2>
+        <a href="{{ url_for('config_create') }}"><button class="btn-secondary">新增配置</button></a>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>文件名</th>
+                <th>任务名</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for config in configs %}
+            <tr>
+                <td>{{ config.filename }}</td>
+                <td>{{ config.taskname }}</td>
+                <td>
+                <a href="{{ url_for('config_edit', filename=config.filename) }}">编辑</a>
+                 {% if not config.filename.startswith('example-') %}
+                 <a href="javascript:void(0);" onclick="confirmDelete('{{ config.filename }}', '{{ url_for('config_delete', filename=config.filename) }}')" style="color: red; margin-left: 10px;">删除</a>
+                 {% endif %}
+             </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function confirmDelete(filename, url) {
+        if (confirm('确定要删除配置文件 ' + filename + ' 吗？此操作不可恢复。')) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
+{% endblock %}

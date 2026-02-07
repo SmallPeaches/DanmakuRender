@@ -2,10 +2,14 @@ import logging
 import threading
 import queue
 import time
+import json
 from concurrent.futures import ThreadPoolExecutor
 from os.path import join, exists
-from DMR.LiveAPI import *
-from DMR.utils import *
+from datetime import datetime
+from typing import Tuple
+
+from DMR.utils import VideoInfo, PipeMessage, DateTimeEncoder, DateTimeDecoder, uuid
+
 
 class Uploader():
     def __init__(self,
@@ -23,8 +27,64 @@ class Uploader():
         self._piperecvprocess = None
         self._uploader_pool = {}
         self.upload_tasks = {}
+        self.failed_tasks = {}
+        self.failed_tasks_file = '.temp/failed_uploads.json'
+        self.load_failed_tasks()
+        
         self.upload_executors = ThreadPoolExecutor(max_workers=self.nuploaders)
         self._lock = threading.Lock()
+
+    def load_failed_tasks(self):
+        if exists(self.failed_tasks_file):
+            try:
+                with open(self.failed_tasks_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f, cls=DateTimeDecoder)
+                    # Restore datetime objects and VideoInfo objects
+                    for uuid, task in data.items():
+                        if 'files' in task:
+                            restored_files = []
+                            # Wrap in VideoInfo
+                            for f in task['files']:
+                                restored_files.append(VideoInfo(**f))
+                            task['files'] = restored_files
+                            # Also update files in config
+                            # if 'config' in task and 'files' in task['config']:
+                            #     task['config']['files'] = restored_files
+                        self.failed_tasks[uuid] = task
+                self.logger.info(f'Loaded {len(self.failed_tasks)} failed upload tasks.')
+            except Exception as e:
+                self.logger.error(f'Failed to load failed tasks: {e}')
+
+    def save_failed_tasks(self):
+        try:
+            with open(self.failed_tasks_file, 'w', encoding='utf-8') as f:
+                json.dump(self.failed_tasks, f, cls=DateTimeEncoder, ensure_ascii=False, indent=4)
+        except Exception as e:
+            self.logger.error(f'Failed to save failed tasks: {e}')
+
+    def retry_task(self, uuid):
+        with self._lock:
+            if uuid in self.failed_tasks:
+                task = self.failed_tasks.pop(uuid)
+                self.save_failed_tasks()
+                
+                # Re-submit
+                task['status'] = 'waiting'
+                self.upload_tasks[task['uuid']] = task
+                if task.get('stream_queue'):
+                    threading.Thread(target=self._upload_subprocess, args=(task,), daemon=True).start()
+                else:
+                    self.upload_executors.submit(self._upload_subprocess, task)
+                return True
+            return False
+
+    def delete_failed_task(self, uuid):
+        with self._lock:
+            if uuid in self.failed_tasks:
+                self.failed_tasks.pop(uuid)
+                self.save_failed_tasks()
+                return True
+            return False
 
     def _pipeSend(self, event, msg, target='engine', request_id=None, dtype=None, data=None, **kwargs):
         if self.send_queue:
@@ -81,7 +141,8 @@ class Uploader():
                 'args': config.get('args', {}),
                 'files': config.get('files'),
                 'stream_queue': stream_queue,
-                'config': config,
+                # 'config': config,
+                'status': 'waiting',
             }
             self.upload_tasks[task['uuid']] = task
             if stream_queue:
@@ -91,8 +152,17 @@ class Uploader():
 
     def _gather(self, task, status, desc=''):
         with self._lock:
-            self.upload_tasks.pop(task['uuid'])
+            self.upload_tasks.pop(task['uuid'], None)
             if status == 'error':
+                # Save to failed tasks
+                # ignore stream uploads
+                if task.get('stream_queue'):
+                    task['stream_queue'] = None
+                    task['config']['stream_queue'] = None
+                else:
+                    self.failed_tasks[task['uuid']] = task
+                    self.save_failed_tasks()
+
                 self._pipeSend(
                     event='error',
                     msg=f"上传视频 {[f.path for f in task['files']]} 时出现错误:{desc}",
@@ -114,6 +184,7 @@ class Uploader():
                 )
 
     def _upload_subprocess(self, task):
+        task['status'] = 'uploading'
         try:
             upload_args = task['args']
             upload_group:str = task['upload_group']
@@ -148,6 +219,7 @@ class Uploader():
             if stream_queue:
                 retry = 0       # 流式上传无法重试
             status = info = None
+            
             while retry >= 0:
                 try:
                     if stream_queue:
@@ -155,7 +227,13 @@ class Uploader():
                     else:
                         self.logger.info(f"正在上传 {[f.path for f in files]} 至 {upload_args.get('account')}")
                     # logging.debug(task)
-                    status, info = target_uploader.upload(files=files, stream_queue=stream_queue, **upload_args)
+                    res = target_uploader.upload(files=files, stream_queue=stream_queue, **upload_args)
+                    
+                    if len(res) == 3:
+                        status, info, _ = res
+                    else:
+                        status, info = res
+
                 except KeyboardInterrupt:
                     target_uploader.stop()
                     self.stop()
@@ -191,4 +269,11 @@ class Uploader():
         self.upload_executors.shutdown(wait=False)
         for upload_group in self._uploader_pool:
             self._uploader_pool[upload_group]['class'].stop()
+        
+        with self._lock:
+            for uuid, task in self.upload_tasks.items():
+                if uuid not in self.failed_tasks:
+                    self.failed_tasks[uuid] = task
+            self.save_failed_tasks()
+
         self.logger.info('Uploader stopped.')

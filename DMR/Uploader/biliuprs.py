@@ -122,7 +122,7 @@ class biliuprs():
             upload_proc.kill()
             self._upload_procs.pop(upload_proc.pid)
         
-        return logfile
+        return logfile, upload_args
     
     def islogin(self):
         renew_args = self.base_args + ['renew']
