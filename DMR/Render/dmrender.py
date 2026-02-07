@@ -50,7 +50,7 @@ class DmRender(BaseRender):
                 w, h = int(w*scale), int(h*scale)
                 scale_args = ['-s', f'{w}x{h}']
         else:
-            scale_args = []
+            scale_args = ['-noautoscale']
 
         if platform.system().lower() == 'windows':
             danmaku = danmaku.replace("\\", "/").replace(":/", "\\:/")
@@ -74,7 +74,6 @@ class DmRender(BaseRender):
             *self.vencoder_args,
             '-c:a', self.aencoder,
             *self.aencoder_args,
-            "-noautoscale", # 添加 -noautoscale 参数，解决在特定情况下错误缩放的问题
             *scale_args,
             output,
         ]
