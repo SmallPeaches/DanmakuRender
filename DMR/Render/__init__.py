@@ -149,7 +149,7 @@ class Render():
                     request_id=task['request_id'],
                     dtype='dict',
                     data={
-                        'config': task['config'],
+                        # 'config': task['config'],
                         'output': desc,
                     },
                 )
