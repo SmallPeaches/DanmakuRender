@@ -12,9 +12,9 @@ from DMR.utils import filename_to_taskname, merge_dict, ToolsList
 class Config():
     _base_config_path = 'DMR/Config/default.yml'
 
-    def __init__(self, global_config_path:str) -> None:
+    def __init__(self, global_config_path:str, replay_config_path:str=None) -> None:
         self.global_config_path = global_config_path
-        self.replay_config_path_raw = []
+        self.replay_config_path_raw = [replay_config_path] if replay_config_path else None
         self.replay_config_paths:List[str] = []
         self.file_hashes = {}
         self.logger = logging.getLogger(__name__)
@@ -49,7 +49,9 @@ class Config():
                 ToolsList.set(toolname, path)
 
         dmr_engine_args = self.global_config.get('dmr_engine_args', {})
-        self.replay_config_path_raw = dmr_engine_args.get('config_path', ['./configs'])
+        if self.replay_config_path_raw is None:
+            self.replay_config_path_raw = dmr_engine_args.get('config_path', ['./configs'])
+        
         if isinstance(self.replay_config_path_raw, str):
             self.replay_config_path_raw = [self.replay_config_path_raw]
 
