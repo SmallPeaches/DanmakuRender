@@ -52,11 +52,12 @@ class DateTimeDecoder(json.JSONDecoder):
         super().__init__(object_hook=self.object_hook, *args, **kwargs)
     
     def object_hook(self, obj):
-        if isinstance(obj, str):
-            try:
-                return datetime.fromisoformat(obj)
-            except ValueError:
-                pass
+        for k, v in obj.items():
+            if isinstance(v, str):
+                try:
+                    obj[k] = datetime.fromisoformat(v)
+                except (ValueError, TypeError):
+                    pass
         return obj
 
 

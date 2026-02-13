@@ -85,6 +85,11 @@ class StreamInfo(cpdict):
         self.streamer = streamer
         self.title = title
         self.description = description
+        if isinstance(stream_start_time, str):
+            try:
+                stream_start_time = datetime.fromisoformat(stream_start_time)
+            except (ValueError, TypeError):
+                pass
         self.stream_start_time = stream_start_time
         self.resolution = resolution
         self.cover_url = cover_url
@@ -110,6 +115,11 @@ class FileInfo(cpdict):
         self.dtype = dtype
         self.path = path
         self.size = size
+        if isinstance(ctime, str):
+            try:
+                ctime = datetime.fromisoformat(ctime)
+            except (ValueError, TypeError):
+                pass
         self.ctime = ctime
         super().__init__(
                 file_id=file_id,
@@ -138,6 +148,8 @@ class VideoInfo(FileInfo):
                 src_video_id:str=None,
                 dm_file_id:str=None,
                 **kwargs):
+        if isinstance(streamer, dict):
+            streamer = StreamerInfo(**streamer)
         self.streamer = streamer
         self.duration = duration
         self.resolution = resolution

@@ -43,8 +43,8 @@ class Render():
                         if task.get('video'):
                             task['video'] = VideoInfo(**task['video'])
                             # Update config as well
-                            # if 'config' in task and 'video' in task['config']:
-                            #     task['config']['video'] = task['video']
+                            if 'config' in task and 'video' in task['config']:
+                                task['config']['video'] = task['video']
                         self.failed_tasks[uuid] = task
                 self.logger.info(f'Loaded {len(self.failed_tasks)} failed render tasks.')
             except Exception as e:
@@ -120,7 +120,7 @@ class Render():
                 'args': config.get('args', {}),
                 'video': config.get('video'),
                 'output': config.get('output'),
-                # 'config': config,
+                'config': config,
                 'status': 'waiting',
             }
             self.render_tasks[task['uuid']] = task
@@ -149,7 +149,7 @@ class Render():
                     request_id=task['request_id'],
                     dtype='dict',
                     data={
-                        # 'config': task['config'],
+                        'config': task.get('config'),
                         'output': desc,
                     },
                 )

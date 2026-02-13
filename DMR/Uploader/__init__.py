@@ -48,8 +48,8 @@ class Uploader():
                                 restored_files.append(VideoInfo(**f))
                             task['files'] = restored_files
                             # Also update files in config
-                            # if 'config' in task and 'files' in task['config']:
-                            #     task['config']['files'] = restored_files
+                            if 'config' in task and 'files' in task['config']:
+                                task['config']['files'] = restored_files
                         self.failed_tasks[uuid] = task
                 self.logger.info(f'Loaded {len(self.failed_tasks)} failed upload tasks.')
             except Exception as e:
@@ -141,7 +141,7 @@ class Uploader():
                 'args': config.get('args', {}),
                 'files': config.get('files'),
                 'stream_queue': stream_queue,
-                # 'config': config,
+                'config': config,
                 'status': 'waiting',
             }
             self.upload_tasks[task['uuid']] = task
@@ -158,7 +158,8 @@ class Uploader():
                 # ignore stream uploads
                 if task.get('stream_queue'):
                     task['stream_queue'] = None
-                    task['config']['stream_queue'] = None
+                    if task.get('config'):
+                        task['config']['stream_queue'] = None
                 else:
                     self.failed_tasks[task['uuid']] = task
                     self.save_failed_tasks()
@@ -179,7 +180,7 @@ class Uploader():
                     request_id=task['request_id'],
                     dtype='dict',
                     data={
-                        'config': task['config'],
+                        'config': task.get('config'),
                     },
                 )
 
