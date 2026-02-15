@@ -17,8 +17,7 @@ from DMR.Render import Render
 
 def main():    
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default='configs')
-    parser.add_argument('--global_config',default='configs/global.yml')
+    parser.add_argument('--config', default='configs/global.yml')
     parser.add_argument('--mode', default='dmrender')
     parser.add_argument('--input_dir',type=str)
     parser.add_argument('--output_dir',type=str)
@@ -28,7 +27,7 @@ def main():
     if args.transcode:
         args.mode = 'transcode'
 
-    config = Config(args.global_config, args.config)
+    config = Config(args.config)
     
     logging.getLogger().setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler(sys.stdout)

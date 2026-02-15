@@ -20,12 +20,11 @@ from DMR.Config import Config
 
 if __name__ == '__main__':    
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default='configs')
-    parser.add_argument('--global_config',default='configs/global.yml')
+    parser.add_argument('--config', default='configs/global.yml')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     
-    config = Config(args.global_config, args.config)
+    config = Config(args.config)
     
     for name, rep_conf in config.replay_config.items():
         config.replay_config[name]['download_args']['segment'] = 30
