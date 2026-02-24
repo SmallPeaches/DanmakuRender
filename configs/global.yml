@@ -420,6 +420,10 @@ upload_args:
     charging_pay: 0
     # 开放字幕投稿?
     open_subtitle: False
+    # 是否取消视频推送动态（一般配合加入合集使用）? 0-不取消 1-取消
+    no_disturbance: 0
+    # 加入合集ID
+    epid: ~
     # 简介中的at信息，设置方法请参考biliup
     credits: ~
     # 额外请求参数（此功能暂不生效）
