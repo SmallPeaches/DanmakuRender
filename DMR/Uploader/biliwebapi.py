@@ -151,6 +151,7 @@ class BiliWebApi:
             is_only_self=config.get('is_only_self', 0),
             charging_pay=config.get('charging_pay', 0),
             open_subtitle=config.get('open_subtitle', False),
+            no_disturbance=config.get('no_disturbance', 0),
             extra_kwargs=config.get('extra_kwargs', {}),
         )
         if config.get('dtime') and config['dtime'] >= 14400:
