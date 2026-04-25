@@ -158,7 +158,7 @@ class BiliWebApi:
             video.delay_time(int(time.time() + config['dtime']))
         if config.get('title'):
             video.title = replace_keywords(config['title'], video_info)
-            if len(config['title']) > 80:
+            if len(video.title) > 80:
                 video.title = video.title[:80]
                 logger.warning(f'视频标题超过80字符，已自动截取为: {video.title}.')
         if config.get('desc'):
@@ -669,6 +669,10 @@ class BiliWebApi:
             raise Exception(f'不存在的选项：{submit_api}')
         if ret["code"] == 0:
             return ret
+        elif ret["code"] == 10010:
+            self.videos = None
+            logger.warning('稿件被锁定或已经删除, 即将提交新稿件')
+            raise
         else:
             raise Exception(ret)
 

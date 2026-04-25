@@ -141,7 +141,7 @@ class biliuprs():
         for _ in range(5):
             self.logger.info(f'正在登录名称为 {self.account} 的账户:')
             proc = subprocess.Popen(login_args)
-            proc.wait()
+            proc.wait(timeout=120)
             if self.islogin():
                 self.logger.info(f'将 {self.account} 的登录信息保存到 {self.cookies}.')
                 break
