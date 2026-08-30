@@ -1,6 +1,7 @@
 # 获取斗鱼直播间的真实流媒体地址，默认最高画质
 # 使用 https://github.com/wbt5/real-url/issues/185 中两位大佬@wjxgzz @4bbu6j5885o3gpv6ss8找到的的CDN，在此感谢！
 # 2025.11.30 更新，https://github.com/biliup/biliup/blob/master/biliup/plugins/douyu.py
+# 2026.3.4 更新，https://github.com/biliup/biliup/pull/1603/changes
 import hashlib
 import json
 import logging
@@ -49,7 +50,7 @@ class douyu(BaseAPI):
         self.__req_query = {
             'cdn': 'hw-h5',
             'rate': '0',
-            'ver': '219032101',
+            'ver': 'Douyu_new',
             'iar': '0', # ispreload? 1: 忽略 rate 参数，使用默认画质
             'ive': '0', # rate? 0~19 时、19~24 时请求数 >=3 为真
             'rid': self.rid,
@@ -148,14 +149,26 @@ class douyu(BaseAPI):
         '''
         :param room_id: 房间号
         :param req_query: 请求参数
-        :param req_method: 请求方法。可选 GET, POST（默认）
         :param did: douyuid
         :return: PlayInfo
         '''
         if type(room_id) == int:
             room_id = str(room_id)
-        if not self.__js_runable:
-            s = DouyuUtils.sign(type="stream", ts=int(time.time()), did=did, rid=room_id)
+        if self.__js_runable and room_id in DouyuUtils.VipRoom:
+            s = self.aget_sign(room_id)
+            logger.debug(f"{self.plugin_msg}: JSEngine 签名参数 {s}")
+            req_query = {
+                **req_query,
+                **s
+            }
+            url = f"https://{DOUYU_PLAY_DOMAIN}/lapi/live/getH5Play/{room_id}"
+            rsp = self.sess.get(
+                url,
+                headers=self.fake_headers,
+                params=req_query
+            )
+        else:
+            s = DouyuUtils.sign(sign_type="stream", ts=int(time.time()), did=did, rid=room_id)
             logger.debug(f"{self.plugin_msg}: 免 JSEngine 签名参数 {s}")
             auth_param = {
                 "enc_data": s['key']['enc_data'],
@@ -163,36 +176,32 @@ class douyu(BaseAPI):
                 "did": did,
                 "auth": s['auth'],
             }
-            req_query.update(auth_param)
-        else:
-            s = self.aget_sign(room_id)
-            # logger.debug(f"{self.plugin_msg}: JSEngine 签名参数 {s}")
-            req_query.update(s)
-        api_ver = "V1" if not self.__js_runable else ""
-        is_vip = room_id in DouyuUtils.VipRoom # 非 vip room 需要 e 参数，部分直播间可直接请求 hs-h5
-        req_method = "GET" if is_vip and not api_ver else "POST"
-        path = f"/lapi/live/getH5Play{api_ver}/{room_id}"
-        url = f"https://{DOUYU_PLAY_DOMAIN}{path}" if req_method == "GET" else f"https://{DOUYU_WEB_DOMAIN}{path}"
-        # url += f"?{urlencode(req_query, doseq=True, encoding='utf-8')}"
-        if req_method == "GET":
-            rsp = self.sess.get(
-                url,
-                headers=self.fake_headers,
-                params=req_query
-            )
-        else:
+            req_query = {
+                **req_query,
+                **auth_param,
+            }
+            url = f"https://{DOUYU_WEB_DOMAIN}/lapi/live/getH5PlayV1/{room_id}"
             rsp = self.sess.post(
                 url,
                 headers={**self.fake_headers, 'user-agent': DouyuUtils.UserAgent},
-                params=req_query, # V1 接口需使用查询参数
+                # params=req_query, # V1 接口需使用查询参数
                 data=req_query # 原接口需使用请求体
             )
+
         rsp.raise_for_status()
         play_data = json.loads(rsp.text)
         if not play_data:
             raise RuntimeError(f"获取播放信息失败 {rsp}")
-        if play_data['error'] != 0 or not play_data.get('data', {}):
-            raise ValueError(f"获取播放信息错误 {str(play_data)}")
+        if (err := play_data['error']) != 0 or not play_data.get('data', {}):
+            msg = play_data.get('msg', '')
+            if err == -5:
+                raise RuntimeError("[closeRoom] 主播未开播")
+            elif err == -9:
+                raise RuntimeError("[room_bus_checksevertime] 用户本机时间戳不对")
+            elif err == 126:
+                raise RuntimeError(f"版权原因，该地域不允许播放：{msg}")
+            else:
+                raise RuntimeError(f"获取播放信息错误: code={err}, msg={msg}, raw_obj={play_data}")
         return play_data['data']
 
 
@@ -305,6 +314,21 @@ class douyu(BaseAPI):
         return (hs_host, hs_cname_url)
 
     def get_stream_urls(self, stream_cdn=None, **kwargs) -> str:
+        if stream_cdn == 'vod':
+            try:
+                vod_resp = self.sess.get(f'https://www.douyu.com/japi/universe/playback/getVodStream?rid={self.rid}&startTime={int(time.time())}', headers=self.fake_headers, timeout=5)
+                vod_resp.raise_for_status()
+                vod_data = vod_resp.json()
+                vod_url = vod_data['data']['timeshiftUrl']
+                return [{
+                    'stream_url': vod_url,
+                }]
+            except Exception as e:
+                logger.warning(f"{self.plugin_msg}: 获取回放流失败 {e}")
+
+        if stream_cdn:
+            self.__req_query['cdn'] = stream_cdn
+
         for _ in range(2): # 允许多重试一次以剔除 scdn
             # self.__js_runable = False
             try:
@@ -314,7 +338,7 @@ class douyu(BaseAPI):
                     logger.debug(f"{self.plugin_msg}: 回避 scdn 为 {new_cdn}")
                     self.__req_query['cdn'] = new_cdn
                     continue
-            except (RuntimeError, ValueError) as e:
+            except Exception as e:
                 logger.warning(f"{self.plugin_msg}: {e}")
 
         raw_stream_url = f"{play_info['rtmp_url']}/{play_info['rtmp_live']}"
@@ -322,21 +346,22 @@ class douyu(BaseAPI):
         # HACK: 构造 hs-h5 cdn 直播流链接
         # self.douyu_cdn = 'hs-h5'
         # 修改：当用户选择 hs-h5 时，允许通过配置强制构造 hs 链接（即使 play_info 已经返回 hs-h5）
-        if stream_cdn == 'hs-h5':
-            need_build = play_info['rtmp_cdn'] != 'hs-h5'
-            if need_build:
-                if not self.__js_runable:
-                    logger.warning(f"{self.plugin_msg}: 未找到 jsengine，无法构建 hs-h5 链接")
-                is_tct = play_info['rtmp_cdn'] == 'tct-h5'
-                try:
-                    fake_host, cname_url = self.build_hs_url(raw_stream_url, is_tct)
-                except:
-                    logger.exception(f"{self.plugin_msg}: 构建 hs-h5 链接失败")
-                else:
-                    raw_stream_url = cname_url
-                    self.stream_headers['Host'] = fake_host
-            else:
-                logger.debug(f"{self.plugin_msg}: play_info 返回的 rtmp_cdn 已是 hs-h5，且未开启 douyu_force_hs，跳过构建 hs-h5")
+        # if stream_cdn == 'hs-h5':
+        #     need_build = play_info['rtmp_cdn'] != 'hs-h5'
+        #     if need_build:
+        #         if not self.__js_runable:
+        #             logger.warning(f"{self.plugin_msg}: 未找到 jsengine，无法构建 hs-h5 链接")
+        #         is_tct = play_info['rtmp_cdn'] == 'tct-h5'
+        #         try:
+        #             fake_host, cname_url = self.build_hs_url(raw_stream_url, is_tct)
+        #         except:
+        #             logger.exception(f"{self.plugin_msg}: 构建 hs-h5 链接失败")
+        #         else:
+        #             raw_stream_url = cname_url
+        #             self.stream_headers['Host'] = fake_host
+        #     else:
+        #         logger.debug(f"{self.plugin_msg}: play_info 返回的 rtmp_cdn 已是 hs-h5，且未开启 douyu_force_hs，跳过构建 hs-h5")
+        
         return [{
             'stream_url': raw_stream_url,
         }]
@@ -358,12 +383,14 @@ class DouyuUtils:
     _update_key_event: threading.Event = None
 
     @staticmethod
-    def is_key_valid():
-        return (
-            bool(DouyuUtils.WhiteEncryptKey) # Key 存在
-            and
-            DouyuUtils.WhiteEncryptKey.get('expire_at', 0) > int(time.time()) # Key 过期
-        )
+    def is_key_valid(sign_type: str = "stream"):
+        if not DouyuUtils.WhiteEncryptKey:
+            return False
+        if sign_type == "stream":
+            expire_at = DouyuUtils.WhiteEncryptKey.get('expire_at', 0)
+        else:
+            expire_at = DouyuUtils.WhiteEncryptKey.get('cpp', {}).get('expire_at', 0)
+        return expire_at > int(time.time())
 
     @staticmethod
     def update_key(
@@ -385,8 +412,7 @@ class DouyuUtils:
 
         try:
             # 防风控
-            with DouyuUtils._lock:
-                DouyuUtils.UserAgent = random_user_agent()
+            DouyuUtils.UserAgent = random_user_agent()
 
             rsp = requests.get(
                 f"https://{domain}/wgapi/livenc/liveweb/websec/getEncryption",
@@ -409,14 +435,13 @@ class DouyuUtils:
             return False
         finally:
             with DouyuUtils._lock:
-                if DouyuUtils._update_key_event is not None:
-                    DouyuUtils._update_key_event.set()
-                    DouyuUtils._update_key_event = None
+                DouyuUtils._update_key_event.set()
+                DouyuUtils._update_key_event = None
 
 
     @staticmethod
     def sign(
-        type: str, # unused
+        sign_type: str, # unused
         ts: int,
         did: str,
         rid: Union[str, int],
@@ -432,15 +457,13 @@ class DouyuUtils:
 
         # 确保密钥有效
         for _ in range(2): # 重试两次
-            if not DouyuUtils.is_key_valid():
-                if not (DouyuUtils.update_key()):
-                    continue
-            break
+            if DouyuUtils.is_key_valid(sign_type) or DouyuUtils.update_key():
+                break
         else:
             raise RuntimeError("获取加密密钥失败")
 
-        if not type:
-            type = "stream"
+        if not sign_type:
+            sign_type = "stream"
         if not ts:
             ts = int(time.time())
         if not did:
@@ -448,12 +471,22 @@ class DouyuUtils:
 
         rand_str = DouyuUtils.WhiteEncryptKey['rand_str']
         enc_time = DouyuUtils.WhiteEncryptKey['enc_time']
-        key = DouyuUtils.WhiteEncryptKey['key']
-        is_special = DouyuUtils.WhiteEncryptKey['is_special']
-        key_data = {k: v for k, v in DouyuUtils.WhiteEncryptKey.items() if k not in ["cpp"]}
+        key_data = {k: v for k, v in DouyuUtils.WhiteEncryptKey.items() if k != "cpp"}
+
+        _CPP_SECTION = {"login": "danmu", "heartbeat": "heartbeat"}
+
+        if sign_type == "stream":
+            salt = "" if DouyuUtils.WhiteEncryptKey['is_special'] == 1 else f"{rid}{ts}"
+            key = DouyuUtils.WhiteEncryptKey['key']
+            key_ver = ""
+        elif cpp_section := _CPP_SECTION.get(sign_type):
+            cpp = DouyuUtils.WhiteEncryptKey['cpp'][cpp_section]
+            salt = f"{rid}{did}{ts}"
+            key, key_ver = cpp['key'], cpp['key_ver']
+        else:
+            raise ValueError(f"wrong sign type: {sign_type}")
 
         secret = rand_str
-        salt = "" if is_special else f"{rid}{ts}"
         for _ in range(enc_time):
             secret = hashlib.md5(f"{secret}{key}".encode('utf-8')).hexdigest()
         auth = hashlib.md5(f"{secret}{key}{salt}".encode('utf-8')).hexdigest()
@@ -461,7 +494,7 @@ class DouyuUtils:
         return {
             'key': key_data,
             'alg_ver': "1.0",
-            "key_ver": "",
+            'key_ver': key_ver,
             'auth': auth,
             'ts': ts,
         }
