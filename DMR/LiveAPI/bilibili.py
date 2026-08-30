@@ -118,30 +118,24 @@ class bilibili(BaseAPI):
                        **kwargs) -> str:
         avail_urls = self.get_stream_urls(**kwargs)
 
-        # 有可能返回的流存在多种质量，因为H.265和H.264压缩策略不同
-        max_quality = max(avail_urls, key=lambda x: x['quality'])['quality']
-        avail_urls = [max_res_urls for max_res_urls in avail_urls if max_res_urls['quality'] == max_quality]
-
         # 找出URL里面不带bluray字样的原画流
-        best_urls = [best_urls for best_urls in avail_urls if not re.search(r'live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z1-2]{1,10}', best_urls['stream_url'])]
-        if best_urls:
-            avail_urls = best_urls
+        # 2026.8.30 已不可用，现在的流标签都是字符
+        # best_urls = [best_urls for best_urls in avail_urls if not re.search(r'live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z1-2]{1,10}', best_urls['stream_url'])]
+        # if best_urls:
+        #     avail_urls = best_urls
 
         # 如果没有指定cdn和流类型，使用自动选择
         if not stream_cdn and not stream_type:
-            # 无原画流，使用hls用于强制原画
-            if not best_urls:
-                stream_cdn = '.*gotcha.*'
+            # 选择最高画质，并且如果有非H264的流类型就使用fmp4，否则使用flv
+            max_quality = max(avail_urls, key=lambda x: x['quality'])['quality']
+            best_urls = [max_res_urls for max_res_urls in avail_urls if max_res_urls['quality'] == max_quality]
+            if any('avc' not in url_info['stream_type'] for url_info in best_urls):
                 stream_type = 'fmp4'
-            # HEVC,av1原画使用hls，H264使用flv
             else:
-                if any('avc' not in url_info['stream_type'] for url_info in best_urls):
-                    stream_type = 'fmp4'
-                else:
-                    stream_type = 'flv'
+                stream_type = 'flv'
         # 使用指定的cdn和流类型
         else:
-            stream_type = 'fmp4' if stream_type == 'hls' else 'flv'
+            stream_type = 'fmp4' if stream_type == 'hls' else stream_type
 
         selected_urls = []
         for url_info in avail_urls:
@@ -155,20 +149,26 @@ class bilibili(BaseAPI):
             selected_urls.append(uri)
 
         # 尝试使用不带后缀的原始流地址
-        for uri in selected_urls:
-            try:
-                stream_name = match1(uri, r'(live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z1-2]{1,10})')
-                ori_stream_name = '_'.join(stream_name.split('_')[:-1])
-                uri = uri.replace(stream_name, ori_stream_name)
-                resp = self.sess.get(uri, headers=self.header, timeout=5, stream=True)
-                if resp.status_code == 200:
-                    logger.debug(f'find origin stream {stream_name}->{ori_stream_name}')
-                    return uri
-            except Exception:
-                pass
+        # for uri in selected_urls:
+        #     try:
+        #         stream_name = match1(uri, r'(live_\d+_[a-zA-Z_]{0,10}\d+_[a-zA-Z1-2]{1,10})')
+        #         ori_stream_name = '_'.join(stream_name.split('_')[:-1])
+        #         uri = uri.replace(stream_name, ori_stream_name)
+        #         resp = self.sess.get(uri, headers=self.header, timeout=5, stream=True)
+        #         if resp.status_code == 200:
+        #             logger.debug(f'find origin stream {stream_name}->{ori_stream_name}')
+        #             return uri
+        #     except Exception:
+        #         pass
+
+        if quality:
+            selected_quality = quality
+        else:
+            selected_quality = max(avail_urls, key=lambda x: x['quality'])['quality']
+        selected_urls = [url_info['stream_url'] for url_info in avail_urls if url_info['quality'] == selected_quality]
 
         if not selected_urls:
-            logger.warning(f'Bilibili{self.rid}没有满足 {stream_cdn},{stream_type} 的流，将使用默认选项.')
+            logger.warning(f'Bilibili{self.rid}没有满足 {stream_cdn},{stream_type},{quality} 的流，将使用默认选项.')
             return random.choice(avail_urls)['stream_url']
         else:
             return random.choice(selected_urls)
