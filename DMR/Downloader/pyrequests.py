@@ -34,6 +34,7 @@ class PyRequestsFlvDownloader:
                  header:dict=None,
                  advanced_video_args:dict=None,
                  segment_callback=None,
+                 inprogress_callback=None,
                  **kwargs):
         
         self.stream_url = stream_url
@@ -45,6 +46,8 @@ class PyRequestsFlvDownloader:
         self.taskname = taskname
         self.url = url
         self.segment_callback = segment_callback
+        # 上报"正在写入"的文件，使录制中途被强杀后残file能被对账发现
+        self.inprogress_callback = inprogress_callback
         self.advanced_video_args = advanced_video_args if advanced_video_args else {}
         self.kwargs = kwargs
 
@@ -63,6 +66,8 @@ class PyRequestsFlvDownloader:
             cnt = len(glob.glob(splitext(self.video_file)[0] + '*'))
             self.video_file = splitext(self.video_file)[0] + f'({cnt})' + splitext(self.video_file)[1]
 
+        if self.inprogress_callback:
+            self.inprogress_callback(self.video_file)
         with open(self.video_file, 'wb') as file_obj:
             for idx, chunk in enumerate(stream_iter):
                 if not chunk:
@@ -128,6 +133,7 @@ class PyRequestsHlsDownloader:
                  advanced_video_args:dict=None,
                  segment_callback=None,
                  stable_callback=None,
+                 inprogress_callback=None,
                  **kwargs):
         
         self.stream_url = stream_url
@@ -140,6 +146,8 @@ class PyRequestsHlsDownloader:
         self.url = url
         self.segment_callback = segment_callback
         self.stable_callback = stable_callback
+        # 上报"正在写入"的文件，使录制中途被强杀后残file能被对账发现
+        self.inprogress_callback = inprogress_callback
         self.advanced_video_args = advanced_video_args if advanced_video_args else {}
         self.kwargs = kwargs
 
@@ -234,6 +242,8 @@ class PyRequestsHlsDownloader:
             cnt = len(glob.glob(splitext(self.video_file)[0] + '*'))
             self.video_file = splitext(self.video_file)[0] + f'({cnt})' + splitext(self.video_file)[1]
 
+        if self.inprogress_callback:
+            self.inprogress_callback(self.video_file)
         m3u8_uri = self.m3u8_uri
         params_str = m3u8_uri.split('?')[1] if '?' in m3u8_uri else ''
         

@@ -105,6 +105,16 @@ class DanmakuDownloader():
         return self.start_dmc()
     
     def split(self, filename:str=None):
+        """切分弹幕文件。
+
+        语义（``stream_downloader.segment_callback`` 依赖它）：
+        1. 先把**当前**分段的弹幕文件切换到下一个 ``Part%03d``；
+        2. 再把**刚才那一段**的弹幕文件改名为 ``filename``（即该段视频的同名 ``.ass``）。
+
+        :returns: 该段弹幕**实际落盘**的路径。改名成功即 ``filename``；
+            失败（例如目标名已存在）则回退为未改名的原路径，
+            使调用方登记的路径一定指向真实文件，而不是一个不存在的名字。
+        """
         self.part += 1
         self.part_start_time = datetime.now().timestamp()
         old_dm_file = self.dm_file
@@ -113,11 +123,14 @@ class DanmakuDownloader():
             self.logger.debug(f'New DMfile: {new_dm_file}')
             self.dmwriter.open(new_dm_file)
             self.dm_file = new_dm_file
-        if filename:
-            try:
-                os.rename(old_dm_file, filename)
-            except Exception as e:
-                self.logger.error(f'弹幕 {old_dm_file} 分段失败: {e}.')
+        if not filename:
+            return old_dm_file
+        try:
+            os.rename(old_dm_file, filename)
+            return filename
+        except Exception as e:
+            self.logger.error(f'弹幕 {old_dm_file} 分段失败: {e}.')
+            return old_dm_file
 
     def dm_available(self, dm:SimpleDanmaku) -> bool:
         if dm.time < 0 \

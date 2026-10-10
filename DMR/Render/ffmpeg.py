@@ -23,12 +23,14 @@ class RawFFmpegRender(BaseRender):
         self.logger.debug(f'ffmpeg render args: {ffmpeg_args}')
 
         with tempfile.TemporaryFile() as logfile:
+            # stdout 是 sys.stdout 或临时文件，都不是管道：Python 不会为其分配 bufsize
+            # 指定的缓冲，原来的 bufsize=10**8 是无效参数（现已移除）。
             if self.debug:
                 self.render_proc = subprocess.Popen(
-                    ffmpeg_args, stdin=sys.stdin, stdout=sys.stdout, stderr=subprocess.STDOUT, bufsize=10**8)
+                    ffmpeg_args, stdin=sys.stdin, stdout=sys.stdout, stderr=subprocess.STDOUT)
             else:
                 self.render_proc = subprocess.Popen(
-                    ffmpeg_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT, bufsize=10**8)
+                    ffmpeg_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT)
 
             self.render_proc.wait()
             if self.debug:

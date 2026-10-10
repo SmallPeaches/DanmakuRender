@@ -11,11 +11,13 @@ executable_tools_path:
 # DMR引擎参数
 dmr_engine_args: 
   # 选择组件
+  # 可选组件： downloader（下载器）, render（渲染器）, uploader（上传器）, cleaner（清理器），webservice（WebUI服务，默认不启用）
   enabled_plugins: ['downloader', 'render', 'uploader', 'cleaner']
-  # 是否动态更新配置文件
+  # 配置文件路径
+  # 可设置为文件/文件夹列表
+  config_path: ./configs
+  # 是否动态更新配置文件（监控任务配置的新增/修改/删除并热加载）
   dynamic_config: True
-  # 动态更新的配置文件路径
-  dynamic_config_path: ./configs
 
 # 下载器核心参数
 downloader_kernel_args:
@@ -68,6 +70,11 @@ download_args:
       # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
       # 如果希望不登录录制最低画质，请设置为'None'
       bili_watch_cookies: .login_info/bili_watch_cookies.json
+      # 斗鱼观看cookies，用于以登录态获取长期原画流（流地址中 expire=0，不会中途失效）
+      # 注意：cookies **只用于取流请求**，开播判断/房间信息（betard）始终是匿名的
+      # 支持三种格式：cookies 字符串（'dy_did=xxx; acf_did=xxx; ...'）、cookies 字典的 json 文件、浏览器导出的 cookies 文本文件
+      # 如果希望不登录录制（只能拿到非原画、5 分钟失效的流），请设置为'None'
+      douyu_watch_cookies: .login_info/douyu_watch_cookies.json
     # 高级视频录制参数
     # 请确保你明白这些参数的含义后再修改
     advanced_video_args: 
@@ -79,6 +86,21 @@ download_args:
       stop_check_interval: 60
       # 录制组编号，可用于多任务协同，详情请参考文档
       group_id: ~
+      # 视频文件名称最长长度，超过此长度的文件名称将会被裁剪，默认80（B站视频名称最大长度）
+      # 最大设置为256，否则文件无法被创建
+      max_fn_length: 80
+      # 视频文件最小大小（MB），小于此大小的视频文件将会被删除，默认1MB
+      # 此功能可用于删除因为录制错误导致的许多空视频文件
+      min_video_size: 1
+      # 视频文件最小录制时间（秒），小于此录制时间的视频文件将被删除，默认不启用
+      # 和最小大小配合使用时，只要有一个满足就会被删除
+      min_video_duration: ~
+      # 出错后的重启间隔（秒）。可设置为 [起始间隔, 步长, 最大间隔]，设置为数字则为定值
+      restart_interval: [0, 10, 60]
+      # streamlink 画质选择（仅streamlink下载引擎生效），留空(~)则由streamlink自动选择
+      streamlink_quality: ~
+      # B站是否强制获取原画流（仅bilibili生效）。True 时优先请求原画，失败再回退
+      bili_force_origin: True
       # ffmpeg取流参数(仅ffmpeg下载引擎生效)
       ffmpeg_stream_args: [ '-rw_timeout','10000000',
                             '-analyzeduration','15000000',
@@ -132,6 +154,10 @@ download_args:
       douyin_dm_cookies: ~
     # 弹幕过滤规则，满足其中任意条件的弹幕将被过滤
     dm_filter:
+      # 弹幕类型过滤，只获取指定类型的弹幕，支持情况请参考文档
+      # 可选值：all（所有）, danmaku（纯弹幕）, gift（礼物信息）, entry（进场信息）, superchat（超级弹幕）
+      # 默认只获取文字弹幕(danmaku)
+      dm_type: ~
       # 关键字过滤，只要有关键字的弹幕都会被过滤
       # 例如：[菜, fw]
       keywords: ~
@@ -140,10 +166,18 @@ download_args:
       username: ~
       # 最长弹幕长度，超过此长度的弹幕将被过滤，0表示不限制
       max_length: 0
-    # 弹幕模板
+    # 弹幕模板，具体使用请参考文档
     dm_template:
-      # ASS文本模板，使用方法请参考文档
+      # 整条 ASS 文本模板（对所有弹幕生效），可使用关键字替换
+      # 留空(~)则使用程序内置的默认模板
       ass_text: ~
+      # 按弹幕类型分别指定文本模板（会覆盖上面的 ass_text）
+      # 可用类型由弹幕源决定，常见为：danmaku（普通弹幕）、superchat（醒目留言）、
+      # gift（礼物）、entry（进场）；留空(~)表示该类型使用默认模板
+      danmaku: ~
+      superchat: ~
+      gift: ~
+      entry: ~
     # 高级弹幕录制参数
     # 请确保你明白这些参数的含义后再修改
     advanced_dm_args:
@@ -210,6 +244,42 @@ download_args:
     # 此参数将直接传入下载引擎，可以用来设置一些特殊的下载参数
     extra_args: []
 
+  # 虚拟录制：把外部程序录好的文件"搬运"进来（不重新下载，只做处理/渲染/上传）
+  # 详细用法见使用文档中的"虚拟录制"一节
+  virtual:
+    # 监控文件夹
+    input_dir: ~
+    # 处理后的输出目录，留空(~)则输出到原目录
+    output_dir: ~
+    # 匹配视频文件的正则表达式
+    # 默认匹配可用视频文件
+    video_pattern: ~
+    # 匹配视频文件名称中视频信息
+    info_pattern:
+      name: ~
+      title: ~
+      time_str: ~
+      time_format: ~
+      # 是否匹配弹幕文件，仅支持同名的ass文件
+      danmaku: True
+    # 分段等待时间（分钟），如果视频在此时间内没有更新，则会被认为分段录制完成
+    segment_wait_time: 3
+    # 下播等待时间（分钟），如果没有视频在此时间内更新，则会被认为直播已经结束
+    stop_wait_time: 10
+    # 检测视频的起始时间，默认为当前时间
+    start_time: ~
+    # 高级视频参数
+    advanced_video_args:
+      # 视频文件最小大小（MB），小于此大小的视频文件将会被忽略，默认1MB
+      min_video_size: 1
+      # 视频文件最小录制时间（秒），小于此录制时间的视频文件将被忽略，默认不启用
+      # 和最小大小配合使用时，只要有一个满足就会被忽略
+      # 此参数推荐不设置，因为虚拟下载中视频长度是由文件创建时间和修改时间计算得到的
+      # 在部分情况下中这两个时间相等，会导致计算得到的视频长度为0
+      min_video_duration: ~
+    # 额外信息，暂时没用
+    extra_info: ~
+
 # 渲染器核心参数
 render_kernel_args:
   # 指定同时执行的渲染任务数，默认1
@@ -245,6 +315,34 @@ render_args:
       # 直接定义video filter，这里的{DANMAKU}代表弹幕文件路径
       # 注意设置filter_complex之后将会禁用fps等其他有关filter的选项
       filter_complex: subtitles=filename='{DANMAKU}'
+    # XML 弹幕转换参数（仅当弹幕文件是 .xml 时需要；本程序自己录制的弹幕是 .ass，不走这里）
+    # 弹幕转换由 dmconvert 库完成(https://github.com/timerring/DanmakuConvert)，需要 `pip install dmconvert`
+    # 下面的默认值与上方弹幕录制参数（dm_font/dm_fontsize/dm_opacity 等）保持一致
+    dmconvert:
+      # 弹幕字体名称
+      font_name: Microsoft YaHei
+      # 弹幕字体大小（绝对像素值；不随分辨率自适应，需要其他分辨率下的等效字号请自行换算）
+      font_size: 36
+      # SuperChat/礼物弹幕的字体大小（绝对像素值）
+      sc_font_size: 36
+      # 弹幕渲染分辨率，留空(~)则由渲染器从视频自动探测（推荐）
+      # 也可以显式指定，例如 1920x1080 就写成 resolution_x: 1920, resolution_y: 1080
+      resolution_x: ~
+      resolution_y: ~
+      # 弹幕显示区域占屏幕高度的比例，0.00-1.00（对应弹幕录制参数 dmrate）
+      displayarea: 0.4
+      # 滚动弹幕显示时长（秒）（对应弹幕录制参数 dmduration）
+      roll_time: 16.0
+      # 固定弹幕（顶部/底部）显示时长（秒）
+      fix_time: 5.0
+      # 弹幕不透明度，0.0-1.0（对应弹幕录制参数 opacity）
+      opacity: 0.8
+      # 是否加粗，0或1
+      bold: 0
+      # 弹幕描边宽度（对应弹幕录制参数 outlinesize）
+      outline: 1.0
+      # 弹幕阴影宽度
+      shadow: 0.0
   # 原视频转码
   transcode:
     # 渲染输出文件夹，默认为在录制输出文件夹后面加上“转码后”
@@ -269,7 +367,7 @@ render_args:
     # 高级渲染参数
     # 请确保你明白这些参数的含义后再修改
     advanced_render_args: ~
-  # 自定义ffmpeg调用
+  # 自定义ffmpeg调用（暂不可用）
   rawffmpeg:
     # 输出文件类型，可选src_video或者dm_video
     output_dtype: ~
@@ -307,7 +405,7 @@ upload_args:
     # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认120s
     min_length: 120
     # 以下参数来自biliuprs，详细内容可以参考 https://biliup.github.io/biliup-rs/index.html
-    # 上传线路，设置为空则由biliuprs自动选择
+    # 上传线路，设置为空则由程序自动选择
     line: ~
     # 上传线程数
     limit: 3
@@ -338,12 +436,31 @@ upload_args:
     tag: '直播回放'
     # 延迟发布，单位秒，如果需要的话至少设置14400秒（4个小时）
     dtime: 0
-    # 是否开启杜比音效? 0-关闭 1-开启
+    # 杜比音频? 0-关闭 1-开启
     dolby: 0
     # 允许转载? 0-允许转载，1-禁止转载
     no_reprint: 1
-    # 是否开启充电? 0-关闭 1-开启
-    open_elec: 1
+
+    # 充电视频? 0-否 1-是
+    charging_pay: 0
+    # 仅自己可见? 0-否 1-是
+    is_only_self: 0
+    # hires音频? 0-关闭 1-开启
+    hires: 0
+    # 开放字幕投稿?
+    open_subtitle: False
+    # 是否取消视频推送动态（一般配合加入合集使用）? 0-不取消 1-取消
+    no_disturbance: 0
+    # 以下参数仅biliwebapi生效
+    # 视频分P排序，默认False（按实际上传的时间排序），设置为True则按文件名称排序
+    sort_videos: 0
+    # 加入合集ID
+    epid: ~
+    # 简介中的at信息，设置方法请参考biliup
+    credits: ~
+    # 额外参数列表（仅biliuprs生效）
+    # 此参数将直接传入biliup-rs
+    extra_args: ~
   
   # 上传到YouTube
   # 此功能使用较复杂，细节请参考文档
@@ -412,6 +529,9 @@ upload_args:
   custom:
     # 上传引擎，目前只支持子进程调用
     engine: subprocess
+    # 实时上传：每录制一个分段就调用一次上传命令
+    # 自定义上传**必须启用**，否则录完的分段不会被提交
+    realtime: True
     # 重试次数，如果上传遇到错误将会重试，设置为0表示不重试
     # 注意：重试会整个视频重传，并且阻塞后面视频的上传，不应该设置太大
     retry: 3
@@ -467,4 +587,60 @@ clean_args:
     w_srcpre: True
 
 webservice_kernel_args:
+  # 启用 Web API
   web_api: True
+  # 服务端口
+  port: 5000
+  # 绑定地址
+  host: 0.0.0.0
+  # 是否强制登录
+  force_login: True
+  username: 'admin'
+  # 管理员密码
+  password: 'admin'
+
+# 状态持久化参数
+# 把"录制会话 / 产物 / 上传组"的状态存入 SQLite，使程序重启后能继续处理未完成的
+# 工作（未渲染/未上传的视频、录到一半的产物）
+state:
+  # 状态库路径。默认 logs/dmr_state.db
+  # 特别注意：状态库是"单一全局库"，以任务名（taskname）区分任务。
+  # 如果删除了它，之前所有未完成的进度都会丢失（等同于重新开始）。
+  db_path: logs/dmr_state.db
+
+# 启动对账参数（可选，不填则使用下列默认值）
+# 程序启动时会比对状态库与磁盘，并按这里的策略处置"未完成"的产物
+recovery:
+  # 录到一半的产物如何处置
+  # ask(默认)：只标记为 interrupted，等你自己决定（不会动文件）
+  # keep     ：校验通过则转正为正常产物（之后可正常渲染/上传）
+  # discard  ：直接删除（等同于"从 0 开始"）
+  on_interrupted_file: ask
+  # 重启后是否自动继续处理"已录制 / 已渲染但未完成"的产物（重新派发渲染与上传）
+  # true(默认)：把上次没上传、没渲染完的分段接着处理，避免它们永远停在库里
+  # false     ：只对账不重跑，适合想先人工核对再上传的场景
+  # 注意：已上传(uploaded)或已清理(cleaned)的产物永不重跑，不会重复投稿
+  resume: true
+  # 不满足恢复条件的产物（大小不足、文件已不存在）如何处置
+  # skip(默认)：标记为 skipped 并停止重试，**不删除文件**（文件留在磁盘上）
+  # discard   ：同上并删除文件
+  # ask       ：保持原状态，每次重启都会再试一遍（日志会有重复告警）
+  on_unusable_file: skip
+  # .part 转正所需的最低完整度（低于此值一律不转正）
+  min_valid_duration: 60      # 秒
+  # 「录到一半的文件是否可信」的**大小阈值**（MB，默认 30）
+  # 这一项同时用于两处必须一致的判定：
+  #   1. 启动对账校验中断产物（.part / 引擎直写最终名）够不够大
+  #   2. 重启恢复时判定产物值不值得继续处理
+  # 两者都在回答同一个问题——"是否已录到实质内容"，因此共用此配置。
+  # 判定**不依赖 ffprobe**：文件名以 [正在录制] 开头 + 大小达标即视为正常。
+  min_valid_size_mb: 30
+  # 非终态产物超过此时长仍未更新则视为异常并抛弃（秒）
+  # 正常一场直播不会超过 7 天，因此默认 604800（7 天）
+  stale_after: 604800
+  # 上传器实例空闲多久后释放（秒）。远端稿件 bvid 已存入状态库，释放不影响续传
+  idle_release: 300
+  # 上传组过期时间（秒），留空(~)表示永不过期
+  # 用于"按月分视频"等需要长期复用同一个稿件的场景
+  upload_group_expires: ~
+

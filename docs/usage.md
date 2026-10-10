@@ -37,9 +37,13 @@
 运行时在程序目录打开控制台（win10系统shift+右键点击页面空白处，在菜单中选择“在此处打开powershell窗口”，win11在页面右键选择“在终端中打开”），输入`python main.py`执行程序。        
 如果你已经可以正常运行程序了，那么也可以直接双击打开`main.py`文件运行。       
 
-设置好配置文件后，你也可以运行`dryrun.py`进行测试，程序将录制三段一分钟的视频，并根据配置文件渲染和上传（**这里的上传会自动设置延迟24小时发布，记得24小时内去B站稿件管理删除**），录制完成后可以自行检查效果。      
+设置好配置文件后，你也可以运行`dryrun.py`做一次**全流程冒烟测试**：它会按**你当前的配置**加载全部任务开始录制，运行 180 秒后自动停止各任务。      
 
-如果运行时视频渲染失败，可以运行`render_only.py`手动渲染视频。
+- 为便于在短时间内看到分段效果，测试期间的分段时间被强制设为 30 秒（见脚本内的常量 `DRYRUN_SEGMENT`）。
+- **测试期间默认不会真实上传**：脚本把所有上传目标的 `min_length` 抬高到测试分段无法满足的值（常量 `DRYRUN_MIN_LENGTH`），因此上传流程不会真正提交稿件。如果你确实要连上传一起测，把该常量改为 `0` 即可 —— 上传的 `dtime` 会被设为延迟 24 小时发布，**记得 24 小时内去B站稿件管理删除测试稿件**。
+- 录制完成后可以自行检查录制与渲染效果。
+
+如果运行时视频渲染失败，可以运行`render_only.py`手动渲染视频。该脚本会自动为每个视频寻找同名弹幕文件（优先`.ass`，其次`.xml`；`.xml`会按[渲染 XML 弹幕](#渲染-xml-弹幕render_argsdmrenderdmconvert)一节自动转换）。
 
 ### 关键字替换说明      
 
@@ -347,6 +351,11 @@ download_args:
       # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
       # 如果希望不登录录制最低画质，请设置为'None'
       bili_watch_cookies: .login_info/bili_watch_cookies.json
+      # 斗鱼观看cookies，用于以登录态获取长期原画流（流地址中 expire=0，不会中途失效）
+      # 注意：cookies **只用于取流请求**，开播判断/房间信息（betard）始终是匿名的
+      # 支持三种格式：cookies 字符串（'dy_did=xxx; acf_did=xxx; ...'）、cookies 字典的 json 文件、浏览器导出的 cookies 文本文件
+      # 如果希望不登录录制（只能拿到非原画、5 分钟失效的流），请设置为'None'
+      douyu_watch_cookies: .login_info/douyu_watch_cookies.json
       # 虎牙使用mobile api获取流(https://github.com/SmallPeaches/DanmakuRender/issues/490#issuecomment-3322342040)
       huya_mobile_api: False
     # 高级视频录制参数
@@ -590,6 +599,35 @@ render_args:
       # 直接定义video filter，这里的{DANMAKU}代表弹幕文件路径
       # 注意设置filter_complex之后将会禁用fps等其他有关filter的选项
       filter_complex: subtitles=filename='{DANMAKU}'
+    # XML 弹幕转换参数（仅当弹幕文件是 .xml 时需要）
+    # 本程序自己录制的弹幕是 .ass，不走这里；外部来源的 XML 弹幕
+    # （B站录播下载、DanmakuFactory 导出等）会先用这些参数转成 ASS 再渲染。
+    # 转换由 dmconvert 完成(https://github.com/timerring/DanmakuConvert)，需要 pip install dmconvert
+    # 默认值与上方"弹幕录制参数"（font/fontsize/dmrate/dmduration/opacity/outlinesize）保持一致
+    dmconvert:
+      # 弹幕字体名称
+      font_name: Microsoft YaHei
+      # 弹幕字体大小（绝对像素值，不随分辨率自适应）
+      font_size: 36
+      # SuperChat/礼物弹幕的字体大小（绝对像素值）
+      sc_font_size: 36
+      # 弹幕渲染分辨率，留空(~)则由渲染器从视频自动探测（推荐）
+      resolution_x: ~
+      resolution_y: ~
+      # 弹幕显示区域占屏幕高度的比例，0.00-1.00
+      displayarea: 0.4
+      # 滚动弹幕显示时长（秒）
+      roll_time: 16.0
+      # 固定弹幕（顶部/底部）显示时长（秒）
+      fix_time: 5.0
+      # 弹幕不透明度，0.0-1.0
+      opacity: 0.8
+      # 是否加粗，0或1
+      bold: 0
+      # 弹幕描边宽度
+      outline: 1.0
+      # 弹幕阴影宽度
+      shadow: 0.0
   # 原视频转码
   transcode:
     # 渲染输出文件夹，默认为在录制输出文件夹后面加上“转码后”
@@ -881,6 +919,50 @@ dm_template:
 `{PRICE_UNIT}`：价值单位       
 
 特别提示，弹幕屏蔽功能会在使用弹幕模板后的文本上执行过滤逻辑。      
+
+### 渲染 XML 弹幕（render_args.dmrender.dmconvert）
+本程序自己录制的弹幕直接就是 `.ass`；但**外部来源**的弹幕常常是 B站录制格式的 `.xml`（例如从录播姬/其他工具下载的弹幕）。渲染器会自动识别并转换：
+
+- 弹幕路径是 `.ass` → 直接渲染，行为不变；
+- 弹幕路径是 `.xml` → 先用 [DanmakuConvert](https://github.com/timerring/DanmakuConvert)（PyPI 包名 `dmconvert`）转成临时 `.ass`，渲染结束后自动删除临时文件。
+
+**需要先安装可选依赖：**
+```bash
+pip install dmconvert
+```
+未安装时只有"渲染 XML 弹幕"这一步会报错并提示安装方式，`.ass` 录制与渲染不受影响。
+
+**转换参数**在 `render_args.dmrender.dmconvert` 中配置，默认值与上方弹幕录制参数一致：
+
+```yaml
+render_args:
+  dmrender:
+    dmconvert:
+      font_name: Microsoft YaHei   # 字体
+      font_size: 36                # 字号（绝对像素）
+      sc_font_size: 36             # SuperChat/礼物字号
+      resolution_x: ~              # 留空则从视频自动探测（推荐）
+      resolution_y: ~
+      displayarea: 0.4             # 显示区域比例，对应 dmrate
+      roll_time: 16.0              # 滚动弹幕时长，对应 dmduration
+      fix_time: 5.0                # 固定弹幕时长
+      opacity: 0.8                 # 不透明度，对应 opacity
+      bold: 0
+      outline: 1.0                 # 描边宽度，对应 outlinesize
+      shadow: 0.0
+```
+
+**手动/批量渲染 XML 弹幕：** 把 `.xml` 与同名视频放在一起即可，无需预先转换：
+
+- `render_only.py`（离线渲染）：优先找 `视频同名.ass`，找不到再找 `视频同名.xml`；
+- **虚拟录制**（`download_args.virtual`）：同样按 `视频同名.ass` → `视频同名.xml` 的顺序查找弹幕并交给渲染器。
+
+如需在别的脚本里单独转换，直接用封装的函数：
+
+```python
+from DMR.utils import xml_to_ass
+xml_to_ass('弹幕.xml', '弹幕.ass', args={'resolution_x': 1920, 'resolution_y': 1080})
+```
 
 ### 使用BiliWebApi进行的同步上传
 同步上传是参考biliup实现的一种特殊的上传方法，它可以将获取的直播流直接上传至B站，而不需要文件实际存储到磁盘上。使用这种方法可以在带宽大但是磁盘小的服务器上实现录制多个直播。     

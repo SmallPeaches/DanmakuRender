@@ -6,3 +6,4 @@ from .runcmd import *
 from .toolsmgr import *
 from .logintools import *
 from .ffmpeg import *
+from .xml2ass import *

@@ -5,6 +5,7 @@ import logging
 import glob
 import tempfile
 import threading
+import time
 
 from datetime import datetime
 from os.path import exists, join, splitext, split, isdir, isfile

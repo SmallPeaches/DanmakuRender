@@ -109,9 +109,15 @@ class VirtualDownloaderTask:
                 if title_match:
                     video_info.title = title_match.group(1)
             if self.info_pattern.get('danmaku'):
-                dm_file = splitext(file_path)[0] + '.ass'
-                if exists(dm_file):
+                # 弹幕文件可以是 .ass（渲染器原生）或 .xml（外部来源，渲染时自动转换），
+                # 与 render_only 共用同一套查找规则，避免两处判断不一致。
+                dm_file = find_danmaku_file(file_path)
+                if dm_file:
                     video_info.dm_file_id = dm_file
+                    if is_danmaku_xml(dm_file):
+                        self.logger.info(
+                            f'视频 {file} 使用 XML 弹幕 {basename(dm_file)}，'
+                            f'渲染时将自动转换为 ASS（需要 dmconvert 库）。')
             try:
                 time_str_pattern = self.info_pattern.get('time_str')
                 time_format = self.info_pattern.get('time_format')

@@ -56,6 +56,14 @@ if __name__ == '__main__':
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
 
+    # 可选：进程内内存诊断（默认关闭；设 DMR_MEM_PROBE=1 启用）。
+    # 启用后可用 `kill -USR1 <pid>` 随时打印内存快照，
+    # `kill -USR2 <pid>` 打印并尝试把 glibc 堆空洞还给系统。
+    try:
+        from tools.mem_probe_inproc import install as _install_mem_probe
+    except Exception as _e:
+        logger.debug(f'内存诊断未启用: {_e}')
+
     logger.debug(f'VERSION: {VERSION}')
 
     dmr = DanmakuRender(config, logger=logger, debug=args.debug)

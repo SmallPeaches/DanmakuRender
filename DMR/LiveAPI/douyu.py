@@ -5,7 +5,7 @@
 import hashlib
 import json
 import logging
-import random
+import os
 import re
 import threading
 import time
@@ -25,9 +25,44 @@ DOUYU_DEFAULT_DID = "10000000000000000000000000001501"
 DOUYU_WEB_DOMAIN = "www.douyu.com"
 DOUYU_PLAY_DOMAIN = "playweb.douyucdn.cn"
 DOUYU_MOBILE_DOMAIN = "m.douyu.com"
+# 斗鱼观看 cookies 默认路径：浏览器导出的 cookies 文本或 cookies 字典 json
+DOUYU_DEFAULT_COOKIES = ".login_info/douyu_watch_cookies.json"
 
 
 logger = logging.getLogger(__name__)
+
+
+def load_cookies(cookies) -> dict:
+    '''
+    把 cookies 归一化为 {name: value} 字典
+
+    :param cookies: 支持 dict / cookies 字符串('a=b; c=d') / json 字符串 / json 文件路径 / cookies 文本文件路径
+                    json 兼容 {'k': 'v'} 与 {'cookie_info': {'cookies': [{'name': .., 'value': ..}]}} 两种结构
+    '''
+    if isinstance(cookies, dict):
+        return {str(k): str(v) for k, v in cookies.items()}
+    if not isinstance(cookies, str):
+        raise TypeError(f'不支持的 cookies 类型: {type(cookies).__name__}')
+
+    text = cookies.strip()
+    if text and not text.startswith('{') and os.path.exists(text):
+        with open(text, 'r', encoding='utf-8') as f:
+            text = f.read().strip()
+    if not text:
+        return {}
+
+    if text.startswith('{'):
+        data = json.loads(text)
+        if isinstance(data, dict) and isinstance(data.get('cookie_info'), dict):
+            data = {c['name']: c['value'] for c in data['cookie_info']['cookies']}
+        if not isinstance(data, dict):
+            raise ValueError('cookies json 必须是字典')
+        return {str(k): str(v) for k, v in data.items()}
+
+    # cookies 文本：容忍末尾多余的分号以及不规范的空白
+    if '=' not in text: # 既不是 json 也没有 k=v，说明是写错的路径而不是 cookies
+        return {}
+    return {k: v for k, _, v in (item.strip().partition('=') for item in text.split(';')) if k}
 
 class douyu(BaseAPI):
     fake_headers = BaseAPI._default_header.copy()
@@ -46,6 +81,10 @@ class douyu(BaseAPI):
             raise Exception('房间号错误')
         
         self.__js_runable = True
+        self.__use_login_cookies = False
+        # 登录 cookies 只用于取流请求，不写入 session：
+        # 开播判断/房间信息走 betard，必须保持匿名（不带登录态）。
+        self.__watch_cookies = {}
         self.plugin_msg = f"douyu-{self.rid}"
         self.__req_query = {
             'cdn': 'hw-h5',
@@ -120,7 +159,8 @@ class douyu(BaseAPI):
             ctx = jsengine.jsengine()
             js_enc = (
                 self.sess.get(f'https://www.douyu.com/swf_api/homeH5Enc?rids={rid}',
-                                 headers=self.fake_headers)
+                                 headers=self.fake_headers,
+                                 cookies=self.__watch_cookies or None) # 取流流程的一部分
             ).json()['data'][f'room{rid}']
             js_enc = js_enc.replace('return eval', 'return [strc, vdwdae325w_64we];')
 
@@ -154,19 +194,31 @@ class douyu(BaseAPI):
         '''
         if type(room_id) == int:
             room_id = str(room_id)
-        if self.__js_runable and room_id in DouyuUtils.VipRoom:
+        # 带登录 cookies 时必须走 JSEngine 签名 + www 的 getH5Play：
+        # 免 JSEngine 的 V1 接口不认登录态（带 cookies 请求会直接失败），
+        # 只有这条路才会按登录用户下发原画（rate=0）与长期有效的流地址（expire=0）。
+        if self.__js_runable and (self.__use_login_cookies or room_id in DouyuUtils.VipRoom):
             s = self.aget_sign(room_id)
             logger.debug(f"{self.plugin_msg}: JSEngine 签名参数 {s}")
             req_query = {
                 **req_query,
                 **s
             }
-            url = f"https://{DOUYU_PLAY_DOMAIN}/lapi/live/getH5Play/{room_id}"
-            rsp = self.sess.get(
-                url,
-                headers=self.fake_headers,
-                params=req_query
-            )
+            if self.__use_login_cookies:
+                url = f"https://{DOUYU_WEB_DOMAIN}/lapi/live/getH5Play/{room_id}"
+                rsp = self.sess.post(
+                    url,
+                    headers=self.fake_headers,
+                    data=req_query,
+                    cookies=self.__watch_cookies, # 登录态只在取流请求上携带
+                )
+            else:
+                url = f"https://{DOUYU_PLAY_DOMAIN}/lapi/live/getH5Play/{room_id}"
+                rsp = self.sess.get(
+                    url,
+                    headers=self.fake_headers,
+                    params=req_query
+                )
         else:
             s = DouyuUtils.sign(sign_type="stream", ts=int(time.time()), did=did, rid=room_id)
             logger.debug(f"{self.plugin_msg}: 免 JSEngine 签名参数 {s}")
@@ -313,10 +365,37 @@ class douyu(BaseAPI):
         hs_cname_url = f"http://{hs_cname_host}/live/{stream_id}.flv?{query}"
         return (hs_host, hs_cname_url)
 
-    def get_stream_urls(self, stream_cdn=None, **kwargs) -> str:
+    def get_stream_urls(self, 
+                        stream_cdn=None,
+                        douyu_watch_cookies=DOUYU_DEFAULT_COOKIES,
+                        **kwargs) -> str:
+
+        # 取流时带上登录 cookies：斗鱼会按登录态下发原画（rate=0）与长期有效的流地址（expire=0）
+        # 注意：cookies 只保存在实例上、用于取流请求，**不写入 session**，
+        # 因此开播判断/房间信息（betard）始终是匿名的。
+        if isinstance(douyu_watch_cookies, str) and douyu_watch_cookies.strip().lower() == 'none':
+            douyu_watch_cookies = None # 与 bilibili 一致：设置为 'None' 表示不登录
+        elif not douyu_watch_cookies:
+            douyu_watch_cookies = DOUYU_DEFAULT_COOKIES
+        if douyu_watch_cookies:
+            try:
+                watch_cookies = load_cookies(douyu_watch_cookies)
+            except Exception as e:
+                logger.warning(f"{self.plugin_msg}: cookies 解析失败，将使用无登录模式: {e}")
+                watch_cookies = {}
+            if watch_cookies:
+                self.__watch_cookies = watch_cookies
+                self.__use_login_cookies = True
+                logger.debug(f"{self.plugin_msg}: 取流时使用登录 cookies（原画、expire=0）")
+            elif douyu_watch_cookies == DOUYU_DEFAULT_COOKIES:
+                logger.debug(f"{self.plugin_msg}: 未找到 cookies 文件 {douyu_watch_cookies}，将使用无登录模式")
+            else:
+                logger.warning(f"{self.plugin_msg}: 未从 {douyu_watch_cookies} 读取到 cookies，将使用无登录模式")
+
         if stream_cdn == 'vod':
             try:
-                vod_resp = self.sess.get(f'https://www.douyu.com/japi/universe/playback/getVodStream?rid={self.rid}&startTime={int(time.time())}', headers=self.fake_headers, timeout=5)
+                vod_resp = self.sess.get(f'https://www.douyu.com/japi/universe/playback/getVodStream?rid={self.rid}&startTime={int(time.time())}',
+                                         headers=self.fake_headers, cookies=self.__watch_cookies or None, timeout=5)
                 vod_resp.raise_for_status()
                 vod_data = vod_resp.json()
                 vod_url = vod_data['data']['timeshiftUrl']
@@ -329,6 +408,7 @@ class douyu(BaseAPI):
         if stream_cdn:
             self.__req_query['cdn'] = stream_cdn
 
+        play_info = None
         for _ in range(2): # 允许多重试一次以剔除 scdn
             # self.__js_runable = False
             try:
@@ -340,6 +420,9 @@ class douyu(BaseAPI):
                     continue
             except Exception as e:
                 logger.warning(f"{self.plugin_msg}: {e}")
+
+        if not play_info:
+            raise RuntimeError(f"{self.plugin_msg}: 获取播放信息失败，无法获取直播流")
 
         raw_stream_url = f"{play_info['rtmp_url']}/{play_info['rtmp_live']}"
 

@@ -11,10 +11,34 @@ from typing import Tuple
 from DMR.utils import VideoInfo, PipeMessage, DateTimeEncoder, DateTimeDecoder, uuid
 
 
+def _import_engine(module: str, cls: str):
+    """惰性导入上传引擎类（避免在模块导入期就加载全部引擎依赖）。"""
+    import importlib
+
+    return getattr(importlib.import_module(module, __package__), cls)
+
+
+#: 引擎名 -> 惰性加载器。集中在此处，新增引擎只需加一行。
+_UPLOADER_ENGINES = {
+    'biliuprs': lambda: _import_engine('.biliuprs', 'biliuprs'),
+    'subprocess': lambda: _import_engine('.subprocess_uploader', 'SubprocessUploader'),
+    'youtubev3': lambda: _import_engine('.youtubev3', 'youtubev3'),
+    'biliwebapi': lambda: _import_engine('.biliwebapi', 'BiliWebApi'),
+}
+
+#: 支持"按远端稿件标识追加/续传"的引擎。
+#: - ``biliwebapi``：``resume_bvid`` → 载入既有稿件，新分段作为新分P追加
+#: - ``biliuprs``  ：``resume_bvid`` → 使用 ``biliup append --vid <bvid>`` 追加
+#: 其余引擎（youtubev3 / subprocess）没有"追加到既有稿件"的概念。
+_RESUME_CAPABLE_ENGINES = frozenset({'biliwebapi', 'biliuprs'})
+
+
 class Uploader():
     def __init__(self,
                  pipe:Tuple[queue.Queue, queue.Queue],
                  nuploaders:int=1,
+                 state_repo=None,
+                 uploader_factory=None,
                  **kwargs,
                  ) -> None:
         
@@ -22,6 +46,12 @@ class Uploader():
         self.send_queue, self.recv_queue = pipe
         self.logger = logging.getLogger(__name__)
         self.kwargs = kwargs
+
+        # 状态持久化（P1）：记录每个 upload_group 对应的远端稿件（bvid），
+        # 使进程重启后新分段仍追加到同一稿件，而不是新建稿件。
+        self.state_repo = state_repo
+        # 可注入的构造工厂，便于单测替换掉"需要登录/联网"的上传引擎
+        self._uploader_factory = uploader_factory
 
         self.stoped = True
         self._piperecvprocess = None
@@ -150,6 +180,105 @@ class Uploader():
             else:
                 self.upload_executors.submit(self._upload_subprocess, task)
 
+    def _get_or_create_uploader(self, task: dict):
+        """取出或新建某上传组的上传器实例。
+
+        **状态持久化的关键接点**：实例是按需创建并可在空闲后释放的，因此"同一
+        upload_group 属于同一稿件"这件事不能只靠实例的内存状态维系。新建实例时若
+        状态库中已记录该组的 ``remote_id``（bvid），就注入给引擎，使其把新的分段
+        追加到既有稿件。
+        """
+        upload_group: str = task['upload_group']
+        upload_args = task['args']
+
+        with self._lock:
+            if upload_group in self._uploader_pool:
+                entry = self._uploader_pool[upload_group]
+                entry['ctime'] = time.time()
+                return entry['class']
+
+            extra = {}
+            remote_id = self._lookup_group_remote_id(upload_group)
+            if remote_id and self._supports_resume(task.get('engine')):
+                # 复用既有稿件；引擎内部若发现稿件已不存在会自行回退为新建
+                extra['resume_bvid'] = remote_id
+                self.logger.info(
+                    f'上传组 {upload_group} 复用既有稿件 {remote_id}。'
+                )
+
+            target_uploader = self._create_uploader(task.get('engine'),
+                                                    {**upload_args, **extra})
+            self._uploader_pool[upload_group] = {
+                'class': target_uploader,
+                'ctime': time.time(),
+                'expire': task.get('expire', 7*24*3600)
+            }
+            return target_uploader
+
+    def _create_uploader(self, engine: str, args: dict):
+        """构造上传引擎实例。``uploader_factory`` 可注入以替换默认实现。"""
+        if self._uploader_factory is not None:
+            return self._uploader_factory(engine, args)
+        try:
+            loader = _UPLOADER_ENGINES[engine]
+        except KeyError:
+            raise ValueError(f'Unknown engine: {engine}')
+        return loader()(**args)
+
+    @staticmethod
+    def _supports_resume(engine: str) -> bool:
+        """该引擎是否支持"按远端稿件标识续传/追加"。
+
+        目前只有 B 站 Web API 实现了 ``resume_bvid``（把新分P追加到既有稿件）。
+        """
+        return engine in _RESUME_CAPABLE_ENGINES
+
+    def _lookup_group_remote_id(self, upload_group: str) -> str | None:
+        """从状态库读取该上传组的远端稿件标识；无状态库或未记录时返回 None。"""
+        if self.state_repo is None:
+            return None
+        try:
+            group = self.state_repo.get_upload_group(upload_group)
+        except Exception as e:
+            self.logger.debug(f'读取上传组 {upload_group} 失败: {e}')
+            return None
+        return getattr(group, 'remote_id', None) if group else None
+
+    def _persist_upload_group(self, task: dict, target_uploader) -> None:
+        """把上传结果中的稿件归属写回状态库。
+
+        仅当引擎自报的 bvid 与库中记录不一致时才写，避免每个分段都产生一次写操作。
+        """
+        if self.state_repo is None:
+            return
+        getter = getattr(target_uploader, 'get_remote_bvid', None)
+        if not callable(getter):
+            return
+        try:
+            remote_id = getter()
+        except Exception as e:
+            self.logger.debug(f'获取上传器稿件标识失败: {e}')
+            return
+        if not remote_id:
+            return
+
+        upload_group = task['upload_group']
+        if self._lookup_group_remote_id(upload_group) == remote_id:
+            return
+        try:
+            self.state_repo.get_or_create_upload_group(
+                upload_group,
+                taskname=task.get('taskname') or '',
+                target=task.get('engine') or '',
+                account=task.get('args', {}).get('account'),
+                engine=task.get('engine'),
+            )
+            self.state_repo.set_upload_group_remote(upload_group, remote_id)
+            self.logger.info(f'已记录上传组 {upload_group} 的稿件：{remote_id}。')
+        except Exception as e:
+            # 记录失败不应影响上传结果本身
+            self.logger.warning(f'记录上传组 {upload_group} 的稿件标识失败: {e}')
+
     def _gather(self, task, status, desc=''):
         with self._lock:
             self.upload_tasks.pop(task['uuid'], None)
@@ -189,29 +318,7 @@ class Uploader():
             upload_args = task['args']
             upload_group:str = task['upload_group']
 
-            with self._lock:
-                if upload_group in self._uploader_pool:
-                    target_uploader = self._uploader_pool[upload_group]['class']
-                    self._uploader_pool[upload_group]['ctime'] = time.time()
-                else:
-                    engine:str = task['engine']
-                    if engine == 'biliuprs':
-                        from .biliuprs import biliuprs as TargetUploader
-                    elif engine == 'subprocess':
-                        from .subprocess_uploader import SubprocessUploader as TargetUploader
-                    elif engine == 'youtubev3':
-                        from .youtubev3 import youtubev3 as TargetUploader
-                    elif engine == 'biliwebapi':
-                        from .biliwebapi import BiliWebApi as TargetUploader
-                    else:
-                        raise ValueError(f'Unknown engine: {engine}')
-                    
-                    target_uploader = TargetUploader(**upload_args)
-                    self._uploader_pool[upload_group] = {
-                        'class': target_uploader,
-                        'ctime': time.time(),
-                        'expire': task.get('expire', 7*24*3600)
-                    }
+            target_uploader = self._get_or_create_uploader(task)
 
             files = task['files']
             stream_queue = task.get('stream_queue', None)
@@ -254,6 +361,8 @@ class Uploader():
                     time.sleep(60)
             
             if status:
+                # 上传成功后才回写稿件归属：此时 bvid 已确定，供重启后复用
+                self._persist_upload_group(task, target_uploader)
                 self._gather(task, 'info', desc=info)
             else:
                 self._gather(task, 'error', desc=info)

@@ -28,6 +28,7 @@ class StreamgearsDownloader():
                  debug=False,
                  header:dict=None,
                  segment_callback=None,
+                 inprogress_callback=None,
                  **kwargs):
         
         self.stream_url = stream_url
@@ -37,6 +38,8 @@ class StreamgearsDownloader():
         self.debug = debug
         self.taskname = taskname
         self.url = url
+        # 上报"正在写入"的文件，使录制中途被强杀后残file能被对账发现
+        self.inprogress_callback = inprogress_callback
         self.segment_callback = segment_callback
         self.kwargs = kwargs
 
@@ -59,19 +62,27 @@ class StreamgearsDownloader():
         streamgears_args = [str(x) for x in streamgears_args]
         self.logger.debug(f'Stream-gears downloader args: {streamgears_args}')
 
+        # stdout 是 sys.stdout 或临时文件，都不是管道：Python 不会为其分配 bufsize
+        # 指定的缓冲，原来的 bufsize=10**8 是无效参数（现已移除）。
         if self.debug:
-            self.streamgears_proc = subprocess.Popen(streamgears_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT, bufsize=10**8)
+            self.streamgears_proc = subprocess.Popen(streamgears_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT)
             self.streamgears_proc.wait()
             return
 
         with tempfile.TemporaryFile(dir='.temp') as logfile:
         # with open('.temp/test.log', 'wb') as logfile:
-            self.streamgears_proc = subprocess.Popen(streamgears_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT, bufsize=10**8)
+            self.streamgears_proc = subprocess.Popen(streamgears_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT)
             while not self.stoped:
                 if self.streamgears_proc.poll() is not None:
                     break
 
                 files = sorted(glob.glob(join(self.output_dir, f'*{self.uuid}*')))
+                # 列表最后一个文件是正在写入、尚未封闭的分段，上报它使中途被杀的
+                # 残file有记录（仅在变化时上报，避免重复写库）
+                if files and files[-1] != getattr(self, '_last_reported', None) \
+                        and self.inprogress_callback:
+                    self._last_reported = files[-1]
+                    self.inprogress_callback(files[-1])
                 # 最后一个文件不算在内
                 for p in range(len(files)-1):
                     self.segment_callback(files[p])

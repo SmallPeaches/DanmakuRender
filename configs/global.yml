@@ -16,6 +16,8 @@ dmr_engine_args:
   # 配置文件路径
   # 可设置为文件/文件夹列表
   config_path: ./configs
+  # 是否动态更新配置文件（监控任务配置的新增/修改/删除并热加载）
+  dynamic_config: True
 
 # 默认下载参数
 download_args:
@@ -24,9 +26,6 @@ download_args:
     # 直播间链接
     # 请填写标准格式链接，例如：https://live.bilibili.com/123456
     url: 
-    # 是否使用同步上传功能（正在测试，目前只支持streamlink）
-    # 启用此功能必须使用实时上传，并使用biliwebapi上传引擎
-    sync: False
     # 录制程序引擎，可选ffmpeg, streamgears, pyrequests 或者 streamlink
     # 在使用streamgears作为录制引擎时不支持录制B站hls流
     # 建议PC推流的直播使用ffmpeg录制，手机推流的直播使用streamgears录制
@@ -56,7 +55,6 @@ download_args:
       # 直播流CDN
       # 对于虎牙直播，此项可选al, tx, hw等cdn服务器的缩写
       # 对于B站，可选特定的CDN域名前缀，例如：c1--cn-gotcha208
-      # 斗鱼可选 hs-h5 或者默认 (https://github.com/SmallPeaches/DanmakuRender/issues/506)
       # 或者正则匹配特定CDN，例如：.*cn-gotcha.*
       # 默认为空，由程序随机选择可用cdn
       stream_cdn: ~
@@ -68,8 +66,11 @@ download_args:
       # B站观看cookies，用于获取直播流，如果不填写则使用登录B站上传视频的cookies
       # 如果希望不登录录制最低画质，请设置为'None'
       bili_watch_cookies: .login_info/bili_watch_cookies.json
-      # 虎牙使用mobile api获取流(https://github.com/SmallPeaches/DanmakuRender/issues/490#issuecomment-3322342040)
-      huya_mobile_api: False
+      # 斗鱼观看cookies，用于以登录态获取长期原画流（流地址中 expire=0，不会中途失效）
+      # 注意：cookies **只用于取流请求**，开播判断/房间信息（betard）始终是匿名的
+      # 支持三种格式：cookies 字符串（'dy_did=xxx; acf_did=xxx; ...'）、cookies 字典的 json 文件、浏览器导出的 cookies 文本文件
+      # 如果希望不登录录制（只能拿到非原画、5 分钟失效的流），请设置为'None'
+      douyu_watch_cookies: .login_info/douyu_watch_cookies.json
     # 高级视频录制参数
     # 请确保你明白这些参数的含义后再修改
     advanced_video_args: 
@@ -79,9 +80,8 @@ download_args:
       start_check_interval: 60
       # 下播检测间隔，在主播下播但是未超过延迟下播时间时使用
       stop_check_interval: 60
-      # 重启间隔时间，可设置为 [起始间隔，步长，最大间隔]
-      # 设置为数字将会是定值
-      restart_interval: [0, 10, 60]
+      # 录制组编号，可用于多任务协同，详情请参考文档
+      group_id: ~
       # 视频文件名称最长长度，超过此长度的文件名称将会被裁剪，默认80（B站视频名称最大长度）
       # 最大设置为256，否则文件无法被创建
       max_fn_length: 80
@@ -91,9 +91,11 @@ download_args:
       # 视频文件最小录制时间（秒），小于此录制时间的视频文件将被删除，默认不启用
       # 和最小大小配合使用时，只要有一个满足就会被删除
       min_video_duration: ~
-      # 录制组编号，可用于多任务协同，详情请参考文档
-      group_id: ~
-      # 使用B站强制原画功能，仅适用于pyrequests引擎下的hls流
+      # 出错后的重启间隔（秒）。可设置为 [起始间隔, 步长, 最大间隔]，设置为数字则为定值
+      restart_interval: [0, 10, 60]
+      # streamlink 画质选择（仅streamlink下载引擎生效），留空(~)则由streamlink自动选择
+      streamlink_quality: ~
+      # B站是否强制获取原画流（仅bilibili生效）。True 时优先请求原画，失败再回退
       bili_force_origin: True
       # ffmpeg取流参数(仅ffmpeg下载引擎生效)
       ffmpeg_stream_args: [ '-rw_timeout','10000000',
@@ -104,10 +106,10 @@ download_args:
       ffmpeg_output_args: [ '-movflags','faststart+frag_keyframe+empty_moov']
       # 禁用下载速度慢时自动重启(仅ffmpeg下载引擎生效)
       disable_lowspeed_interrupt: false
-      # streamlink画质选项（默认best）
-      streamlink_quality: ~
       # streamlink 额外输入参数
       # 可用参数列表请参考 https://streamlink.github.io/cli.html
+      # 一个典型的使用方法是添加一个--twitch-api-header参数，用于取消twitch直播流的广告
+      # 特别提醒，使用此方法传入参数会在日志文件中明文显示，如果需要共享日志文件请确保删除了敏感信息！
       streamlink_extra_args: [
         "--twitch-disable-ads",     # 去广告，去掉、跳过嵌入的广告流
         "--twitch-disable-reruns",  # 如果该频道正在重放回放，不打开流
@@ -171,7 +173,6 @@ download_args:
     # 请确保你明白这些参数的含义后再修改
     advanced_dm_args:
       # 弹幕延迟补偿(秒)，将弹幕强行提前
-      # 也可以设置为负数延后弹幕
       dm_delay_fixed: 6
       # 弹幕超时自动重启（秒），超过一段时间无弹幕会自动重启弹幕录制，0表示关闭
       dm_auto_restart: 300
@@ -233,9 +234,9 @@ download_args:
     # 附加参数列表
     # 此参数将直接传入下载引擎，可以用来设置一些特殊的下载参数
     extra_args: []
-  
-  # 虚拟下载
-  # 可以监控文件夹中的视频文件，用于和其他软件协同，详情请参考文档
+
+  # 虚拟录制：把外部程序录好的文件"搬运"进来（不重新下载，只做处理/渲染/上传）
+  # 详细用法见使用文档中的"虚拟录制"一节
   virtual:
     # 监控文件夹
     input_dir: ~
@@ -311,6 +312,34 @@ render_args:
       # 直接定义video filter，这里的{DANMAKU}代表弹幕文件路径
       # 注意设置filter_complex之后将会禁用fps等其他有关filter的选项
       filter_complex: subtitles=filename='{DANMAKU}'
+    # XML 弹幕转换参数（仅当弹幕文件是 .xml 时需要；本程序自己录制的弹幕是 .ass，不走这里）
+    # 弹幕转换由 dmconvert 库完成(https://github.com/timerring/DanmakuConvert)，需要 `pip install dmconvert`
+    # 下面的默认值与上方弹幕录制参数（dm_font/dm_fontsize/dm_opacity 等）保持一致
+    dmconvert:
+      # 弹幕字体名称
+      font_name: Microsoft YaHei
+      # 弹幕字体大小（绝对像素值；不随分辨率自适应，需要其他分辨率下的等效字号请自行换算）
+      font_size: 36
+      # SuperChat/礼物弹幕的字体大小（绝对像素值）
+      sc_font_size: 36
+      # 弹幕渲染分辨率，留空(~)则由渲染器从视频自动探测（推荐）
+      # 也可以显式指定，例如 1920x1080 就写成 resolution_x: 1920, resolution_y: 1080
+      resolution_x: ~
+      resolution_y: ~
+      # 弹幕显示区域占屏幕高度的比例，0.00-1.00（对应弹幕录制参数 dmrate）
+      displayarea: 0.4
+      # 滚动弹幕显示时长（秒）（对应弹幕录制参数 dmduration）
+      roll_time: 16.0
+      # 固定弹幕（顶部/底部）显示时长（秒）
+      fix_time: 5.0
+      # 弹幕不透明度，0.0-1.0（对应弹幕录制参数 opacity）
+      opacity: 0.8
+      # 是否加粗，0或1
+      bold: 0
+      # 弹幕描边宽度（对应弹幕录制参数 outlinesize）
+      outline: 1.0
+      # 弹幕阴影宽度
+      shadow: 0.0
   # 原视频转码
   transcode:
     # 渲染输出文件夹，默认为在录制输出文件夹后面加上“转码后”
@@ -497,18 +526,20 @@ upload_args:
   custom:
     # 上传引擎，目前只支持子进程调用
     engine: subprocess
+    # 实时上传：每录制一个分段就调用一次上传命令
+    # 自定义上传**必须启用**，否则录完的分段不会被提交
+    realtime: True
     # 重试次数，如果上传遇到错误将会重试，设置为0表示不重试
     # 注意：重试会整个视频重传，并且阻塞后面视频的上传，不应该设置太大
     retry: 3
     # 上传超时时间（秒），如果上传时间超过这个时间将会被强制终止（用于防止卡死），0表示不限制
     timeout: 0
-    # 实时上传，自定义时必须启用
-    realtime: True
     # 上传的视频最短长度，小于此长度的视频会被自动过滤，默认120s
     min_length: 120
     # 上传命令行参数，可以使用关键字替换
     # 为保证安全调用，请使用参数列表的形式，例如：['python', 'upload.py', '{PATH}']
     command: ~
+
 
 # 清理器默认参数
 clean_args:
@@ -563,3 +594,49 @@ webservice_kernel_args:
   username: 'admin'
   # 管理员密码
   password: 'admin'
+
+# 状态持久化参数
+# 把"录制会话 / 产物 / 上传组"的状态存入 SQLite，使程序重启后能继续处理未完成的
+# 工作（未渲染/未上传的视频、录到一半的产物）
+state:
+  # 状态库路径。默认 logs/dmr_state.db
+  # 特别注意：状态库是"单一全局库"，以任务名（taskname）区分任务。
+  # 如果删除了它，之前所有未完成的进度都会丢失（等同于重新开始）。
+  db_path: logs/dmr_state.db
+
+# 启动对账参数（可选，不填则使用下列默认值）
+# 程序启动时会比对状态库与磁盘，并按这里的策略处置"未完成"的产物
+recovery:
+  # 录到一半的产物如何处置
+  # ask(默认)：只标记为 interrupted，等你自己决定（不会动文件）
+  # keep     ：校验通过则转正为正常产物（之后可正常渲染/上传）
+  # discard  ：直接删除（等同于"从 0 开始"）
+  on_interrupted_file: ask
+  # 重启后是否自动继续处理"已录制 / 已渲染但未完成"的产物（重新派发渲染与上传）
+  # true(默认)：把上次没上传、没渲染完的分段接着处理，避免它们永远停在库里
+  # false     ：只对账不重跑，适合想先人工核对再上传的场景
+  # 注意：已上传(uploaded)或已清理(cleaned)的产物永不重跑，不会重复投稿
+  resume: true
+  # 不满足恢复条件的产物（大小不足、文件已不存在）如何处置
+  # skip(默认)：标记为 skipped 并停止重试，**不删除文件**（文件留在磁盘上）
+  # discard   ：同上并删除文件
+  # ask       ：保持原状态，每次重启都会再试一遍（日志会有重复告警）
+  on_unusable_file: skip
+  # .part 转正所需的最低完整度（低于此值一律不转正）
+  min_valid_duration: 60      # 秒
+  # 「录到一半的文件是否可信」的**大小阈值**（MB，默认 30）
+  # 这一项同时用于两处必须一致的判定：
+  #   1. 启动对账校验中断产物（.part / 引擎直写最终名）够不够大
+  #   2. 重启恢复时判定产物值不值得继续处理
+  # 两者都在回答同一个问题——"是否已录到实质内容"，因此共用此配置。
+  # 判定**不依赖 ffprobe**：文件名以 [正在录制] 开头 + 大小达标即视为正常。
+  min_valid_size_mb: 30
+  # 非终态产物超过此时长仍未更新则视为异常并抛弃（秒）
+  # 正常一场直播不会超过 7 天，因此默认 604800（7 天）
+  stale_after: 604800
+  # 上传器实例空闲多久后释放（秒）。远端稿件 bvid 已存入状态库，释放不影响续传
+  idle_release: 300
+  # 上传组过期时间（秒），留空(~)表示永不过期
+  # 用于"按月分视频"等需要长期复用同一个稿件的场景
+  upload_group_expires: ~
+

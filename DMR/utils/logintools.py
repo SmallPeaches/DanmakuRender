@@ -1,16 +1,16 @@
 import subprocess
 import os
 from .toolsmgr import ToolsList
+from .runcmd import run_and_capture_output
 
 __all__ = ['bili_islogin', 'bili_login']
 
 def bili_islogin(cookies_path:str, **kwargs) -> bool:
     renew_args = [ToolsList.get('biliup'), '-u', cookies_path, 'renew']
-    proc = subprocess.Popen(renew_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=10**8)
-    proc.wait()
-    out = proc.stdout.read()
-    out = out.decode('utf-8')
-    if 'error' in out.lower() or proc.returncode != 0:
+    # 用临时文件收输出：原来的 PIPE + wait() + read() 在输出超过管道缓冲时会死锁，
+    # 而 bufsize=10**8 既解决不了死锁、又白白预留上百 MB 内存。
+    out, returncode = run_and_capture_output(renew_args, timeout=60)
+    if 'error' in out.lower() or returncode != 0:
         return False
     else:
         return True

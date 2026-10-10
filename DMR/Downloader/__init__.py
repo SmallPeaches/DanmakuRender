@@ -8,12 +8,16 @@ from DMR.utils import *
 class Downloader():
     def __init__(self,
                  pipe:Tuple[queue.Queue, queue.Queue],
+                 state_repo=None,
                  **kwargs,
                  ) -> None:
         self.send_queue, self.recv_queue = pipe
         self.logger = logging.getLogger('DMR.Downloader')
         self.kwargs = kwargs
         self.stoped = True
+
+        # 状态持久化（P1）：下载任务用它登记录制场次与已完成的产物分段
+        self.state_repo = state_repo
 
         self._piperecvprocess = None
         self.download_tasks = {}
@@ -75,6 +79,8 @@ class Downloader():
             from .virtual_downloader import VirtualDownloaderTask
             downloader_task = VirtualDownloaderTask
         
+        if self.state_repo is not None:
+            config = {**config, 'state_repo': self.state_repo}
         self.download_tasks[taskname] = downloader_task(taskname=taskname, send_queue=self.send_queue, **config)
         self.download_tasks[taskname].start()
         self._pipeSend(event='info', msg=f'下载任务 {taskname} 已启动。', dtype='str', data=taskname)

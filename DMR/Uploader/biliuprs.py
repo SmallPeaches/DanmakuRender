@@ -8,7 +8,7 @@ import tempfile
 import time
 import subprocess
 
-from DMR.utils import replace_keywords, ToolsList, VideoInfo
+from DMR.utils import replace_keywords, ToolsList, VideoInfo, run_and_capture_output
 
 
 class biliuprs():
@@ -19,6 +19,7 @@ class biliuprs():
                  task_upload_lock:bool=True,
                  debug=False, 
                  biliup:str=None, 
+                 resume_bvid:str=None,
                  **kwargs,
     ) -> None:
         self.biliup = biliup if biliup else ToolsList.get('biliup')
@@ -38,14 +39,23 @@ class biliuprs():
         self.debug = debug
 
         self.base_args = [self.biliup, '-u', self.cookies]
-        self.task_info = {}
+        # 状态持久化（P1）：bvid 决定后续分段是"追加到既有稿件"还是"新建稿件"。
+        # 进程重启后由状态库注入，使同一 upload_group 仍进同一稿件。
+        self.task_info = {'bvid': resume_bvid} if resume_bvid else {}
         self._upload_lock = threading.Lock()
         self._upload_procs = {}
         self.logger = logging.getLogger(__name__)
         self.stoped = False
 
+        if resume_bvid:
+            self.logger.info(f'已恢复既有稿件 {resume_bvid}，新分段将追加到该稿件。')
+
         if not self.islogin():
             self.login()
+
+    def get_remote_bvid(self) -> str | None:
+        """当前稿件标识，供上层回写到状态库。"""
+        return self.task_info.get('bvid')
 
     def __del__(self):
         self.stop()
@@ -105,10 +115,12 @@ class biliuprs():
         if not logfile:
             logfile = sys.stdout
 
+        # stdout 是文件对象（或 sys.stdout），不是管道：Python 不会为其分配
+        # bufsize 指定的缓冲，原来的 bufsize=10**8 纯属无效参数（现已移除）。
         if self.debug:
-            upload_proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT, bufsize=10**8)
+            upload_proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=subprocess.STDOUT)
         else:
-            upload_proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT, bufsize=10**8)
+            upload_proc = subprocess.Popen(upload_args, stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT)
         
         try:
             self._upload_procs[upload_proc.pid] = upload_proc
@@ -126,10 +138,9 @@ class biliuprs():
     
     def islogin(self):
         renew_args = self.base_args + ['renew']
-        proc = subprocess.Popen(renew_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=10**8)
-        out = proc.stdout.read()
-        out = out.decode('utf-8')
-
+        # 临时文件收输出：PIPE + read() 在输出超过管道缓冲时会死锁，
+        # 而 bufsize=10**8 解决不了死锁、只白白预留上百 MB 内存。
+        out, _ = run_and_capture_output(renew_args, timeout=60)
         if 'error' in out.lower():
             return False
         else:
@@ -217,7 +228,7 @@ class biliuprs():
 
         if self.task_upload_lock:       # 使用串行上传
             with self._upload_lock:
-                status, bvid = self.upload_once(video=video_files, bvid=self.task_info.get('bvid'), **config)
+                status, bvid = self._upload_once_with_fallback(video_files, **config)
                 if status:
                     self.task_info['bvid'] = bvid
 
@@ -237,11 +248,29 @@ class biliuprs():
                         self._upload_lock.release()
 
             else:
-                status, bvid = self.upload_once(video=video_files, bvid=self.task_info.get('bvid'), **config)
+                status, bvid = self._upload_once_with_fallback(video_files, **config)
                 if status:
                     self.task_info['bvid'] = bvid
 
         return status, bvid
+
+    def _upload_once_with_fallback(self, video_files, **config):
+        """按既有 bvid 追加；失败时清空 bvid 再试一次，以应对"稿件已被删除"。
+
+        为什么需要：状态库里的 bvid 可能对应一个已被用户删除的稿件。此时
+        ``biliup append --vid <bvid>`` 会持续失败，而 :meth:`upload` 的重试逻辑会
+        重复同一次注定失败的调用。这里退化为新建稿件，使上传能够继续。
+        """
+        bvid = self.task_info.get('bvid')
+        status, result = self.upload_once(video=video_files, bvid=bvid, **config)
+        if status or not bvid:
+            return status, result
+
+        self.logger.warning(
+            f'追加到既有稿件 {bvid} 失败，可能是稿件已被删除，改以新建稿件重试。'
+        )
+        self.task_info.pop('bvid', None)
+        return self.upload_once(video=video_files, bvid=None, **config)
 
     def end_upload(self):
         self.task_info = {}

@@ -10,7 +10,23 @@ from os.path import join,exists,splitext
 from datetime import datetime
 from DMR.Downloader.Danmaku import DanmakuDownloader
 from DMR.LiveAPI import *
+from DMR.state import ArtifactKind, encode_video_info, make_artifact_key
 from DMR.utils import *
+
+
+#: 状态库的进程级引用（P1）。
+#:
+#: 为什么不走配置：``Downloader``/``StreamDownloadTask`` 的配置来自
+#: ``download_args``，属于**用户可写的任务配置**；把运行时对象塞进去会污染配置命名
+#: 空间、也会让它被意外序列化。这里用模块级引用，由 ``DanmakuRender.start()``
+#: 在启动时设置一次。下载器仍可通过 ``state_repo`` 参数显式覆盖（便于单测）。
+_STATE_REPO = None
+
+
+def set_state_repo(repo) -> None:
+    """设置下载器使用的状态库（由 ``DanmakuRender`` 启动时调用）。"""
+    global _STATE_REPO
+    _STATE_REPO = repo
 
 
 class StreamDownloadTask():
@@ -30,6 +46,7 @@ class StreamDownloadTask():
                  advanced_dm_args:dict=None,
                  engine='ffmpeg', 
                  debug=False, 
+                 state_repo=None,
                  **kwargs
         ) -> None:
         self.taskname = taskname
@@ -43,6 +60,14 @@ class StreamDownloadTask():
         self.logger = logging.getLogger(__name__)
         self.kwargs = kwargs
         self.debug = debug
+        # 状态持久化（P1）：登记录制场次与已完成的产物分段，
+        # 使进程重启后仍能知道"录过哪些分段、它们在磁盘上的位置"。
+        self.state_repo = state_repo if state_repo is not None else _STATE_REPO
+        # 房间信息在 start_once() 里才取到，而 _register_session() 会读取这两个属性。
+        # 必须先给出默认值，否则 start_helper() 里的登记会抛 AttributeError
+        # （真机 dryrun 已复现：场次登记失败 → 后续产物写入触发外键约束错误）。
+        self.room_info = None
+        self.streamer_info = None
         self.segment = segment
         self.danmaku = danmaku
         self.video = video
@@ -75,6 +100,124 @@ class StreamDownloadTask():
     def stable_callback(self, time_error):
         if hasattr(self, 'dmw') and self.dmw:
             self.dmw.time_fix(time_error)
+
+    # ------------------------------------------------------------------ 状态持久化
+    #
+    # 目标：进程重启后仍能知道"录过哪些分段、文件在哪、哪些需要收尾"。
+    #
+    # 覆盖范围说明（重要）：
+    #   下载引擎（ffmpeg / streamgears / streamlink / pyrequests）**直接写最终文件**，
+    #   不经过 .part 中间名。因此这里登记的是**已完成**的分段（segment_callback 触发
+    #   时文件已封闭）。录制中途被强杀时，正在写入的那个文件不会被登记 —— 它没有
+    #   DB 记录，因此（按"不收养"原则）不会进入后续的文件处理流程，需要人工处理。
+    #   要覆盖这一情形需要让各引擎改写 .part 命名，属于独立改动。
+
+    def _register_session(self) -> None:
+        """登记本场直播；保存主播/房间元信息，供后续恢复与上传使用。"""
+        if self.state_repo is None:
+            return
+        try:
+            room_info = self.room_info or {}
+            streamer = self.streamer_info
+            self.state_repo.create_session(
+                self.sess_id,
+                self.taskname,
+                group_id=self.kwargs.get('group_id'),
+                platform=self.plat,
+                room_id=self.rid,
+                room_url=self.url,
+                streamer_name=getattr(streamer, 'name', None) if streamer else None,
+                streamer_uid=getattr(streamer, 'uid', None) if streamer else None,
+                title=room_info.get('title'),
+            )
+            self.logger.debug(f'已登记录制场次 {self.sess_id}（{self.taskname}）。')
+        except Exception as e:
+            # 状态登记失败不应影响录制本身
+            self.logger.warning(f'登记录制场次失败：{e}')
+
+    def _record_segment(self, video_info:VideoInfo) -> None:
+        """登记一个已完成的分段。
+
+        弹幕文件（``.ass``）作为该分段视频的**附属字段**记录，而不是独立产物：
+        它单独存在没有意义（无法独立上传/清理）。该字段的值由
+        ``segment_callback`` 取 ``dmw.split()`` 返回的**实际落盘路径**给出。
+
+        ``video_info`` 整个存进载荷：重启对账后需要**重建**这个产物并重新驱动
+        渲染/上传，而输出文件名与视频标题都依赖录制当时的元信息（主播、标题、
+        时间），只存路径重建不出来。
+        """
+        if self.state_repo is None:
+            return
+        try:
+            self.state_repo.upsert_artifact(
+                artifact_id=make_artifact_key(self.sess_id, ArtifactKind.SOURCE,
+                                              video_info.segment_id),
+                session_id=self.sess_id,
+                segment_idx=video_info.segment_id,
+                kind=ArtifactKind.SOURCE,
+                state='recorded',
+                path=video_info.path,
+                danmaku_path=video_info.dm_file_id,
+                size=video_info.size,
+                duration=video_info.duration,
+                resolution=video_info.resolution,
+                video_info=encode_video_info(video_info),
+            )
+            self.state_repo.touch_session(self.sess_id)
+            self.logger.debug(f'已登记分段 {video_info.segment_id}：{video_info.path}')
+        except Exception as e:
+            self.logger.warning(f'登记分段 {getattr(video_info, "path", None)} 失败：{e}')
+
+    def inprogress_callback(self, filename:str) -> None:
+        """下载引擎开始写入一个新文件时的回调（由引擎调用）。
+
+        为什么需要引擎上报、而不是扫目录：引擎明确知道自己在写哪个文件；而**扫描
+        目录无法区分"刚封闭、尚未改名的分段"与"正在写入的下一个分段"** —— 测试里
+        刚完成的文件仍带 ``[正在录制]`` 前缀，会被误判为进行中（这是实现中真实踩到
+        的坑）。因此这里由引擎给出精确信号。
+
+        为什么这件事重要：所有引擎都**直接写最终文件名**、且只在文件封闭后才通过
+        ``segment_callback`` 上报。若不登记"进行中"的文件，进程在录制中途被杀时，
+        那个已经写了大半的文件就没有任何 DB 记录，会成为无人认领的残file。
+        登记为 ``RECORDING`` 之后，重启对账会把它转为 ``INTERRUPTED`` 并按
+        ``recovery.on_interrupted_file`` 处置（ask / keep / discard）。
+        """
+        if self.state_repo is None:
+            return
+        # 序号与 segment_id 保持一致（调用方在下一个分段开始时已推进 segment_id）。
+        # 二者必须同源：否则"进行中"记录会覆盖已完成的同名记录（真实踩到的坑）。
+        next_id = getattr(self, 'segment_id', None) or 1
+        try:
+            self.state_repo.upsert_artifact(
+                artifact_id=make_artifact_key(self.sess_id, ArtifactKind.SOURCE,
+                                              next_id),
+                session_id=self.sess_id,
+                segment_idx=next_id,
+                kind=ArtifactKind.SOURCE,
+                # 引擎直接写最终名，因此 path 与 part_path 相同；
+                # 对账据此知道"文件在、但可能没写完"。
+                state='recording',
+                path=filename,
+                part_path=filename,
+            )
+            self.logger.debug(f'已登记进行中的分段 {next_id}：{filename}')
+        except OSError as e:
+            self.logger.debug(f'登记进行中的录制文件失败：{e}')
+        except (AttributeError, TypeError, KeyError, ValueError) as e:
+            # 可预期的错误不应影响录制，但必须记 warning（不可静默）
+            self.logger.warning(f'登记进行中的录制文件失败：{e}')
+        # 不捕获 NameError / ImportError 等编程错误 —— 它们必须暴露出来。
+        # （早期版本在"扫目录"实现里用了宽泛的 except，把 unbound name 这类
+        #   NameError 吞掉，导致功能静默失效且难以定位。）
+
+    def _on_live_end(self) -> None:
+        """标记场次结束，使对账可以在产物全部终态后回收该场次。"""
+        if self.state_repo is None:
+            return
+        try:
+            self.state_repo.end_session(self.sess_id)
+        except Exception as e:
+            self.logger.warning(f'标记场次结束失败：{e}')
 
     def segment_callback(self, filename:str):
         if self.room_info is None or not exists(filename):
@@ -115,7 +258,24 @@ class StreamDownloadTask():
             
         if self.danmaku:
             newdmfile = splitext(newfile)[0]+'.'+self.kwargs.get('dm_format', 'ass')
-            self.dmw.split(newdmfile)
+            # ``dmw.split(newdmfile)`` 会把**当前这一段自己的**弹幕文件改名为 ``newdmfile``
+            # （该段的起止与视频分段是同一段），随后才为**下一段**新建一个
+            # ``[正在录制]...Part%03d.ass``。也就是说：被改名的不是"上一段"，登记的
+            # 也不是"下一段" —— 分段序号与弹幕文件是**配对**的。
+            # 依据：``DanmakuDownloader.split()``（先 open 新文件、再 rename ``old_dm_file``），
+            # 且录直播时 ``self_segment=False``、不存在内部 monitor 线程，改名只发生在这里。
+            #
+            # 因此 ``dm_file_id`` 必须记**该段自己的**弹幕文件，而且要用 split 返回的
+            # **实际落盘路径**：改名失败时（例如目标名已存在）弹幕会留在
+            # ``[正在录制]`` 原名下，此时若仍记 ``newdmfile`` 就会指向其他段落的文件
+            # 或一个不存在的路径，渲染（``dmrender`` 会回落到 ``video.dm_file_id``）
+            # 与对账都会出错。
+            dm_file = None
+            try:
+                dm_file = self.dmw.split(newdmfile)
+            except Exception as e:
+                self.logger.warning(f'弹幕分段失败，本轮不登记弹幕文件：{e}')
+            newdmfile = dm_file or None
         else:
             newdmfile = None
         
@@ -140,6 +300,8 @@ class StreamDownloadTask():
             return
 
         self._pipeSend(event='livesegment', msg=f'视频分段 {newfile} 录制完成.', target=f'replay/{self.taskname}', dtype='VideoInfo', data=video_info)
+        # 登记到状态库：文件已封闭，可以安全记录
+        self._record_segment(video_info)
         new_room_info = retry_safe(self.liveapi.GetRoomInfo)
         if new_room_info:
             self.room_info = new_room_info
@@ -155,6 +317,13 @@ class StreamDownloadTask():
         if not(self.room_info and self.streamer_info):
             raise RuntimeError(f'{self.taskname}: 获取主播信息出现错误.')
         
+        # 登记录制场次（含主播/房间元信息）。必须放在这里而不是 start_helper()：
+        # 房间信息此时才拿到，而登记需要写入这些元信息。
+        # 幂等 —— 同一个 sess_id 在一次 start/stop 循环中只登记一次。
+        if getattr(self, '_registered_sess_id', None) != self.sess_id:
+            self._register_session()
+            self._registered_sess_id = self.sess_id
+
         self.segment_start_time = datetime.now()
         os.makedirs(self.output_dir,exist_ok=True)
         
@@ -239,6 +408,7 @@ class StreamDownloadTask():
                 advanced_video_args=self.advanced_video_args,
                 segment_callback=self.segment_callback,
                 stable_callback=self.stable_callback,
+                inprogress_callback=self.inprogress_callback,
                 debug=self.debug,
                 **self.kwargs
             )
@@ -279,7 +449,6 @@ class StreamDownloadTask():
         
         self.sess_id = uuid(8)
         self.segment_id = 1
-
         if not self.liveapi.Onair():
             self._pipeSend('liveend', '直播已结束', )
             live_end = True
@@ -298,6 +467,7 @@ class StreamDownloadTask():
                 if stop_waited > stop_wait_time and not live_end:
                     live_end = True
                     self._pipeSend('liveend', '直播已结束', data=self.sess_id)
+                    self._on_live_end()             # 标记场次结束，供对账回收
                     self.sess_id = uuid(8)          # 每场直播结束后重新分配session id
                     self.segment_id = 1
                 continue
@@ -334,6 +504,9 @@ class StreamDownloadTask():
     def stop(self):
         self.loop = False
         self.stop_once()
+        # 主动停止也算场次结束，避免该场次在状态库里永久停留在"进行中"
+        if hasattr(self, 'sess_id'):
+            self._on_live_end()
         self._pipeSend('livestop', '录制终止', dtype='str', data=self.sess_id if hasattr(self, 'sess_id') else None)
 
     def stop_once(self):

@@ -12,8 +12,9 @@ sys.path.append('..')
 sys.path.append('.')
 
 from DMR.Config import Config
-from DMR.utils import FFprobe, isvideo, VideoInfo
+from DMR.utils import FFprobe, isvideo, VideoInfo, is_danmaku_xml, find_danmaku_file
 from DMR.Render import Render
+
 
 def main():    
     parser = argparse.ArgumentParser()
@@ -52,7 +53,9 @@ def main():
     mode = args.mode
 
     for _, vname in enumerate(videos):
-        danmu = os.path.splitext(vname)[0] + '.ass'
+        # 弹幕文件：优先 .ass（本程序录制格式），其次 .xml（外部来源，渲染时自动转换）
+        # 与虚拟录制共用 DMR.utils.find_danmaku_file，保证判断一致
+        danmu = find_danmaku_file(vname)
         fmt = render_args.get('format', 'mp4')
         if mode == 'dmrender':
             filename = os.path.splitext(os.path.basename(vname))[0] + f"（弹幕版）.{fmt}"
@@ -77,12 +80,14 @@ def main():
                 })
             continue
 
-        if mode == 'dmrender' and not exists(danmu):
+        if mode == 'dmrender' and not danmu:
             ignores.append({
                 'video': vname,
-                'msg': f'视频 {vname} 不存在匹配的弹幕文件，跳过渲染.',
+                'msg': f'视频 {vname} 不存在匹配的弹幕文件（.ass 或 .xml），跳过渲染.',
                 })
             continue
+        if mode == 'dmrender' and is_danmaku_xml(danmu):
+            print(f'  {os.path.basename(vname)}: 使用 XML 弹幕 {os.path.basename(danmu)}（渲染时自动转换为 ASS，需要 dmconvert 库）')
         
         tasks.append({
             'video':vname,

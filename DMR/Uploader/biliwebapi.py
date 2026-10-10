@@ -32,6 +32,11 @@ from .biliuprs import biliuprs
 
 logger = logging.getLogger(__name__)
 
+#: 哨兵：表示"刷新远端信息失败，但应沿用现有稿件归属"。
+#: 必须与 ``None``（稿件确实不存在）区分开，否则网络抖动会被误判为稿件被删除，
+#: 进而新建稿件、丢掉同一 upload_group 的归属。
+_KEEP_EXISTING = object()
+
 
 class BiliWebApi:
     def __init__(self,
@@ -39,6 +44,7 @@ class BiliWebApi:
         account:str=None,
         limit=3,
         sort_videos:bool=False,
+        resume_bvid:str=None,
         **kwargs,
     ):
         self.cookies = cookies
@@ -57,23 +63,76 @@ class BiliWebApi:
         })
         self._auto_os = None
         login_info = self.login_by_biliuprs()
-        self.cookies = {}
-        for item in login_info['cookie_info']['cookies']:
-            self.cookies[item['name']] = item['value']
-        self.__bili_jct = self.cookies['bili_jct']
-        self._session.cookies = requests.utils.cookiejar_from_dict(self.cookies)
-        self.access_token = login_info['token_info']['access_token']
-        self.refresh_token = login_info['token_info']['refresh_token']
+        self._apply_login_info(login_info)
 
         self.videos = None
         self.stoped = False
 
+        # 恢复既有稿件（状态持久化 P1）：进程重启后，同一 upload_group 应继续把新的
+        # 分段追加到**原来的稿件**，而不是新建一个。bvid 由状态库提供。
+        if resume_bvid:
+            self._resume_remote(resume_bvid)
+
+    def _resume_remote(self, bvid: str) -> bool:
+        """按 bvid 载入既有稿件信息。失败时回退为"新建稿件"。"""
+        try:
+            videos = self.get_remote_data(bvid)
+        except Exception as e:
+            logger.warning(f'恢复既有稿件 {bvid} 失败: {e}，将新建稿件。')
+            videos = None
+        if videos is None:
+            logger.warning(f'找不到既有稿件 {bvid}（可能已删除），将新建稿件。')
+            return False
+        self.videos = videos
+        logger.info(f'已恢复既有稿件 {bvid}，新分段将追加到该稿件。')
+        return True
+
+    def get_remote_bvid(self) -> str | None:
+        """当前稿件标识，供上层回写到状态库。"""
+        return getattr(self.videos, 'bvid', None) if self.videos else None
+
 
     def login_by_biliuprs(self):
         biliup_rs = biliuprs(cookies=self.cookies, account=self.account)
-        with open(biliup_rs.cookies, 'r', encoding='utf-8') as f:
+        # 记住 cookies 文件路径：上传器实例会被长期复用，需要在上传前重新读取该文件
+        self.cookies_path = biliup_rs.cookies
+        with open(self.cookies_path, 'r', encoding='utf-8') as f:
             cookies = json.load(f)
         return cookies
+
+    def _apply_login_info(self, login_info: dict) -> None:
+        '''把 cookies 文件内容应用为当前登录态（构造时与每次上传前刷新时共用）'''
+        cookies = {item['name']: item['value'] for item in login_info['cookie_info']['cookies']}
+        if not cookies.get('bili_jct'):
+            raise ValueError('cookies 中缺少 bili_jct')
+        self.cookies = cookies
+        self.__bili_jct = cookies['bili_jct']
+        self._session.cookies = requests.utils.cookiejar_from_dict(cookies)
+        token_info = login_info.get('token_info') or {}
+        self.access_token = token_info.get('access_token')
+        self.refresh_token = token_info.get('refresh_token')
+
+    def refresh_cookies(self) -> bool:
+        '''每次上传前重新从 cookies 文件读取登录信息
+
+        BiliWebApi 实例会被 Uploader 的上传器池复用（默认空闲 300 秒、最长 7 天），
+        期间用户重新登录或 biliup renew 刷新了 cookies 文件时，实例内缓存的旧 cookies
+        会让上传失败，因此每次上传前重新读一次文件。
+        读取或解析失败时保留当前 cookies 并返回 False，不让刷新本身中断上传。
+        '''
+        cookies_path = getattr(self, 'cookies_path', None)
+        if not cookies_path:
+            logger.debug('未记录 cookies 文件路径，跳过刷新')
+            return False
+        try:
+            with open(cookies_path, 'r', encoding='utf-8') as f:
+                login_info = json.load(f)
+            self._apply_login_info(login_info)
+        except Exception as e:
+            logger.warning(f'刷新 cookies 失败，继续使用当前 cookies: {e}')
+            return False
+        logger.debug(f'已重新读取 cookies: {cookies_path}')
+        return True
 
     def sign(self, param):
         return hashlib.md5(f"{param}{self.appsec}".encode()).hexdigest()
@@ -202,12 +261,35 @@ class BiliWebApi:
         stream_queue: queue.SimpleQueue=None,
         **kwargs,
     ):
-        is_new = False
-        if not self.videos:
-            is_new = True
+        # 每次上传都重新读取 cookies：上传器实例在池中会被长期复用，
+        # 期间 cookies 文件被刷新（重新登录、biliup renew）后必须跟着更新，否则上传失败。
+        self.refresh_cookies()
+
+        # 是否为"本次新建的稿件"：决定成功上传后是否需要追加到合集。
+        # 先看既有的 self.videos 是否已带 bvid —— 状态持久化恢复的稿件也属于"既有"，
+        # 不能因为 self.videos 非空就一律当作新建。
+        is_new = not getattr(self.videos, 'bvid', None)
+        if self.videos is None:
             self.videos = self.videoinfo_to_videos(files[0], kwargs)
         else:
-            self.videos = self.get_remote_data(self.videos.bvid) or self.videos       # 刷新视频信息
+            # 三态处理（必须区分"稿件不存在"与"取数据失败"）：
+            #   刷新成功     -> 复用既有稿件（is_new 保持 False）
+            #   稿件不存在   -> 回退为新建（刷新 bvid/标题等元信息）
+            #   取数据异常   -> 沿用现有信息，不因网络抖动而丢掉稿件归属
+            try:
+                refreshed = self.get_remote_data(self.videos.bvid)
+            except Exception as e:
+                logger.warning(
+                    f'刷新稿件 {getattr(self.videos, "bvid", None)} 失败: {e}，沿用现有信息。'
+                )
+                refreshed = _KEEP_EXISTING
+            if refreshed is not None and refreshed is not _KEEP_EXISTING:
+                self.videos = refreshed
+            elif refreshed is None:
+                logger.warning('稿件 %s 已不存在，将新建稿件。', self.videos.bvid)
+                self.videos = self.videoinfo_to_videos(files[0], kwargs)
+                is_new = True
+            # refreshed is _KEEP_EXISTING -> 保持 self.videos 不变
         if stream_queue is None:
             for file in files:
                 status, info = self.upload_file(

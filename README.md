@@ -29,6 +29,34 @@
 - `--version` 查看版本号
 - `--skip_update` 跳过版本检查
 
+## 文档索引
+
+### 面向使用者
+- [安装文档](docs/installation.md) —— 环境准备与安装步骤
+- [使用文档](docs/usage.md) —— 配置项与各项功能的使用说明
+- [更新说明](docs/CHANGELOG.md) —— 每个版本改了什么、升级注意事项
+
+### 面向开发者
+- [项目当前状态](docs/project_state.md) —— 核实过的架构事实、产物语义、关键决策
+- [维护记录](docs/maintainer-log.md) —— 已完成工作的技术明细（根因、实现、踩坑与教训）
+- [待办清单](docs/TODO.md) —— **仅记录未完成事项**与已确认的缺陷
+- [测试说明](unit_tests/README.md) —— 模块级测试的组织与运行方式
+
+### 测试
+本仓库自带模块级测试，运行方式：
+
+```bash
+python -B -m unittest discover -s unit_tests -t .
+```
+
+> `-B` 用于避免本仓库 `__pycache__` 的写入权限问题（见 `TODO.md` B6）。
+
+需要按**当前配置**做一次完整流程冒烟（180 秒后自动停止任务）：
+
+```bash
+python dryrun.py
+```
+
 ## 更多
 感谢 THMonster/danmaku, wbt5/real-url, ForgQi/biliup, ForgQi/stream-gears 的工作。     
 出现问题欢迎大家提issue讨论。       
