@@ -308,6 +308,11 @@ class TestUploadGroups(_RepoTestCase):
                                              expires_at=1)
         self.assertTrue(self.repo.get_upload_group("g1").is_expired)
 
+    def test_delete_upload_group(self):
+        self.repo.get_or_create_upload_group("g1", taskname="t", target="bilibili")
+        self.assertTrue(self.repo.delete_upload_group("g1"))
+        self.assertFalse(self.repo.delete_upload_group("g1"))
+
     def test_list_by_taskname(self):
         self.repo.get_or_create_upload_group("g1", taskname="A", target="bilibili")
         self.repo.get_or_create_upload_group("g2", taskname="B", target="bilibili")

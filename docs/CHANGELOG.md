@@ -40,11 +40,26 @@ recovery:
   on_unusable_file: skip        # 不满足恢复条件时：skip(默认，保留文件) / discard / ask
   min_valid_size_mb: 30         # 「录到一半的文件是否可信」的大小阈值（MB）
   stale_after: 604800           # 非终态产物超过此时长无进展则抛弃（秒）
+
+uploader_kernel_args:
+  idle_release: 86400           # 上传引擎实例（内存池）空闲释放（秒）
+  upload_group_expires: 604800  # 上传组空闲删除（秒），~ = 永不过期
 ```
 
 ---
 
 ## 修复
+
+### 上传组不会过期 / 取稿件数据失败被当成"稿件被删"
+
+- **上传组 7 天失效**：状态持久化后 bvid 被永久复用，旧版"7 天没有新文件上传就换新
+  稿件"的行为失效。现在上传组空闲超过 `uploader_kernel_args.upload_group_expires`
+  （默认 7 天）时，会在该组下一次被上传器查询时**删除记录**，本次上传新建稿件；
+  需要长期复用同一稿件时把它设为 `~`。
+- **内存池只作缓存**：上传引擎实例按 `uploader_kernel_args.idle_release`
+  （默认 24 小时）释放，释放后从状态库重新读取 bvid，因此不影响续传。
+- **刷新稿件失败不再误判**：`biliwebapi.get_remote_data()` 现在**重试 3 次**，只有
+  接口明确返回 `-404` 才认定为稿件不存在；网络异常重试仍失败后才回退为新建稿件。
 
 ### 上传成功却"记不上账"、清理不触发（重要）
 

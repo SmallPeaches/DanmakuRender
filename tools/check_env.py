@@ -23,6 +23,9 @@ def compare_version(ver1, ver2):
         return 1
 
 def check_pypi():
+    if sys.version_info < (3, 10):
+        sys.exit(f'当前 Python 版本为 {sys.version.split()[0]}，DMR 需要 Python 3.12，'
+                 '请安装 Python 3.12 后重试：https://www.python.org/downloads/')
     try:
         import requests
         import aiohttp

@@ -1,5 +1,5 @@
-# DanmakuRender-4 安装指南
-本文档描述了DanmakuRender-4（以下简称DMR）在不同平台下的安装步骤和常见问题。适用于从未接触过Python程序的新手阅读。     
+# DanmakuRender-5 安装指南
+本文档描述了DanmakuRender-5（以下简称DMR）在不同平台下的安装步骤和常见问题。适用于从未接触过Python程序的新手阅读。     
 
 **目录：**      
 [Windows安装](#Windows安装)     
@@ -79,7 +79,7 @@ pip install quickjs
 1. 安装Python            
 macOS一般已经默认安装Python，使用命令`python -V`检测是否安装Python。如果没有请先安装 [Homebrew](https://brew.sh/) 之后输入以下指令安装：
 ```shell
-brew install python@3.9
+brew install python@3.12
 ```
 
 2. 安装程序     
@@ -112,5 +112,4 @@ brew install node
 
 ## 备注     
 - 如果需要使用硬件加速，请根据显卡类型自行前往官网下载最新的驱动程序，**渲染失败的最可能原因是没安装最新显卡驱动！**        
-- DMR录制斗鱼弹幕的功能目前无法工作在Python 3.10以上，如果有需要的话请使用Python 3.9版本。        
 

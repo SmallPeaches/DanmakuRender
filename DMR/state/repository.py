@@ -640,6 +640,19 @@ class StateRepository:
             self.conn.commit()
             return self.get_upload_group(group_key)
 
+    def delete_upload_group(self, group_key: str) -> bool:
+        """删除上传组记录；返回是否真的删掉了一行。
+
+        上传组过期由上传器在取组时按组删除（见 ``Uploader._lookup_group_remote_id``）：
+        删除后下一次上传按新组处理、新建稿件。
+        """
+        with self._lock:
+            cursor = self.conn.execute(
+                "DELETE FROM upload_groups WHERE group_key=?", (group_key,)
+            )
+            self.conn.commit()
+            return cursor.rowcount > 0
+
     def list_upload_groups(
         self, taskname: str | None = None
     ) -> list[UploadGroupRecord]:

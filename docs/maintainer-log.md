@@ -72,7 +72,7 @@
 |---|---|
 | 第 0 步 | 净化运行中状态：`RECORDING`→`INTERRUPTED`，`RENDERING`/`UPLOADING`→`RECORDED` |
 | A 组 | 磁盘校验：文件是否存在、中断产物处置、缺失标记 |
-| C 组 | 上传组封存 |
+| C 组 | 上传组提示（`sealed` / `expires_at`），不做自动删除 |
 | D 组 | 回收：`stale_after` 过期抛弃；**已结束且全部产物终态的场次 → 删除**（级联删产物） |
 
 **D4 的推论**：`cleaned` / `uploaded` 都是**终态**，不阻止场次回收。所以"`cleaned` 记录
@@ -204,9 +204,24 @@ else:
 重启后同一上传组复用状态库中的 `remote_id`（bvid），新分段追加到既有稿件。
 `biliwebapi` 与 `biliuprs` 均已支持（`resume_bvid` / `get_remote_bvid`）。
 
-**测试抓到的真 bug**：`biliwebapi` 刷新远端数据失败时被误判为"稿件不存在"，
-网络抖动即丢失稿件归属（会把一场直播裂成两个稿件）。修法：三态
-（成功 / 不存在 / **保持既有**）+ `_KEEP_EXISTING` 哨兵。
+**上传组过期**：状态库里的上传组超过 `uploader_kernel_args.upload_group_expires`
+（默认 **7 天**）没有新分段入组时，上传器在取组（`_lookup_group_remote_id()`）时
+**直接删除该记录**（debug 日志），本次上传按新组处理、新建稿件 —— 与旧版"7 天无上传
+换新视频"一致。删除是**惰性**的：只有该组下一次被上传器查询时才发生；需要长期复用
+同一稿件（按月分视频）时把该项配成 `~`。
+
+**内存池只是缓存**：`_uploader_pool` 按 `uploader_kernel_args.idle_release`
+（默认 **24 小时**）释放空闲实例，只为省掉重复登录 / 线路探测。实例被释放后，新建
+实例会从状态库重新读取 `remote_id`，因此释放/重建**不影响**稿件归属。复用实例前先
+判断空闲时间，避免"先刷新 ctime 再检查"导致过期后仍沿用内存里的旧 bvid。
+
+**测试抓到的真 bug**：`biliwebapi.get_remote_data()` 曾把网络异常吞成 `None`，被上层
+当成"稿件不存在"→ 新建稿件（网络抖动会把一场直播裂成两个稿件）。修法：
+
+- `get_remote_data()` 内部**重试 3 次**；
+- 仅接口明确返回 `-404` 才认定稿件不存在（立即返回，不重试）；
+- 其它异常/非零 code 重试，仍失败返回 `None`（按不存在处理，新建稿件）；
+- `upload()` 保留对意外异常的防御：异常时沿用既有稿件（`_KEEP_EXISTING`）。
 
 **注意**：B站两个引擎都是**整文件重传**（每次新 `upload_id`）；只有 YouTube 支持
 字节级续传（`retry_resume` 仅存在于 `upload_args.youtube`）。"继续"的真实含义是
@@ -218,9 +233,9 @@ else:
 
 ## 6. cookies 过期导致上传失败
 
-上传器实例会被**长期复用**（默认空闲 300 秒释放、最长 7 天）。实例构造时把 cookies
-读进内存，期间用户重新登录或 `biliup renew` 刷新了 cookies 文件后，实例内旧 cookies
-会让上传失败。
+上传器实例会被**长期复用**（`uploader_kernel_args.idle_release` 默认空闲
+**24 小时**释放）。实例构造时把 cookies 读进内存，期间用户重新登录或
+`biliup renew` 刷新了 cookies 文件后，实例内旧 cookies 会让上传失败。
 
 **修法**：`biliwebapi.refresh_cookies()`，**每次 `upload()` 前重新从文件读取**；
 读取或解析失败时**保留当前 cookies 并继续尝试**，不让刷新本身中断上传。

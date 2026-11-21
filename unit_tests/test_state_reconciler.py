@@ -464,7 +464,7 @@ class TestGroupDReclaim(_RecoveryTestCase):
 
 
 class TestGroupCUploadGroups(_RecoveryTestCase):
-    """C 组：sealed/过期的提示行为，不自动删 bvid。"""
+    """C 组：sealed/`expires_at` 只提示。空闲过期由上传器在取组时删除。"""
 
     def test_sealed_group_is_reported_and_remote_id_kept(self):
         self.repo.get_or_create_upload_group("g1", taskname="t", target="bilibili")
@@ -478,7 +478,7 @@ class TestGroupCUploadGroups(_RecoveryTestCase):
         self.assertEqual(group.remote_id, "BV_KEEP", "不得自动清除 bvid")
 
     def test_expired_group_keeps_remote_id(self):
-        """过期只告警：月度合集的 bvid 不能被自动丢掉。"""
+        """``expires_at`` 只告警：月度合集的 bvid 不能被自动丢掉。"""
         self.repo.get_or_create_upload_group("g1", taskname="t", target="bilibili",
                                             expires_at=1)
         self.repo.set_upload_group_remote("g1", "BV_MONTHLY")
@@ -520,8 +520,6 @@ class TestRecoveryConfig(DMRTestCase):
         config = RecoveryConfig()
         self.assertEqual(config.on_interrupted_file, InterruptedFileAction.ASK)
         self.assertEqual(config.stale_after, 7 * 24 * 3600)
-        self.assertIsNone(config.upload_group_expires)
-        self.assertEqual(config.idle_release, 300)
 
     def test_from_mapping_reads_known_keys(self):
         config = RecoveryConfig.from_mapping({

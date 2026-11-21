@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import queue
+import time
 import unittest
 
 from DMR.state import StateRepository
@@ -45,7 +46,7 @@ class _UploaderTestCase(DMRTestCase):
         self.addCleanup(self.repo.close)
         self.created: list = []
 
-    def make_uploader(self, *, state_repo="auto"):
+    def make_uploader(self, *, state_repo="auto", **kwargs):
         """构造被测 Uploader；``state_repo=None`` 表示不带状态库。"""
         from DMR.Uploader import Uploader
 
@@ -60,7 +61,7 @@ class _UploaderTestCase(DMRTestCase):
         send_queue: queue.Queue = queue.Queue()
         recv_queue: queue.Queue = queue.Queue()
         return Uploader((send_queue, recv_queue), nuploaders=1,
-                        state_repo=repo, uploader_factory=factory)
+                        state_repo=repo, uploader_factory=factory, **kwargs)
 
     @staticmethod
     def make_task(upload_group='g1', engine='biliwebapi', taskname='mytask',
@@ -261,6 +262,102 @@ class TestEndToEndGroupReuse(_UploaderTestCase):
 
         self.assertEqual(target.args.get('resume_bvid'), 'BV_REMOTE',
                          "重启后同一上传组必须复用原稿件，而不是新建")
+
+
+class TestUploadGroupExpiry(_UploaderTestCase):
+    """上传组（状态库）空闲过期：删除记录，下次上传新建稿件。"""
+
+    def backdate_group(self, key: str, seconds: int) -> None:
+        self.repo.conn.execute(
+            "UPDATE upload_groups SET updated_at=? WHERE group_key=?",
+            (int(time.time()) - seconds, key),
+        )
+        self.repo.conn.commit()
+
+    def test_idle_group_is_deleted_and_not_resumed(self):
+        self.repo.get_or_create_upload_group('g1', taskname='mytask',
+                                            target='biliwebapi')
+        self.repo.set_upload_group_remote('g1', 'BV_OLD')
+        self.backdate_group('g1', 8 * 24 * 3600)
+        uploader = self.make_uploader()
+
+        target = uploader._get_or_create_uploader(self.make_task('g1'))
+
+        self.assertNotIn('resume_bvid', target.args, "过期的组不应再复用旧稿件")
+        self.assertIsNone(self.repo.get_upload_group('g1'),
+                          "过期的上传组记录应被删除")
+
+    def test_fresh_group_is_still_resumed(self):
+        self.repo.get_or_create_upload_group('g1', taskname='mytask',
+                                            target='biliwebapi')
+        self.repo.set_upload_group_remote('g1', 'BV_OLD')
+        uploader = self.make_uploader()
+
+        target = uploader._get_or_create_uploader(self.make_task('g1'))
+
+        self.assertEqual(target.args.get('resume_bvid'), 'BV_OLD')
+
+    def test_never_expires_keeps_remote_id(self):
+        self.repo.get_or_create_upload_group('g1', taskname='mytask',
+                                            target='biliwebapi')
+        self.repo.set_upload_group_remote('g1', 'BV_MONTHLY')
+        self.backdate_group('g1', 8 * 24 * 3600)
+        uploader = self.make_uploader(upload_group_expires=None)
+
+        target = uploader._get_or_create_uploader(self.make_task('g1'))
+
+        self.assertEqual(target.args.get('resume_bvid'), 'BV_MONTHLY')
+
+    def test_new_bvid_after_expiry_establishes_new_group(self):
+        """过期删除后上传成功：新 bvid 写入新组，后续分段继续进新稿件。"""
+        self.repo.get_or_create_upload_group('g1', taskname='mytask',
+                                            target='biliwebapi')
+        self.repo.set_upload_group_remote('g1', 'BV_OLD')
+        self.backdate_group('g1', 8 * 24 * 3600)
+        uploader = self.make_uploader()
+
+        target = uploader._get_or_create_uploader(self.make_task('g1'))
+        self.assertNotIn('resume_bvid', target.args)
+        uploader._persist_upload_group(self.make_task('g1'),
+                                       _StubUploader('BV_NEW'))
+
+        group = self.repo.get_upload_group('g1')
+        self.assertIsNotNone(group)
+        self.assertEqual(group.remote_id, 'BV_NEW')
+
+        # 后续分段（即使换一个进程）应续传新稿件
+        later = self.make_uploader()
+        later_target = later._get_or_create_uploader(self.make_task('g1'))
+        self.assertEqual(later_target.args.get('resume_bvid'), 'BV_NEW')
+
+
+class TestUploaderPoolIdleRelease(_UploaderTestCase):
+    """内存池只是引擎实例缓存：空闲超时后释放并重建，不影响状态库归属。"""
+
+    def test_idle_instance_is_rebuilt(self):
+        self.repo.get_or_create_upload_group('g1', taskname='mytask',
+                                            target='biliwebapi')
+        self.repo.set_upload_group_remote('g1', 'BV_OLD')
+        uploader = self.make_uploader()
+
+        first = uploader._get_or_create_uploader(self.make_task('g1'))
+        uploader._uploader_pool['g1']['ctime'] = time.time() - 25 * 3600
+        second = uploader._get_or_create_uploader(self.make_task('g1'))
+
+        self.assertIsNot(first, second, "空闲超过 idle_release 的实例应被释放")
+        self.assertEqual(len(self.created), 2)
+        self.assertEqual(second.args.get('resume_bvid'), 'BV_OLD',
+                         "重建实例应从状态库恢复稿件归属")
+
+    def test_instance_is_kept_when_idle_release_disabled(self):
+        uploader = self.make_uploader(idle_release=None)
+
+        first = uploader._get_or_create_uploader(self.make_task('g1'))
+        uploader._uploader_pool['g1']['ctime'] = time.time() - 100 * 24 * 3600
+        second = uploader._get_or_create_uploader(self.make_task('g1'))
+
+        self.assertIs(first, second)
+        self.assertEqual(len(self.created), 1)
 
 
 if __name__ == "__main__":

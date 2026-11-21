@@ -32,6 +32,14 @@ _UPLOADER_ENGINES = {
 #: 其余引擎（youtubev3 / subprocess）没有"追加到既有稿件"的概念。
 _RESUME_CAPABLE_ENGINES = frozenset({'biliwebapi', 'biliuprs'})
 
+#: 内存池（上传引擎实例）默认空闲释放时间：24 小时。
+#: 内存池只是"省掉重复登录/线路探测"的缓存；稿件归属由状态库的上传组记录决定，
+#: 因此释放实例不会影响续传。
+DEFAULT_IDLE_RELEASE = 24 * 3600
+
+#: 上传组（状态库记录）默认空闲过期时间：7 天，与旧版行为一致。
+DEFAULT_UPLOAD_GROUP_EXPIRES = 7 * 24 * 3600
+
 
 class Uploader():
     def __init__(self,
@@ -39,6 +47,8 @@ class Uploader():
                  nuploaders:int=1,
                  state_repo=None,
                  uploader_factory=None,
+                 idle_release:int|None=DEFAULT_IDLE_RELEASE,
+                 upload_group_expires:int|None=DEFAULT_UPLOAD_GROUP_EXPIRES,
                  **kwargs,
                  ) -> None:
         
@@ -52,6 +62,13 @@ class Uploader():
         self.state_repo = state_repo
         # 可注入的构造工厂，便于单测替换掉"需要登录/联网"的上传引擎
         self._uploader_factory = uploader_factory
+
+        # 内存池的实例空闲释放时间（纯缓存回收，与稿件归属无关）。
+        # None/非正数表示不主动释放。
+        self.idle_release = idle_release
+        # 上传组记录的空闲过期时间：超时后删除记录，下次上传新建稿件。
+        # None/非正数表示永不过期。
+        self.upload_group_expires = upload_group_expires
 
         self.stoped = True
         self._piperecvprocess = None
@@ -147,13 +164,23 @@ class Uploader():
         self._piperecvprocess.start()
 
     def _free_uploader_pool(self):
+        """释放空闲过久的上传引擎实例（纯资源回收）。"""
         with self._lock:
             for upload_group in list(self._uploader_pool.keys()):
-                expire = self._uploader_pool[upload_group]['expire']
-                if expire > 0 and time.time() - self._uploader_pool[upload_group]['ctime'] > expire:
-                    self._uploader_pool[upload_group]['class'].stop()
-                    self._uploader_pool.pop(upload_group)
-                    self.logger.debug(f'Uploader {upload_group} expired and removed.')
+                entry = self._uploader_pool[upload_group]
+                if not self._pool_entry_expired(entry):
+                    continue
+                entry['class'].stop()
+                self._uploader_pool.pop(upload_group)
+                self.logger.debug(
+                    f'Uploader {upload_group} 空闲超过 {self.idle_release}s，已释放。')
+
+    def _pool_entry_expired(self, entry: dict) -> bool:
+        """内存池条目是否空闲超时；``None``/非正数表示不主动释放。"""
+        expire = self.idle_release
+        if not expire or expire <= 0:
+            return False
+        return time.time() - entry['ctime'] > expire
 
     def add_task(self, msg:PipeMessage):
         with self._lock:
@@ -187,15 +214,27 @@ class Uploader():
         upload_group 属于同一稿件"这件事不能只靠实例的内存状态维系。新建实例时若
         状态库中已记录该组的 ``remote_id``（bvid），就注入给引擎，使其把新的分段
         追加到既有稿件。
+
+        内存池只是引擎实例缓存：复用**之前**先判断空闲时间，避免继续沿用内存里的
+        旧 bvid（否则空闲 7 天后的第一次上传仍会追加到旧稿件）。
         """
         upload_group: str = task['upload_group']
         upload_args = task['args']
 
         with self._lock:
-            if upload_group in self._uploader_pool:
-                entry = self._uploader_pool[upload_group]
-                entry['ctime'] = time.time()
-                return entry['class']
+            entry = self._uploader_pool.get(upload_group)
+            if entry is not None:
+                if not self._pool_entry_expired(entry):
+                    entry['ctime'] = time.time()
+                    return entry['class']
+                # 空闲过久：释放后按新实例重建，bvid 重新从状态库读取（可能已过期删除）
+                try:
+                    entry['class'].stop()
+                except Exception as e:
+                    self.logger.debug(f'释放空闲上传器 {upload_group} 失败: {e}')
+                self._uploader_pool.pop(upload_group, None)
+                self.logger.debug(
+                    f'Uploader {upload_group} 空闲超过 {self.idle_release}s，重建实例。')
 
             extra = {}
             remote_id = self._lookup_group_remote_id(upload_group)
@@ -211,7 +250,6 @@ class Uploader():
             self._uploader_pool[upload_group] = {
                 'class': target_uploader,
                 'ctime': time.time(),
-                'expire': task.get('expire', 7*24*3600)
             }
             return target_uploader
 
@@ -234,7 +272,12 @@ class Uploader():
         return engine in _RESUME_CAPABLE_ENGINES
 
     def _lookup_group_remote_id(self, upload_group: str) -> str | None:
-        """从状态库读取该上传组的远端稿件标识；无状态库或未记录时返回 None。"""
+        """从状态库读取该上传组的远端稿件标识；无状态库或未记录时返回 None。
+
+        上传组空闲超过 ``upload_group_expires`` 时**删除该记录**并返回 None：
+        下一次上传会按新组处理（新建稿件），与旧版"7 天无上传换新稿件"一致。
+        删除属于正常维护，只记 debug 日志。
+        """
         if self.state_repo is None:
             return None
         try:
@@ -242,7 +285,32 @@ class Uploader():
         except Exception as e:
             self.logger.debug(f'读取上传组 {upload_group} 失败: {e}')
             return None
-        return getattr(group, 'remote_id', None) if group else None
+        if group is None:
+            return None
+        if self._upload_group_idle_expired(group):
+            self._delete_expired_upload_group(upload_group)
+            return None
+        return getattr(group, 'remote_id', None)
+
+    def _upload_group_idle_expired(self, group) -> bool:
+        """上传组记录是否空闲超时；``None``/非正数表示永不过期。"""
+        expire = self.upload_group_expires
+        if not expire or expire <= 0:
+            return False
+        updated_at = getattr(group, 'updated_at', None)
+        if not updated_at:
+            return False
+        return time.time() - updated_at > expire
+
+    def _delete_expired_upload_group(self, upload_group: str) -> None:
+        try:
+            self.state_repo.delete_upload_group(upload_group)
+        except Exception as e:
+            self.logger.debug(f'删除过期上传组 {upload_group} 失败: {e}')
+            return
+        self.logger.debug(
+            f'上传组 {upload_group} 空闲超过 {self.upload_group_expires}s，'
+            f'删除记录（下次上传新建稿件）。')
 
     def _persist_upload_group(self, task: dict, target_uploader) -> None:
         """把上传结果中的稿件归属写回状态库。

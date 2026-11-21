@@ -1,5 +1,25 @@
-logs/
-venv/
-/直播回放**
+# 版本控制与开发环境
+.git/
+.gitignore
 .idea/
 .vs_code/
+AGENTS.md
+
+# 运行时产物（不应打进镜像）
+logs/
+.temp/
+.login_info/
+venv/
+.venv/
+直播回放/
+视频下载/
+输出/
+videos/
+*.log
+
+# Python 缓存与测试
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+unit_tests/
+docs/

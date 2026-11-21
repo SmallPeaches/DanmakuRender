@@ -37,6 +37,10 @@ logger = logging.getLogger(__name__)
 #: 进而新建稿件、丢掉同一 upload_group 的归属。
 _KEEP_EXISTING = object()
 
+#: 稿件**确实不存在**时接口返回的错误码。这类响应无需重试，直接回退为新建稿件。
+#: 其它错误（网络异常、-412/-799 等风控/限流、解析失败）都按"取数据失败"重试。
+_ARCHIVE_NOT_FOUND_CODES = frozenset({-404})
+
 
 class BiliWebApi:
     def __init__(self,
@@ -272,10 +276,11 @@ class BiliWebApi:
         if self.videos is None:
             self.videos = self.videoinfo_to_videos(files[0], kwargs)
         else:
-            # 三态处理（必须区分"稿件不存在"与"取数据失败"）：
+            # 刷新既有稿件信息：
             #   刷新成功     -> 复用既有稿件（is_new 保持 False）
-            #   稿件不存在   -> 回退为新建（刷新 bvid/标题等元信息）
-            #   取数据异常   -> 沿用现有信息，不因网络抖动而丢掉稿件归属
+            #   未取到数据   -> 回退为新建（get_remote_data 内部已重试；None 表示
+            #                   稿件不存在，或连续重试后仍失败）
+            #   意外异常     -> 沿用现有信息，不因异常丢掉稿件归属
             try:
                 refreshed = self.get_remote_data(self.videos.bvid)
             except Exception as e:
@@ -286,7 +291,8 @@ class BiliWebApi:
             if refreshed is not None and refreshed is not _KEEP_EXISTING:
                 self.videos = refreshed
             elif refreshed is None:
-                logger.warning('稿件 %s 已不存在，将新建稿件。', self.videos.bvid)
+                logger.warning('稿件 %s 未取到数据（不存在或连续重试失败），将新建稿件。',
+                               self.videos.bvid)
                 self.videos = self.videoinfo_to_videos(files[0], kwargs)
                 is_new = True
             # refreshed is _KEEP_EXISTING -> 保持 self.videos 不变
@@ -695,44 +701,77 @@ class BiliWebApi:
         save_file and save_file.close()
         yield None
 
-    def get_remote_data(self, bvid):
+    def get_remote_data(self, bvid, *, retries: int = 3,
+                        retry_interval: float = 3.0):
+        """获取既有稿件的远端信息。
+
+        必须区分"稿件不存在"与"取数据失败"：**取数失败不能直接当成稿件被删除**，
+        否则一次网络抖动就会新建稿件、丢掉同一上传组的归属。
+
+        - 成功：返回 :class:`Data`；
+        - 稿件确实不存在（接口返回 ``-404``）：立即返回 ``None``，无需重试；
+        - 其它错误（网络异常、非零 ``code``、解析失败）：重试 ``retries`` 次，
+          仍失败则返回 ``None``，由调用方回退为新建稿件（用户确认的行为）。
+
+        :param retries: 最多尝试次数（含首次）。
+        :param retry_interval: 两次尝试之间的等待秒数。
+        """
         if not bvid:
             return None
 
         url = f'https://member.bilibili.com/x/vupre/web/archive/view?bvid={bvid}'
-        try:
-            r = self._session.get(url, timeout=5).json()
-            if r['code'] == 0:
-                data = r['data']
-                info = data['archive']
-                video_data = Data(
-                    bvid=info['bvid'],
-                    copyright=info['copyright'],
-                    source=info['source'],
-                    tid=info['tid'],
-                    cover=info['cover'],
-                    title=info['title'],
-                    desc=info['desc'],
-                    desc_v2=info['desc_v2'],
-                    dynamic=info['dynamic'],
-                    tag=info['tag'],
-                    dtime=info['dtime'],
-                    open_subtitle=data['subtitle']['allow'],
-                    dolby=info['attrs']['is_dolby'],
-                    no_reprint=info['no_reprint'],
-                    is_only_self=info['is_only_self'],
-                    charging_pay=info['charging_pay'],
-                )
-                for video in data['videos']:
-                    video_data.append({
-                        'title': video['title'],
-                        'filename': video['filename'],
-                        'cid': video['cid'],
-                        'desc': '',
-                    })
-                return video_data
-        except Exception as e:
-            logger.error(f'获取远程稿件{bvid}数据失败: {e}')
+        attempts = max(1, int(retries))
+        last_error = None
+        for attempt in range(1, attempts + 1):
+            try:
+                r = self._session.get(url, timeout=5).json()
+                code = r.get('code')
+                if code == 0:
+                    data = r['data']
+                    info = data['archive']
+                    video_data = Data(
+                        bvid=info['bvid'],
+                        copyright=info['copyright'],
+                        source=info['source'],
+                        tid=info['tid'],
+                        cover=info['cover'],
+                        title=info['title'],
+                        desc=info['desc'],
+                        desc_v2=info['desc_v2'],
+                        dynamic=info['dynamic'],
+                        tag=info['tag'],
+                        dtime=info['dtime'],
+                        open_subtitle=data['subtitle']['allow'],
+                        dolby=info['attrs']['is_dolby'],
+                        no_reprint=info['no_reprint'],
+                        is_only_self=info['is_only_self'],
+                        charging_pay=info['charging_pay'],
+                    )
+                    for video in data['videos']:
+                        video_data.append({
+                            'title': video['title'],
+                            'filename': video['filename'],
+                            'cid': video['cid'],
+                            'desc': '',
+                        })
+                    return video_data
+                if code in _ARCHIVE_NOT_FOUND_CODES:
+                    logger.warning(f'稿件 {bvid} 不存在（code={code}），将新建稿件。')
+                    return None
+                last_error = f'code={code}, message={r.get("message")}'
+            except Exception as e:
+                last_error = f'{type(e).__name__}: {e}'
+
+            logger.warning(
+                f'获取远程稿件 {bvid} 数据失败（第 {attempt}/{attempts} 次）：{last_error}'
+            )
+            if attempt < attempts and retry_interval > 0:
+                time.sleep(retry_interval)
+
+        logger.error(
+            f'获取远程稿件 {bvid} 数据连续失败 {attempts} 次，按稿件不存在处理：'
+            f'{last_error}'
+        )
         return None
 
     def submit(self, submit_api=None, videos:'Data'=None):

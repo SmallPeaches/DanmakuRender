@@ -179,8 +179,6 @@ class RecoveryConfig:
     #: 判定**不依赖 ffprobe**：读一次 ``stat`` 即可，不需要解析容器。
     min_valid_size_mb: float = 30.0
     stale_after: int = 7 * 24 * 3600          # 7 天
-    idle_release: int = 300                   # uploader 实例空闲释放
-    upload_group_expires: int | None = None   # None = 永不过期
     #: 重启后是否自动继续处理"已录制 / 已渲染但未完成"的产物。
     #: 关闭时只对账不重跑，适合想先人工核对再上传的场景。
     resume: bool = True

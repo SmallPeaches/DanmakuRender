@@ -173,5 +173,115 @@ class TestUploadReusesExistingVideo(_BiliWebApiTestCase):
         self.assertEqual({c[2] for c in self.upload_calls}, {'BV_OLD'})
 
 
+class _FakeResponse:
+    """最小化的 requests 响应替身：只实现 ``json()``。"""
+
+    def __init__(self, payload=None, *, error=None):
+        self._payload = payload
+        self._error = error
+
+    def json(self):
+        if self._error is not None:
+            raise self._error
+        return self._payload
+
+
+class _FakeSession:
+    """按预设序列返回响应/抛异常；序列只剩一个元素时重复使用。"""
+
+    def __init__(self, outcomes):
+        self._outcomes = list(outcomes)
+        self.calls = 0
+
+    def get(self, url, timeout=None):
+        self.calls += 1
+        if len(self._outcomes) > 1:
+            item = self._outcomes.pop(0)
+        else:
+            item = self._outcomes[0]
+        if isinstance(item, Exception):
+            raise item
+        return _FakeResponse(item)
+
+
+def _archive_payload(bvid="BV_OK"):
+    return {
+        "code": 0,
+        "data": {
+            "archive": {
+                "bvid": bvid,
+                "copyright": 1,
+                "source": "",
+                "tid": 21,
+                "cover": "",
+                "title": "标题",
+                "desc": "",
+                "desc_v2": [],
+                "dynamic": "",
+                "tag": "",
+                "dtime": None,
+                "attrs": {"is_dolby": 0},
+                "no_reprint": 0,
+                "is_only_self": 0,
+                "charging_pay": 0,
+            },
+            "subtitle": {"allow": False},
+            "videos": [{"title": "P1", "filename": "f1", "cid": 1}],
+        },
+    }
+
+
+class TestGetRemoteDataRetry(_BiliWebApiTestCase):
+    """``get_remote_data`` 必须区分"稿件不存在"与"取数据失败"。
+
+    取数失败要重试 3 次；只有接口明确返回 -404 才认定为稿件不存在（不重试）。
+    """
+
+    def make_raw_api(self, outcomes):
+        from DMR.Uploader.biliwebapi import BiliWebApi
+
+        api = BiliWebApi.__new__(BiliWebApi)
+        api._session = _FakeSession(outcomes)
+        return api
+
+    def test_success_returns_data(self):
+        api = self.make_raw_api([_archive_payload("BV_OK")])
+
+        data = api.get_remote_data("BV_OK", retry_interval=0)
+
+        self.assertEqual(data.bvid, "BV_OK")
+        self.assertEqual(api._session.calls, 1)
+
+    def test_not_found_returns_immediately_without_retry(self):
+        api = self.make_raw_api([{"code": -404, "message": "啥都木有"}])
+
+        self.assertIsNone(api.get_remote_data("BV_GONE", retry_interval=0))
+        self.assertEqual(api._session.calls, 1, "明确不存在时不应浪费重试")
+
+    def test_transient_error_is_retried(self):
+        api = self.make_raw_api([RuntimeError("timeout"),
+                                 _archive_payload("BV_OK")])
+
+        data = api.get_remote_data("BV_OK", retry_interval=0)
+
+        self.assertEqual(data.bvid, "BV_OK")
+        self.assertEqual(api._session.calls, 2)
+
+    def test_api_error_code_is_retried(self):
+        api = self.make_raw_api([{"code": -799, "message": "请求过于频繁"},
+                                 _archive_payload("BV_OK")])
+
+        data = api.get_remote_data("BV_OK", retry_interval=0)
+
+        self.assertEqual(data.bvid, "BV_OK")
+        self.assertEqual(api._session.calls, 2)
+
+    def test_gives_up_after_three_attempts(self):
+        api = self.make_raw_api([RuntimeError("timeout")])
+
+        self.assertIsNone(api.get_remote_data("BV_OK", retry_interval=0))
+        self.assertEqual(api._session.calls, 3, "应重试 3 次后再回退")
+
+
 if __name__ == "__main__":
     unittest.main()
